@@ -9,8 +9,8 @@ class MyPlantsScreen extends StatelessWidget {
       ),
       body: Center(
         child: Text(
-          'Welcome to Planty Palace 🌱',
-          style: TextStyle(fontSize: 18),
+          'Here you can see and manage your plants!',
+          style: TextStyle(fontSize: 20),
         ),
       ),
     );
