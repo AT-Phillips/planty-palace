@@ -16,7 +16,7 @@ class Plant {
   // Convert Plant to Map for DB
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
+      'id': id,  // Nullable, will be auto-incremented in DB
       'name': name,
       'species': species,
       'imagePath': imagePath,
@@ -27,7 +27,7 @@ class Plant {
   // Create Plant from Map
   factory Plant.fromMap(Map<String, dynamic> map) {
     return Plant(
-      id: map['id'],
+      id: map['id'],  // Nullable ID
       name: map['name'],
       species: map['species'],
       imagePath: map['imagePath'],
