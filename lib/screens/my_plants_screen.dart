@@ -7,10 +7,10 @@ class MyPlantsScreen extends StatefulWidget {
   const MyPlantsScreen({super.key});
 
   @override
-  _MyPlantsScreenState createState() => _MyPlantsScreenState();
+  MyPlantsScreenState createState() => MyPlantsScreenState();
 }
 
-class _MyPlantsScreenState extends State<MyPlantsScreen> {
+class MyPlantsScreenState extends State<MyPlantsScreen> {
   List<Plant> _plants = []; // Store the list of plants
 
   @override
