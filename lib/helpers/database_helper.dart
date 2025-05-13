@@ -1,65 +1,52 @@
 import 'package:sqflite/sqflite.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart';
+import '../models/plant.dart';
 
 class DatabaseHelper {
-  static final DatabaseHelper _instance = DatabaseHelper._internal();
-  factory DatabaseHelper() => _instance;
+  static final DatabaseHelper instance = DatabaseHelper._init();
+
   static Database? _database;
 
-  DatabaseHelper._internal();
+  DatabaseHelper._init();
 
   Future<Database> get database async {
     if (_database != null) return _database!;
 
-    _database = await _initDatabase();
+    _database = await _initDB('plants.db');
     return _database!;
   }
 
-  Future<Database> _initDatabase() async {
-    String path = join(await getDatabasesPath(), 'plants.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE plants (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            name TEXT,
-            species TEXT,
-            wateringSchedule TEXT,
-            lastWatered TEXT
-          )
-        ''');
-      },
-    );
+  Future<Database> _initDB(String filePath) async {
+    final dbPath = await getDatabasesPath();
+    final path = join(dbPath, filePath);
+
+    return await openDatabase(path, version: 1, onCreate: _onCreate);
   }
 
-  Future<int> insertPlant(Map<String, dynamic> plant) async {
-    Database db = await database;
-    return await db.insert('plants', plant);
+  Future _onCreate(Database db, int version) async {
+    await db.execute('''
+      CREATE TABLE plants(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT,
+        species TEXT,
+        imagePath TEXT,
+        careInstructions TEXT
+      )
+    ''');
   }
 
-  Future<List<Map<String, dynamic>>> getPlants() async {
-    Database db = await database;
-    return await db.query('plants');
+  Future<List<Plant>> getPlants() async {
+    final db = await database;
+    final List<Map<String, dynamic>> maps = await db.query('plants');
+
+    return List.generate(maps.length, (i) {
+      return Plant.fromMap(maps[i]); // Convert map to Plant object
+    });
   }
 
-  Future<int> updatePlant(Map<String, dynamic> plant) async {
-    Database db = await database;
-    return await db.update(
-      'plants',
-      plant,
-      where: 'id = ?',
-      whereArgs: [plant['id']],
-    );
-  }
-
-  Future<int> deletePlant(int id) async {
-    Database db = await database;
-    return await db.delete(
-      'plants',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+  Future<int> insertPlant(Plant plant) async {
+    final db = await database;
+    return await db.insert('plants', plant.toMap());
   }
 }
