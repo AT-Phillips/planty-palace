@@ -54,17 +54,38 @@ class MyPlantsScreenState extends State<MyPlantsScreen> {
                 itemBuilder: (context, index) {
                   final plant = _plants[index]; // Get each plant
                   return ListTile(
-                    leading:
-                        plant.imagePath.isNotEmpty
-                            ? Image.asset(
-                              plant.imagePath,
-                              width: 50,
-                              height: 50,
-                              fit: BoxFit.cover,
-                            )
-                            : const Icon(Icons.local_florist),
-                    title: Text(plant.name), // Plant name
-                    subtitle: Text(plant.species), // Plant species
+                    return Dismissible(
+  key: Key(plant.id.toString()),
+  direction: DismissDirection.endToStart,
+  background: Container(
+    color: Colors.red,
+    alignment: Alignment.centerRight,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    child: const Icon(Icons.delete, color: Colors.white),
+  ),
+  onDismissed: (direction) async {
+    await DatabaseHelper().deletePlant(plant.id!);
+    setState(() {
+      _plants.removeAt(index);
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${plant.name} deleted')),
+    );
+  },
+  child: ListTile(
+    leading: plant.imagePath.isNotEmpty
+        ? Image.asset(
+            plant.imagePath,
+            width: 50,
+            height: 50,
+            fit: BoxFit.cover,
+          )
+        : const Icon(Icons.local_florist),
+    title: Text(plant.name),
+    subtitle: Text(plant.species),
+  ),
+);
+
                   );
                 },
               ),
