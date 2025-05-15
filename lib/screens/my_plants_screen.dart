@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
-import 'add_plant_screen.dart';
+import 'add_edit_plant_screen.dart';  // updated import
 
 class MyPlantsScreen extends StatefulWidget {
   const MyPlantsScreen({super.key});
@@ -29,7 +29,17 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   Future<void> _navigateToAddPlant() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const AddPlantScreen()),
+      MaterialPageRoute(builder: (_) => const AddEditPlantScreen()),
+    );
+    if (result == true && mounted) {
+      _loadPlants();
+    }
+  }
+
+  Future<void> _navigateToEditPlant(Plant plant) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddEditPlantScreen(plant: plant)),
     );
     if (result == true && mounted) {
       _loadPlants();
@@ -72,6 +82,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       leading: leadingWidget,
       title: Text(plant.name),
       subtitle: Text(plant.species),
+      onTap: () => _navigateToEditPlant(plant),  // EDIT plant on tap
     );
   }
 
