@@ -1,8 +1,16 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'screens/my_plants_screen.dart';
 
 void main() {
-  runApp(PlantyPalaceApp());
+  // Initialize FFI database for desktop platforms
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  }
+
+  runApp(const PlantyPalaceApp());
 }
 
 class PlantyPalaceApp extends StatelessWidget {
@@ -17,7 +25,7 @@ class PlantyPalaceApp extends StatelessWidget {
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: MyPlantsScreen(),
+      home: const MyPlantsScreen(),
     );
   }
 }

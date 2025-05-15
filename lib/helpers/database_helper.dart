@@ -5,6 +5,12 @@ import '../models/plant.dart';
 class DatabaseHelper {
   static Database? _database;
 
+  // Delete all plants from the database
+  Future<void> deleteAllPlants() async {
+    final db = await database;
+    await db.delete('plants');
+  }
+
   // Singleton pattern to ensure only one database instance is used
   Future<Database> get database async {
     if (_database != null) return _database!;
@@ -16,17 +22,19 @@ class DatabaseHelper {
   Future<Database> _initDatabase() async {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, 'plants.db');
-    return openDatabase(path, version: 1, onCreate: (db, version) {
-      return db.execute(
-        '''CREATE TABLE plants(
+    return openDatabase(
+      path,
+      version: 1,
+      onCreate: (db, version) {
+        return db.execute('''CREATE TABLE plants(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT,
           species TEXT,
           imagePath TEXT,
           careInstructions TEXT
-        )''',
-      );
-    });
+        )''');
+      },
+    );
   }
 
   // Fetch all plants from the database
@@ -62,10 +70,6 @@ class DatabaseHelper {
   // Delete a plant from the database
   Future<void> deletePlant(int id) async {
     final db = await database;
-    await db.delete(
-      'plants',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    await db.delete('plants', where: 'id = ?', whereArgs: [id]);
   }
 }
