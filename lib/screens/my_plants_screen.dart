@@ -21,6 +21,7 @@ class MyPlantsScreenState extends State<MyPlantsScreen> {
 
   Future<void> _loadPlants() async {
     final plants = await DatabaseHelper().getPlants();
+    if (!mounted) return;
     setState(() {
       _plants = plants;
     });
@@ -31,6 +32,7 @@ class MyPlantsScreenState extends State<MyPlantsScreen> {
       context,
       MaterialPageRoute(builder: (_) => const AddPlantScreen()),
     );
+    if (!mounted) return;
     if (result == true) {
       _loadPlants();
     }
@@ -55,9 +57,10 @@ class MyPlantsScreenState extends State<MyPlantsScreen> {
       ),
     );
 
+    if (!mounted) return;
     if (confirm == true) {
       await DatabaseHelper().deleteAllPlants();
-      _loadPlants(); // Refresh UI after deletion
+      _loadPlants();
     }
   }
 
@@ -73,6 +76,7 @@ class MyPlantsScreenState extends State<MyPlantsScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.delete_forever),
+            tooltip: 'Delete All Plants',
             onPressed: _deleteAllPlants,
           ),
         ],
