@@ -111,6 +111,14 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             backgroundColor: Colors.red,
             child: const Icon(Icons.delete_forever),
           ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'identify',
+            onPressed: () => Navigator.pushNamed(context, '/identify'),
+            backgroundColor: Colors.lightGreen,
+            tooltip: 'Identify Plant',
+            child: const Icon(Icons.camera_alt),
+          ),
         ],
       ),
     );
