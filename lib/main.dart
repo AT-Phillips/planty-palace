@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'screens/my_plants_screen.dart';
-import 'screens/identify_plant_screen.dart';  // existing screen
+import 'screens/identify_plant_screen.dart';  // existing
 import 'screens/test_plantnet_screen.dart';   // new test screen
 
 void main() {
@@ -26,11 +26,55 @@ class PlantyPalaceApp extends StatelessWidget {
         primarySwatch: Colors.green,
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      home: const TestPlantNetScreen(),  // <-- temporary test home screen
+      home: const MainContainer(),
       routes: {
         '/identify': (context) => const IdentifyPlantScreen(),
-        '/myplants': (context) => const MyPlantsScreen(), // keep route for MyPlantsScreen
+        '/myplants': (context) => const MyPlantsScreen(),
       },
+    );
+  }
+}
+
+// Main container with bottom navigation to switch between screens
+class MainContainer extends StatefulWidget {
+  const MainContainer({super.key});
+
+  @override
+  State<MainContainer> createState() => _MainContainerState();
+}
+
+class _MainContainerState extends State<MainContainer> {
+  int _selectedIndex = 0;
+
+  final List<Widget> _screens = const [
+    MyPlantsScreen(),
+    TestPlantNetScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.local_florist),
+            label: 'My Plants',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.search),
+            label: 'Test Identify',
+          ),
+        ],
+      ),
     );
   }
 }

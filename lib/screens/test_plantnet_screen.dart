@@ -1,6 +1,9 @@
+// lib/screens/test_plantnet_screen.dart
+
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../helpers/plantnet_helper.dart';
+import 'dart:convert';
 
 class TestPlantNetScreen extends StatefulWidget {
   const TestPlantNetScreen({super.key});
@@ -10,65 +13,82 @@ class TestPlantNetScreen extends StatefulWidget {
 }
 
 class _TestPlantNetScreenState extends State<TestPlantNetScreen> {
-  String? _responseJson;
-  bool _isLoading = false;
+  Map<String, dynamic>? _result;
+  bool _loading = false;
+  String? _error;
 
-  // Replace these with your actual local image file paths
-  final List<String> testImagePaths = [
-    'C:/Users/YourUserName/Pictures/plant1.jpg',
-    'C:/Users/YourUserName/Pictures/plant2.jpg',
-    'C:/Users/YourUserName/Pictures/plant3.jpg',
+  final List<String> _imagePaths = [
+    r'C:\Users\atomp\Downloads\plant1.jpg',
+    r'C:\Users\atomp\Downloads\plant2.jpg',
+    r'C:\Users\atomp\Downloads\plant3.jpg',
   ];
 
-  Future<void> _testIdentifyPlant() async {
+  Future<void> _testIdentify() async {
     setState(() {
-      _isLoading = true;
-      _responseJson = null;
+      _loading = true;
+      _error = null;
+      _result = null;
     });
 
     try {
-      // Convert paths to File objects
-      final files = testImagePaths.map((path) => File(path)).toList();
+      final images = _imagePaths.map((p) => File(p)).where((file) => file.existsSync()).toList();
 
-      final result = await PlantNetHelper.identifyPlant(images: files);
+      if (images.length != _imagePaths.length) {
+        throw Exception("One or more image files do not exist.");
+      }
 
-      setState(() {
-        _responseJson = result != null ? result.toString() : 'No result or error';
-      });
+      final data = await PlantNetHelper.identifyPlant(images: images, organ: 'leaf');
+
+      if (data == null) {
+        setState(() {
+          _error = 'No data returned from PlantNet.';
+        });
+      } else {
+        setState(() {
+          _result = data;
+        });
+      }
     } catch (e) {
       setState(() {
-        _responseJson = 'Error: $e';
+        _error = 'Error: $e';
       });
     } finally {
       setState(() {
-        _isLoading = false;
+        _loading = false;
       });
     }
+  }
+
+  Widget _buildResult() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null) {
+      return Center(child: Text(_error!, style: const TextStyle(color: Colors.red)));
+    }
+    if (_result == null) {
+      return const Center(child: Text('Press the button to test PlantNet identification.'));
+    }
+
+    final prettyJson = const JsonEncoder.withIndent('  ').convert(_result);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: SelectableText(prettyJson),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Test PlantNet API')),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: _isLoading ? null : _testIdentifyPlant,
-              child: Text(_isLoading ? 'Loading...' : 'Run PlantNet Identify'),
-            ),
-            const SizedBox(height: 20),
-            Expanded(
-              child: SingleChildScrollView(
-                child: Text(
-                  _responseJson ?? 'Press the button to test',
-                  style: const TextStyle(fontFamily: 'Courier', fontSize: 14),
-                ),
-              ),
-            ),
-          ],
-        ),
+      appBar: AppBar(
+        title: const Text('Test PlantNet Identify'),
+      ),
+      body: _buildResult(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _loading ? null : _testIdentify,
+        icon: const Icon(Icons.search),
+        label: const Text('Identify Plants'),
       ),
     );
   }
