@@ -1,10 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../widgets/image_picker_button.dart';
-import 'add_edit_plant_screen.dart';  // updated import
+import 'add_edit_plant_screen.dart';
 
 class MyPlantsScreen extends StatefulWidget {
   const MyPlantsScreen({super.key});
@@ -67,14 +68,10 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   void _handleImagePicked(File image) {
-    // For now, just print the image path, replace with your logic:
+    // For now, just print the image path
     print('Picked image path: ${image.path}');
 
-    // TODO: You could navigate to Identify screen or Add/Edit with this image
-    // Example:
-    // Navigator.push(context, MaterialPageRoute(
-    //   builder: (_) => IdentifyPlantScreen(imageFile: image),
-    // ));
+    // TODO: Optionally navigate to Identify screen or Add/Edit with image
   }
 
   Widget _buildPlantTile(Plant plant) {
@@ -96,7 +93,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       leading: leadingWidget,
       title: Text(plant.name),
       subtitle: Text(plant.species),
-      onTap: () => _navigateToEditPlant(plant),  // EDIT plant on tap
+      onTap: () => _navigateToEditPlant(plant),
     );
   }
 
@@ -118,16 +115,19 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             onPressed: _navigateToAddPlant,
             child: const Icon(Icons.add),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           FloatingActionButton(
             heroTag: 'deleteAll',
             onPressed: _deleteAllPlants,
             backgroundColor: Colors.red,
             child: const Icon(Icons.delete_forever),
           ),
-          const SizedBox(height: 10),
-          // Replaced identify FAB with the new ImagePickerButton
-          ImagePickerButton(onImagePicked: _handleImagePicked),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: ImagePickerButton(onImagePicked: _handleImagePicked),
+          ),
         ],
       ),
     );

@@ -75,9 +75,23 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   }
 
   void _onImagePicked(File image) {
-    // Update the imagePathController with the picked image file path
     _imagePathController.text = image.path;
-    setState(() {}); // refresh UI to reflect new image path
+    setState(() {});
+  }
+
+  Widget _buildImagePreview() {
+    final imagePath = _imagePathController.text;
+    if (imagePath.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: Image.file(
+        File(imagePath),
+        height: 160,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      ),
+    );
   }
 
   @override
@@ -123,15 +137,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _imagePathController,
+                readOnly: true,
                 decoration: const InputDecoration(
-                  labelText: 'Image Asset Path',
+                  labelText: 'Image Path (auto-filled)',
                   border: OutlineInputBorder(),
-                  hintText: 'e.g. assets/images/lavender.png or file path',
+                  hintText: 'Path to the selected image',
                 ),
               ),
               const SizedBox(height: 16),
-              // Our new ImagePickerButton here
               ImagePickerButton(onImagePicked: _onImagePicked),
+              _buildImagePreview(),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _savePlant,

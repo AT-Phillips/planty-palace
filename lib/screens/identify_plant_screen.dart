@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../helpers/plantnet_helper.dart';
-import '../widgets/image_picker_button.dart';  // Import the new widget
+import '../widgets/image_picker_button.dart';
 
 class IdentifyPlantScreen extends StatefulWidget {
   const IdentifyPlantScreen({super.key});
@@ -30,7 +30,7 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
   Future<void> _identifyPlant() async {
     if (_pickedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select or take a photo first')),
+        const SnackBar(content: Text('Please capture a plant photo first')),
       );
       return;
     }
@@ -51,24 +51,27 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
   Widget _buildImagePreview() {
     if (_pickedImage == null) return const SizedBox.shrink();
 
-    return Stack(
-      alignment: Alignment.topRight,
-      children: [
-        Image.file(_pickedImage!, width: 120, height: 120, fit: BoxFit.cover),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _pickedImage = null;
-              _results = null;
-            });
-          },
-          child: const CircleAvatar(
-            radius: 14,
-            backgroundColor: Colors.red,
-            child: Icon(Icons.close, size: 16, color: Colors.white),
+    return Padding(
+      padding: const EdgeInsets.only(top: 12.0),
+      child: Stack(
+        alignment: Alignment.topRight,
+        children: [
+          Image.file(_pickedImage!, width: double.infinity, height: 180, fit: BoxFit.cover),
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _pickedImage = null;
+                _results = null;
+              });
+            },
+            child: const CircleAvatar(
+              radius: 16,
+              backgroundColor: Colors.red,
+              child: Icon(Icons.close, size: 18, color: Colors.white),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -76,12 +79,10 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
     if (_results == null) return const SizedBox.shrink();
 
     return SingleChildScrollView(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Text(
-          JsonEncoder.withIndent('  ').convert(_results),
-          style: const TextStyle(fontFamily: 'monospace'),
-        ),
+      padding: const EdgeInsets.all(8),
+      child: Text(
+        JsonEncoder.withIndent('  ').convert(_results),
+        style: const TextStyle(fontFamily: 'monospace'),
       ),
     );
   }
@@ -91,12 +92,11 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Identify Plant')),
       body: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            _buildImagePreview(),
-            const SizedBox(height: 16),
             ImagePickerButton(onImagePicked: _onImagePicked),
+            _buildImagePreview(),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _isLoading ? null : _identifyPlant,
