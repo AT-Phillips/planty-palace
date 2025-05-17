@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
+import '../widgets/image_picker_button.dart';
 import 'add_edit_plant_screen.dart';  // updated import
 
 class MyPlantsScreen extends StatefulWidget {
@@ -63,6 +66,17 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     );
   }
 
+  void _handleImagePicked(File image) {
+    // For now, just print the image path, replace with your logic:
+    print('Picked image path: ${image.path}');
+
+    // TODO: You could navigate to Identify screen or Add/Edit with this image
+    // Example:
+    // Navigator.push(context, MaterialPageRoute(
+    //   builder: (_) => IdentifyPlantScreen(imageFile: image),
+    // ));
+  }
+
   Widget _buildPlantTile(Plant plant) {
     Widget leadingWidget;
 
@@ -112,13 +126,8 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             child: const Icon(Icons.delete_forever),
           ),
           const SizedBox(height: 10),
-          FloatingActionButton(
-            heroTag: 'identify',
-            onPressed: () => Navigator.pushNamed(context, '/identify'),
-            backgroundColor: Colors.lightGreen,
-            tooltip: 'Identify Plant',
-            child: const Icon(Icons.camera_alt),
-          ),
+          // Replaced identify FAB with the new ImagePickerButton
+          ImagePickerButton(onImagePicked: _handleImagePicked),
         ],
       ),
     );

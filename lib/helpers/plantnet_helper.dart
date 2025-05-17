@@ -10,25 +10,34 @@ class PlantNetHelper {
     required List<File> images,
     String organ = 'leaf',
   }) async {
-    final apiKey = 'YOUR_API_KEY';  // Replace with your PlantNet API key
+    if (images.isEmpty) {
+      print('No images provided for identification.');
+      return null;
+    }
+
+    final apiKey = '2b10mnVd9ujJUMfN0dm88OCT2';  // Replace with your PlantNet API key
     final url = Uri.parse(
       'https://my-api.plantnet.org/v2/identify/all?api-key=$apiKey',
     );
 
     final request = http.MultipartRequest('POST', url);
 
-    // Add multiple images to the request
     for (final imageFile in images) {
       final mimeType = lookupMimeType(imageFile.path) ?? 'image/jpeg';
-      request.files.add(await http.MultipartFile.fromPath(
-        'images',
-        imageFile.path,
-        contentType: MediaType.parse(mimeType),
-        filename: basename(imageFile.path),
-      ));
+      try {
+        request.files.add(await http.MultipartFile.fromPath(
+          'images',
+          imageFile.path,
+          contentType: MediaType.parse(mimeType),
+          filename: basename(imageFile.path),
+        ));
+      } catch (e) {
+        print('Error adding image file "${imageFile.path}": $e');
+        // You can choose to continue or return null here
+        return null;
+      }
     }
 
-    // Only one organs field for all images (PlantNet API expects a comma-separated list for multiple)
     request.fields['organs'] = List.filled(images.length, organ).join(',');
 
     try {
@@ -39,6 +48,7 @@ class PlantNetHelper {
         return Map<String, dynamic>.from(jsonDecode(response.body));
       } else {
         print('PlantNet identification failed with status: ${response.statusCode}');
+        print('Response body: ${response.body}');
         return null;
       }
     } catch (e) {
