@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+
+	<!-- iOS Permissions -->
+	<key>NSCameraUsageDescription</key>
+	<string>This app uses your camera to identify plants by capturing leaf or flower photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>This app allows you to select a photo from your library to help identify plants.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>This app may save plant photos to your photo library if needed.</string>
 </dict>
 </plist>

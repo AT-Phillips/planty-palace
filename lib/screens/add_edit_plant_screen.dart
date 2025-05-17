@@ -1,159 +1,157 @@
+import 'package:flutter/material.dart';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import '../helpers/database_helper.dart';
-import '../models/plant.dart';
-import '../widgets/image_picker_button.dart';
+import '../services/plant_identifier_service.dart';
 
 class AddEditPlantScreen extends StatefulWidget {
-  final Plant? plant;
-
-  const AddEditPlantScreen({super.key, this.plant});
+  const AddEditPlantScreen({super.key});
 
   @override
   State<AddEditPlantScreen> createState() => _AddEditPlantScreenState();
 }
 
 class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final PlantIdentifierService _identifierService = PlantIdentifierService();
+  bool isLoading = false;
+  List<String> suggestions = [];
+  String? selectedName;
+  final TextEditingController nicknameController = TextEditingController();
 
-  late TextEditingController _nameController;
-  late TextEditingController _speciesController;
-  late TextEditingController _careInstructionsController;
-  late TextEditingController _imagePathController;
-
-  @override
-  void initState() {
-    super.initState();
-
-    _nameController = TextEditingController(text: widget.plant?.name ?? '');
-    _speciesController = TextEditingController(text: widget.plant?.species ?? '');
-    _careInstructionsController = TextEditingController(text: widget.plant?.careInstructions ?? '');
-    _imagePathController = TextEditingController(text: widget.plant?.imagePath ?? '');
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _speciesController.dispose();
-    _careInstructionsController.dispose();
-    _imagePathController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _savePlant() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    final newPlant = Plant(
-      id: widget.plant?.id,
-      name: _nameController.text.trim(),
-      species: _speciesController.text.trim(),
-      careInstructions: _careInstructionsController.text.trim(),
-      imagePath: _imagePathController.text.trim(),
-    );
-
-    try {
-      if (widget.plant == null) {
-        await _dbHelper.insertPlant(newPlant);
-        if (kDebugMode) print('Plant added: ${newPlant.name}');
-      } else {
-        await _dbHelper.updatePlant(newPlant);
-        if (kDebugMode) print('Plant updated: ${newPlant.name}');
-      }
-
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } catch (e) {
-      if (kDebugMode) print('Error saving plant: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Error saving plant')),
-      );
-    }
-  }
-
-  void _onImagePicked(File image) {
-    _imagePathController.text = image.path;
+  Future<void> _handleCamera() async {
+    await _identifierService.pickImageFromCamera();
     setState(() {});
   }
 
-  Widget _buildImagePreview() {
-    final imagePath = _imagePathController.text;
-    if (imagePath.isEmpty) return const SizedBox.shrink();
+  Future<void> _handleGallery() async {
+    await _identifierService.pickImageFromGallery();
+    setState(() {});
+  }
 
-    return Padding(
-      padding: const EdgeInsets.only(top: 12.0),
-      child: Image.file(
-        File(imagePath),
-        height: 160,
-        width: double.infinity,
-        fit: BoxFit.cover,
-      ),
+  void _toggleOrgan() {
+    setState(() {
+      _identifierService.toggleOrgan();
+    });
+  }
+
+  Future<void> _identifyPlant() async {
+    setState(() {
+      isLoading = true;
+      selectedName = null;
+      suggestions = [];
+    });
+
+    try {
+      suggestions = await _identifierService.identifyPlant();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: ${e.toString()}')),
+      );
+    } finally {
+      setState(() => isLoading = false);
+    }
+  }
+
+  void _savePlant() {
+    if (selectedName == null || _identifierService.imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a plant and image')),
+      );
+      return;
+    }
+
+    final nickname = nicknameController.text.trim();
+    final path = _identifierService.imageFile!.path;
+
+    // Example: Replace with real database save later
+    debugPrint('Saving plant:');
+    debugPrint('Scientific Name: $selectedName');
+    debugPrint('Nickname: $nickname');
+    debugPrint('Image Path: $path');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Plant saved (mocked)!')),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.plant != null;
+    final file = _identifierService.imageFile;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(isEditing ? 'Edit Plant' : 'Add Plant'),
-      ),
-      body: Padding(
+      appBar: AppBar(title: const Text('Add / Edit Plant')),
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: ListView(
-            children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Plant Name',
-                  border: OutlineInputBorder(),
+        child: Column(
+          children: [
+            if (file != null)
+              Image.file(file, height: 200)
+            else
+              Container(
+                height: 200,
+                color: Colors.grey[300],
+                child: const Center(child: Text('No image selected')),
+              ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.camera_alt),
+                  label: const Text('Camera'),
+                  onPressed: _handleCamera,
                 ),
-                validator: (value) =>
-                    value == null || value.trim().isEmpty ? 'Please enter a plant name' : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _speciesController,
-                decoration: const InputDecoration(
-                  labelText: 'Species',
-                  border: OutlineInputBorder(),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.photo_library),
+                  label: const Text('Gallery'),
+                  onPressed: _handleGallery,
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _careInstructionsController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Care Instructions',
-                  border: OutlineInputBorder(),
+                ElevatedButton.icon(
+                  icon: const Icon(Icons.swap_vert),
+                  label: Text(_identifierService.organ),
+                  onPressed: _toggleOrgan,
                 ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _identifyPlant,
+              child: isLoading
+                  ? const CircularProgressIndicator()
+                  : const Text('Identify Plant'),
+            ),
+            const SizedBox(height: 16),
+            if (suggestions.isNotEmpty)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Select a species:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ...suggestions.map((name) => RadioListTile(
+                        title: Text(name),
+                        value: name,
+                        groupValue: selectedName,
+                        onChanged: (value) {
+                          setState(() {
+                            selectedName = value.toString();
+                          });
+                        },
+                      )),
+                ],
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _imagePathController,
-                readOnly: true,
-                decoration: const InputDecoration(
-                  labelText: 'Image Path (auto-filled)',
-                  border: OutlineInputBorder(),
-                  hintText: 'Path to the selected image',
-                ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: nicknameController,
+              decoration: const InputDecoration(
+                labelText: 'Nickname (optional)',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 16),
-              ImagePickerButton(onImagePicked: _onImagePicked),
-              _buildImagePreview(),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: _savePlant,
-                child: Text(isEditing ? 'Save Changes' : 'Add Plant'),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _savePlant,
+              icon: const Icon(Icons.save),
+              label: const Text('Save Plant'),
+            ),
+          ],
         ),
       ),
     );
