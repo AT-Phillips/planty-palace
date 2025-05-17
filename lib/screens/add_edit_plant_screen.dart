@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 
+import '../models/plant.dart';
 import '../services/plant_identifier_service.dart';
 
 class AddEditPlantScreen extends StatefulWidget {
-  const AddEditPlantScreen({super.key});
+  final Plant? plant;
+
+  const AddEditPlantScreen({super.key, this.plant});
 
   @override
   State<AddEditPlantScreen> createState() => _AddEditPlantScreenState();
@@ -17,13 +20,29 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   String? selectedName;
   final TextEditingController nicknameController = TextEditingController();
 
+  @override
+  void initState() {
+    super.initState();
+
+    if (widget.plant != null) {
+      final plant = widget.plant!;
+      selectedName = plant.species;
+      nicknameController.text = plant.name;
+      if (plant.imagePath.isNotEmpty) {
+        _identifierService.imageFile = File(plant.imagePath);
+      }
+    }
+  }
+
   Future<void> _handleCamera() async {
     await _identifierService.pickImageFromCamera();
+    if (!mounted) return;
     setState(() {});
   }
 
   Future<void> _handleGallery() async {
     await _identifierService.pickImageFromGallery();
+    if (!mounted) return;
     setState(() {});
   }
 
@@ -43,12 +62,14 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     try {
       suggestions = await _identifierService.identifyPlant();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: ${e.toString()}')),
       );
-    } finally {
-      setState(() => isLoading = false);
     }
+
+    if (!mounted) return;
+    setState(() => isLoading = false);
   }
 
   void _savePlant() {
@@ -71,6 +92,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Plant saved (mocked)!')),
     );
+
+    Navigator.pop(context, true); // Return to previous screen
   }
 
   @override
@@ -78,7 +101,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     final file = _identifierService.imageFile;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Add / Edit Plant')),
+      appBar: AppBar(title: Text(widget.plant == null ? 'Add Plant' : 'Edit Plant')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
