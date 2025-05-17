@@ -4,6 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'screens/my_plants_screen.dart';
 import 'screens/identify_plant_screen.dart';
+import 'styles/theme.dart';  // Import your theme here
 
 void main() {
   // Initialize FFI database for desktop platforms
@@ -22,10 +23,7 @@ class PlantyPalaceApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Planty Palace',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        visualDensity: VisualDensity.adaptivePlatformDensity,
-      ),
+      theme: AppTheme.lightTheme,  // Use your custom theme here
       home: const MainContainer(),
       routes: {
         '/identify': (context) => const IdentifyPlantScreen(),
