@@ -1,12 +1,15 @@
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
+import '../widgets/image_picker_button.dart';
 
 class AddEditPlantScreen extends StatefulWidget {
   final Plant? plant;
 
-  const AddEditPlantScreen({super.key, this.plant}); // use super.key
+  const AddEditPlantScreen({super.key, this.plant});
 
   @override
   State<AddEditPlantScreen> createState() => _AddEditPlantScreenState();
@@ -71,6 +74,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     }
   }
 
+  void _onImagePicked(File image) {
+    // Update the imagePathController with the picked image file path
+    _imagePathController.text = image.path;
+    setState(() {}); // refresh UI to reflect new image path
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.plant != null;
@@ -117,9 +126,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                 decoration: const InputDecoration(
                   labelText: 'Image Asset Path',
                   border: OutlineInputBorder(),
-                  hintText: 'e.g. assets/images/lavender.png',
+                  hintText: 'e.g. assets/images/lavender.png or file path',
                 ),
               ),
+              const SizedBox(height: 16),
+              // Our new ImagePickerButton here
+              ImagePickerButton(onImagePicked: _onImagePicked),
               const SizedBox(height: 32),
               ElevatedButton(
                 onPressed: _savePlant,

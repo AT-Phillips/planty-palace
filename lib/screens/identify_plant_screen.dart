@@ -1,10 +1,10 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../helpers/plantnet_helper.dart';
+import '../widgets/image_picker_button.dart';  // Import the new widget
 
 class IdentifyPlantScreen extends StatefulWidget {
   const IdentifyPlantScreen({super.key});
@@ -14,30 +14,23 @@ class IdentifyPlantScreen extends StatefulWidget {
 }
 
 class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
-  final ImagePicker _picker = ImagePicker();
-  final List<File> _selectedImages = [];
+  File? _pickedImage;
   bool _isLoading = false;
   Map<String, dynamic>? _results;
 
-  Future<void> _pickImage() async {
-    if (_selectedImages.length >= 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Maximum 5 photos allowed')),
-      );
-      return;
-    }
-    final XFile? pickedFile = await _picker.pickImage(source: ImageSource.camera);
-    if (pickedFile != null) {
+  void _onImagePicked(File? image) {
+    if (image != null) {
       setState(() {
-        _selectedImages.add(File(pickedFile.path));
+        _pickedImage = image;
+        _results = null;
       });
     }
   }
 
   Future<void> _identifyPlant() async {
-    if (_selectedImages.isEmpty) {
+    if (_pickedImage == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please add at least one photo')),
+        const SnackBar(content: Text('Please select or take a photo first')),
       );
       return;
     }
@@ -47,7 +40,7 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
       _results = null;
     });
 
-    final response = await PlantNetHelper.identifyPlant(images: _selectedImages);
+    final response = await PlantNetHelper.identifyPlant(images: [_pickedImage!]);
 
     setState(() {
       _isLoading = false;
@@ -55,81 +48,63 @@ class _IdentifyPlantScreenState extends State<IdentifyPlantScreen> {
     });
   }
 
-  Widget _buildResults() {
-    if (_results == null) return SizedBox.shrink();
+  Widget _buildImagePreview() {
+    if (_pickedImage == null) return const SizedBox.shrink();
 
-    // Simplified example: display raw JSON string prettified
-    return SingleChildScrollView(
-      child: Padding(
-        padding: EdgeInsets.all(8),
-        child: Text(
-          JsonEncoder.withIndent('  ').convert(_results),
-          style: TextStyle(fontFamily: 'monospace'),
+    return Stack(
+      alignment: Alignment.topRight,
+      children: [
+        Image.file(_pickedImage!, width: 120, height: 120, fit: BoxFit.cover),
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              _pickedImage = null;
+              _results = null;
+            });
+          },
+          child: const CircleAvatar(
+            radius: 14,
+            backgroundColor: Colors.red,
+            child: Icon(Icons.close, size: 16, color: Colors.white),
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildImagePreviews() {
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      children: _selectedImages
-          .map((file) => Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  Image.file(file, width: 80, height: 80, fit: BoxFit.cover),
-                  GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedImages.remove(file);
-                      });
-                    },
-                    child: CircleAvatar(
-                      radius: 12,
-                      backgroundColor: Colors.red,
-                      child: Icon(Icons.close, size: 16, color: Colors.white),
-                    ),
-                  )
-                ],
-              ))
-          .toList(),
+  Widget _buildResults() {
+    if (_results == null) return const SizedBox.shrink();
+
+    return SingleChildScrollView(
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Text(
+          JsonEncoder.withIndent('  ').convert(_results),
+          style: const TextStyle(fontFamily: 'monospace'),
+        ),
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Identify Plant'),
-      ),
+      appBar: AppBar(title: const Text('Identify Plant')),
       body: Padding(
-        padding: EdgeInsets.all(12),
+        padding: const EdgeInsets.all(12),
         child: Column(
           children: [
-            _buildImagePreviews(),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                ElevatedButton.icon(
-                  onPressed: _pickImage,
-                  icon: Icon(Icons.camera_alt),
-                  label: Text('Add Photo'),
-                ),
-                SizedBox(width: 10),
-                if (_selectedImages.length < 5)
-                  ElevatedButton(
-                    onPressed: _pickImage,
-                    child: Text('Add More Photos?'),
-                  ),
-              ],
-            ),
-            SizedBox(height: 20),
+            _buildImagePreview(),
+            const SizedBox(height: 16),
+            ImagePickerButton(onImagePicked: _onImagePicked),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _isLoading ? null : _identifyPlant,
-              child: _isLoading ? CircularProgressIndicator(color: Colors.white) : Text('Identify Plant'),
+              child: _isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Identify Plant'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             Expanded(child: _buildResults()),
           ],
         ),

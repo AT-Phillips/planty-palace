@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
 import 'screens/my_plants_screen.dart';
-import 'screens/identify_plant_screen.dart';  // existing
-import 'screens/test_plantnet_screen.dart';   // new test screen
+import 'screens/identify_plant_screen.dart';
 
 void main() {
   // Initialize FFI database for desktop platforms
@@ -35,7 +35,6 @@ class PlantyPalaceApp extends StatelessWidget {
   }
 }
 
-// Main container with bottom navigation to switch between screens
 class MainContainer extends StatefulWidget {
   const MainContainer({super.key});
 
@@ -48,7 +47,7 @@ class _MainContainerState extends State<MainContainer> {
 
   final List<Widget> _screens = const [
     MyPlantsScreen(),
-    TestPlantNetScreen(),
+    IdentifyPlantScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -71,7 +70,7 @@ class _MainContainerState extends State<MainContainer> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.search),
-            label: 'Test Identify',
+            label: 'Identify',
           ),
         ],
       ),
