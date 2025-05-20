@@ -44,8 +44,8 @@ class ImagePickerButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return FloatingActionButton(
       onPressed: () => _showPicker(context),
-      child: const Icon(Icons.add_a_photo),
       tooltip: 'Pick Image',
+      child: const Icon(Icons.add_a_photo),
     );
   }
 }
