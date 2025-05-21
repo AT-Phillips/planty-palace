@@ -4,7 +4,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'screens/my_plants_screen.dart';
 import 'screens/identify_plant_screen.dart';
-import 'styles/theme.dart';  // Import your theme here
+import 'styles/app_theme.dart';  // Import your theme here
 
 void main() {
   // Initialize FFI database for desktop platforms
