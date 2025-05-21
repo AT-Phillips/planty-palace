@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
-import '../widgets/image_picker_button.dart';
+import '../widgets/camera_capture_area.dart';
 import 'add_edit_plant_screen.dart';
 
 class MyPlantsScreen extends StatefulWidget {
@@ -123,11 +123,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             child: const Icon(Icons.delete_forever),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: 56,
-            height: 56,
-            child: ImagePickerButton(onImagePicked: _handleImagePicked),
-          ),
+          CameraCaptureArea(onImagePicked: _handleImagePicked),
         ],
       ),
     );
