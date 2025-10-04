@@ -7,7 +7,7 @@ import 'package:planty_palace/widgets/identify_button.dart';
 import 'package:planty_palace/widgets/camera_capture_area.dart';
 
 class IdentifyPlantScreen extends StatefulWidget {
-  const IdentifyPlantScreen({Key? key}) : super(key: key);
+  const IdentifyPlantScreen({super.key});
 
   @override
   State<IdentifyPlantScreen> createState() => _IdentifyPlantScreenState();

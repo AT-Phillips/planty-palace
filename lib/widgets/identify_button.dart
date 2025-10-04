@@ -4,7 +4,7 @@ import 'package:planty_palace/styles/app_theme.dart';
 class IdentifyButton extends StatelessWidget {
   final VoidCallback onPressed;
 
-  const IdentifyButton({Key? key, required this.onPressed}) : super(key: key);
+  const IdentifyButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

@@ -6,10 +6,10 @@ class OrganToggle extends StatelessWidget {
   final ValueChanged<String> onChanged;
 
   const OrganToggle({
-    Key? key,
+    super.key,
     required this.selectedOrgan,
     required this.onChanged,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
