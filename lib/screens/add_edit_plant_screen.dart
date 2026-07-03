@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
+import '../services/perenual_service.dart';
 import '../services/plant_identifier_service.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
@@ -23,12 +24,16 @@ class AddEditPlantScreen extends StatefulWidget {
 
 class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   final PlantIdentifierService _identifierService = PlantIdentifierService();
+  final PerenualService _careService = PerenualService();
   final DatabaseHelper _dbHelper = DatabaseHelper();
   bool isLoading = false;
   bool isSaving = false;
+  bool isFetchingCareInfo = false;
+  bool wateringManuallySet = false;
   List<String> suggestions = [];
   String? selectedName;
   int wateringIntervalDays = 7;
+  String careInstructions = '';
   final TextEditingController nicknameController = TextEditingController();
 
   @override
@@ -40,10 +45,28 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       selectedName = plant.species;
       nicknameController.text = plant.name;
       wateringIntervalDays = plant.wateringIntervalDays ?? 7;
+      careInstructions = plant.careInstructions;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
       }
     }
+  }
+
+  Future<void> _lookupCareInfo(String species) async {
+    setState(() => isFetchingCareInfo = true);
+
+    final info = await _careService.lookupCareInfo(species);
+
+    if (!mounted) return;
+    setState(() {
+      isFetchingCareInfo = false;
+      if (info != null) {
+        careInstructions = info.careInstructions;
+        if (!wateringManuallySet && info.wateringIntervalDays != null) {
+          wateringIntervalDays = info.wateringIntervalDays!;
+        }
+      }
+    });
   }
 
   Future<void> _handleCamera() async {
@@ -140,7 +163,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         name: nickname.isEmpty ? selectedName! : nickname,
         species: selectedName!,
         imagePath: permanentImage.path,
-        careInstructions: widget.plant?.careInstructions ?? '',
+        careInstructions: careInstructions,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
         lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
         wateringIntervalDays: wateringIntervalDays,
@@ -266,6 +289,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                             setState(() {
                               selectedName = value.toString();
                             });
+                            _lookupCareInfo(value.toString());
                           },
                         )),
                   ],
@@ -288,11 +312,44 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                         ))
                     .toList(),
                 onChanged: (value) {
-                  if (value != null) setState(() => wateringIntervalDays = value);
+                  if (value != null) {
+                    setState(() {
+                      wateringIntervalDays = value;
+                      wateringManuallySet = true;
+                    });
+                  }
                 },
               ),
             ),
           ),
+
+          // Care info section
+          if (isFetchingCareInfo || careInstructions.isNotEmpty)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: isFetchingCareInfo
+                    ? const Row(
+                        children: [
+                          SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                          ),
+                          SizedBox(width: 12),
+                          Text('Looking up care info...'),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Care Info', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          Text(careInstructions),
+                        ],
+                      ),
+              ),
+            ),
 
           // Details section
           Card(

@@ -19,11 +19,11 @@ void main() async {
   await NotificationService().initialize();
   await ThemeController.instance.load();
 
-  runApp(const PlantyPalaceApp());
+  runApp(const ThicketApp());
 }
 
-class PlantyPalaceApp extends StatelessWidget {
-  const PlantyPalaceApp({super.key});
+class ThicketApp extends StatelessWidget {
+  const ThicketApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -31,7 +31,7 @@ class PlantyPalaceApp extends StatelessWidget {
       valueListenable: ThemeController.instance.themeMode,
       builder: (context, mode, _) {
         return MaterialApp(
-          title: 'Planty Palace',
+          title: 'Thicket',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: mode,

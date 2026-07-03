@@ -1,4 +1,4 @@
-package com.example.planty_palace
+package com.austinphillips.thicket
 
 import io.flutter.embedding.android.FlutterActivity
 
