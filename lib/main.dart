@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-import 'screens/gardens_screen.dart';
+import 'screens/main_shell.dart';
 import 'services/notification_service.dart';
 import 'services/theme_controller.dart';
 import 'styles/app_theme.dart';
@@ -35,7 +35,7 @@ class ThicketApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: mode,
-          home: const GardensScreen(),
+          home: const MainShell(),
         );
       },
     );

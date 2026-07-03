@@ -6,7 +6,7 @@ import '../helpers/database_helper.dart';
 import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
-import '../widgets/app_drawer.dart';
+import '../utils/watering_status.dart';
 import '../widgets/frosted_sliver_app_bar.dart';
 import 'add_edit_plant_screen.dart';
 
@@ -87,23 +87,6 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     setState(() => _plants.removeWhere((p) => p.id == plant.id));
   }
 
-  String _wateringStatus(Plant plant) {
-    if (plant.lastWatered == null || plant.wateringIntervalDays == null) {
-      return 'No watering schedule set';
-    }
-    final dueDate = DateTime.parse(plant.lastWatered!)
-        .add(Duration(days: plant.wateringIntervalDays!));
-    final today = DateTime.now();
-    final daysLeft = DateTime(dueDate.year, dueDate.month, dueDate.day)
-        .difference(DateTime(today.year, today.month, today.day))
-        .inDays;
-
-    if (daysLeft > 0) return 'Water in $daysLeft day${daysLeft == 1 ? '' : 's'}';
-    if (daysLeft == 0) return 'Water today';
-    final overdueBy = -daysLeft;
-    return 'Overdue by $overdueBy day${overdueBy == 1 ? '' : 's'}';
-  }
-
   Widget _buildPlantCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
     Widget leadingWidget;
@@ -123,7 +106,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       leadingWidget = const Icon(Icons.local_florist);
     }
 
-    final isOverdue = _wateringStatus(plant).startsWith('Overdue');
+    final overdue = isOverdue(plant);
 
     return Dismissible(
       key: ValueKey(plant.id),
@@ -145,8 +128,8 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
           leading: leadingWidget,
           title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(
-            '${plant.species}\n${_wateringStatus(plant)}',
-            style: isOverdue ? TextStyle(color: scheme.error) : null,
+            '${plant.species}\n${wateringStatusText(plant)}',
+            style: overdue ? TextStyle(color: scheme.error) : null,
           ),
           isThreeLine: true,
           trailing: IconButton(
@@ -164,7 +147,6 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       extendBodyBehindAppBar: true,
-      drawer: const AppDrawer(),
       body: CustomScrollView(
         slivers: [
           FrostedSliverAppBar(title: widget.garden.name),

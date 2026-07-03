@@ -28,10 +28,6 @@ class PlantIdentifierService {
     }
   }
 
-  void toggleOrgan() {
-    organ = (organ == 'leaf') ? 'flower' : 'leaf';
-  }
-
   /// Discards the currently picked image, deleting it from disk if it exists.
   Future<void> clearImage() async {
     final file = imageFile;

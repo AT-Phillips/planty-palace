@@ -96,9 +96,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     });
   }
 
-  void _toggleOrgan() {
+  void _setOrgan(String organ) {
     setState(() {
-      _identifierService.toggleOrgan();
+      _identifierService.organ = organ;
     });
   }
 
@@ -229,22 +229,48 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                   ),
                   const SizedBox(height: 16),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.camera_alt),
-                        label: const Text('Camera'),
-                        onPressed: _handleCamera,
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.camera_alt),
+                          label: const Text('Camera'),
+                          onPressed: _handleCamera,
+                        ),
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.photo_library),
-                        label: const Text('Gallery'),
-                        onPressed: _handleGallery,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.photo_library),
+                          label: const Text('Gallery'),
+                          onPressed: _handleGallery,
+                        ),
                       ),
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.swap_vert),
-                        label: Text(_identifierService.organ),
-                        onPressed: _toggleOrgan,
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      "What's in the photo?",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Leaf'),
+                        selected: _identifierService.organ == 'leaf',
+                        onSelected: (_) => _setOrgan('leaf'),
+                      ),
+                      const SizedBox(width: 8),
+                      ChoiceChip(
+                        label: const Text('Flower'),
+                        selected: _identifierService.organ == 'flower',
+                        onSelected: (_) => _setOrgan('flower'),
                       ),
                     ],
                   ),
