@@ -11,6 +11,7 @@ workflows:
         bundle_identifier: com.austinphillips.thicket
       groups:
         - plantnet
+        - perenual
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -26,6 +27,7 @@ workflows:
         script: |
           flutter build ipa --release \
             --dart-define=PLANTNET_API_KEY=$PLANTNET_API_KEY \
+            --dart-define=PERENUAL_API_KEY=$PERENUAL_API_KEY \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa

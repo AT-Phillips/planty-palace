@@ -4,7 +4,7 @@ import '../models/plant.dart';
 import '../models/garden.dart';
 
 class DatabaseHelper {
-  static const _dbVersion = 2;
+  static const _dbVersion = 3;
   static const _defaultGardenName = 'My Plants';
 
   static Database? _database;
@@ -38,6 +38,11 @@ class DatabaseHelper {
           lastWatered TEXT,
           wateringIntervalDays INTEGER
         )''');
+        await db.execute('''CREATE TABLE care_log(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          plantId INTEGER NOT NULL,
+          wateredAt TEXT NOT NULL
+        )''');
         await db.insert('gardens', {'name': _defaultGardenName});
       },
       onUpgrade: (db, oldVersion, newVersion) async {
@@ -54,6 +59,13 @@ class DatabaseHelper {
           final defaultGardenId =
               await db.insert('gardens', {'name': _defaultGardenName});
           await db.update('plants', {'gardenId': defaultGardenId});
+        }
+        if (oldVersion < 3) {
+          await db.execute('''CREATE TABLE care_log(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            plantId INTEGER NOT NULL,
+            wateredAt TEXT NOT NULL
+          )''');
         }
       },
     );
@@ -162,16 +174,38 @@ class DatabaseHelper {
 
   Future<void> markWatered(int plantId) async {
     final db = await database;
+    final now = DateTime.now().toIso8601String();
     await db.update(
       'plants',
-      {'lastWatered': DateTime.now().toIso8601String()},
+      {'lastWatered': now},
       where: 'id = ?',
       whereArgs: [plantId],
     );
+    await logCareEvent(plantId, now);
   }
 
   Future<void> deletePlant(int id) async {
     final db = await database;
     await db.delete('plants', where: 'id = ?', whereArgs: [id]);
+    await db.delete('care_log', where: 'plantId = ?', whereArgs: [id]);
+  }
+
+  // --- Care log ---
+
+  Future<void> logCareEvent(int plantId, String wateredAt) async {
+    final db = await database;
+    await db.insert('care_log', {'plantId': plantId, 'wateredAt': wateredAt});
+  }
+
+  /// Returns watering timestamps for a plant, most recent first.
+  Future<List<String>> getCareHistory(int plantId) async {
+    final db = await database;
+    final maps = await db.query(
+      'care_log',
+      where: 'plantId = ?',
+      whereArgs: [plantId],
+      orderBy: 'wateredAt DESC',
+    );
+    return maps.map((m) => m['wateredAt'] as String).toList();
   }
 }

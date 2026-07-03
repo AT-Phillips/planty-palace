@@ -172,6 +172,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       Plant savedPlant;
       if (widget.plant == null) {
         final id = await _dbHelper.insertPlant(plant);
+        await _dbHelper.logCareEvent(id, plant.lastWatered!);
         savedPlant = Plant(
           id: id,
           name: plant.name,
