@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../helpers/database_helper.dart';
 import '../models/garden.dart';
-import '../widgets/frosted_sliver_app_bar.dart';
+import '../widgets/frosted_app_bar.dart';
 import 'my_plants_screen.dart';
 
 class SpacesScreen extends StatefulWidget {
@@ -97,24 +97,13 @@ class _SpacesScreenState extends State<SpacesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      body: CustomScrollView(
-        slivers: [
-          const FrostedSliverAppBar(title: 'My Spaces'),
-          if (_spaces.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('No spaces yet.')),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildSpaceCard(_spaces[index]),
-                childCount: _spaces.length,
-              ),
+      appBar: const FrostedAppBar(title: 'My Spaces'),
+      body: _spaces.isEmpty
+          ? const Center(child: Text('No spaces yet.'))
+          : ListView.builder(
+              itemCount: _spaces.length,
+              itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),
             ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createSpace,
         child: const Icon(Icons.add),

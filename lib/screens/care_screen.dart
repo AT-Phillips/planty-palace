@@ -6,7 +6,7 @@ import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../utils/watering_status.dart';
-import '../widgets/frosted_sliver_app_bar.dart';
+import '../widgets/frosted_app_bar.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
 /// attention soonest surfaces first.
@@ -109,24 +109,13 @@ class _CareScreenState extends State<CareScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      body: CustomScrollView(
-        slivers: [
-          const FrostedSliverAppBar(title: 'Care'),
-          if (_plants.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('No plants yet.')),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildCareCard(_plants[index]),
-                childCount: _plants.length,
-              ),
+      appBar: const FrostedAppBar(title: 'Care'),
+      body: _plants.isEmpty
+          ? const Center(child: Text('No plants yet.'))
+          : ListView.builder(
+              itemCount: _plants.length,
+              itemBuilder: (context, index) => _buildCareCard(_plants[index]),
             ),
-        ],
-      ),
     );
   }
 }
