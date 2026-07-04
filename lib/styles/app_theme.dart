@@ -8,23 +8,32 @@ class AppTheme {
   static ThemeData get lightTheme => _themeFor(Brightness.light);
   static ThemeData get darkTheme => _themeFor(Brightness.dark);
 
+  // Material 3's auto-generated dark tonal palette keeps surface and its
+  // "container" tiers too close together to read as distinct layers (a
+  // ~9% white blend tried previously turned out to land almost exactly on
+  // the original tone - not actually much of a fix). These are explicit,
+  // fixed values with deliberately large, unambiguous contrast steps:
+  // background (darkest) < card < input fill (lightest).
+  static const _darkBackground = Color(0xFF0B120E);
+  static const _darkCard = Color(0xFF1C2A22);
+  static const _darkInputFill = Color(0xFF2A3931);
+
   static ThemeData _themeFor(Brightness brightness) {
-    final colorScheme = ColorScheme.fromSeed(
+    var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
     );
+    if (brightness == Brightness.dark) {
+      colorScheme = colorScheme.copyWith(
+        surface: _darkBackground,
+        surfaceContainerHighest: _darkInputFill,
+      );
+    }
     final baseTextTheme = brightness == Brightness.dark
         ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
         : GoogleFonts.interTextTheme();
 
-    // Material 3's auto-generated dark tonal palette keeps surface and its
-    // "container" tiers too close together to read as distinct layers, so
-    // cards blend into the background. Blend in a controlled, fixed amount
-    // of white for a card color that's reliably one clear step lighter than
-    // the scaffold behind it, regardless of what the seed color generates.
-    final cardColor = brightness == Brightness.dark
-        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.09), colorScheme.surface)
-        : colorScheme.surfaceContainerHigh;
+    final cardColor = brightness == Brightness.dark ? _darkCard : colorScheme.surfaceContainerHigh;
 
     return ThemeData(
       useMaterial3: true,
