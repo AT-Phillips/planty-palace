@@ -7,7 +7,7 @@ import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../utils/watering_status.dart';
-import '../widgets/frosted_sliver_app_bar.dart';
+import '../widgets/frosted_app_bar.dart';
 import 'add_edit_plant_screen.dart';
 
 /// Shows the plants inside a single [Garden].
@@ -146,24 +146,13 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      body: CustomScrollView(
-        slivers: [
-          FrostedSliverAppBar(title: widget.garden.name),
-          if (_plants.isEmpty)
-            const SliverFillRemaining(
-              hasScrollBody: false,
-              child: Center(child: Text('No plants yet.')),
-            )
-          else
-            SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildPlantCard(_plants[index]),
-                childCount: _plants.length,
-              ),
+      appBar: FrostedAppBar(title: widget.garden.name),
+      body: _plants.isEmpty
+          ? const Center(child: Text('No plants yet.'))
+          : ListView.builder(
+              itemCount: _plants.length,
+              itemBuilder: (context, index) => _buildPlantCard(_plants[index]),
             ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddPlant,
         child: const Icon(Icons.add),
