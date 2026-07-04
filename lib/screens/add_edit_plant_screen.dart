@@ -30,11 +30,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   bool isSaving = false;
   bool isFetchingCareInfo = false;
   bool wateringManuallySet = false;
+  bool careInstructionsManuallySet = false;
   List<String> suggestions = [];
   String? selectedName;
   int wateringIntervalDays = 7;
-  String careInstructions = '';
   final TextEditingController nicknameController = TextEditingController();
+  final TextEditingController careInstructionsController = TextEditingController();
 
   @override
   void initState() {
@@ -45,11 +46,22 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       selectedName = plant.species;
       nicknameController.text = plant.name;
       wateringIntervalDays = plant.wateringIntervalDays ?? 7;
-      careInstructions = plant.careInstructions;
+      careInstructionsController.text = plant.careInstructions;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
       }
     }
+
+    careInstructionsController.addListener(() {
+      careInstructionsManuallySet = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    nicknameController.dispose();
+    careInstructionsController.dispose();
+    super.dispose();
   }
 
   Future<void> _lookupCareInfo(String species) async {
@@ -61,7 +73,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     setState(() {
       isFetchingCareInfo = false;
       if (info != null) {
-        careInstructions = info.careInstructions;
+        if (!careInstructionsManuallySet) {
+          careInstructionsController.text = info.careInstructions;
+          // Setting .text above triggers the listener; undo the
+          // manually-set flag since this was an automatic fill-in.
+          careInstructionsManuallySet = false;
+        }
         if (!wateringManuallySet && info.wateringIntervalDays != null) {
           wateringIntervalDays = info.wateringIntervalDays!;
         }
@@ -163,7 +180,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         name: nickname.isEmpty ? selectedName! : nickname,
         species: selectedName!,
         imagePath: permanentImage.path,
-        careInstructions: careInstructions,
+        careInstructions: careInstructionsController.text,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
         lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
         wateringIntervalDays: wateringIntervalDays,
@@ -351,32 +368,38 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           ),
 
           // Care info section
-          if (isFetchingCareInfo || careInstructions.isNotEmpty)
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: isFetchingCareInfo
-                    ? const Row(
-                        children: [
-                          SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                          ),
-                          SizedBox(width: 12),
-                          Text('Looking up care info...'),
-                        ],
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('Care Info', style: TextStyle(fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          Text(careInstructions),
-                        ],
-                      ),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Text('Care Info', style: TextStyle(fontWeight: FontWeight.bold)),
+                      if (isFetchingCareInfo) ...[
+                        const SizedBox(width: 12),
+                        const SizedBox(
+                          width: 14,
+                          height: 14,
+                          child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: careInstructionsController,
+                    maxLines: null,
+                    minLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'Add your own care notes, or wait for a suggestion...',
+                    ),
+                  ),
+                ],
               ),
             ),
+          ),
 
           // Details section
           Card(

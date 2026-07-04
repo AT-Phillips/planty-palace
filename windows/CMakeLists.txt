@@ -32,6 +32,11 @@ set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 # Use Unicode for all projects.
 add_definitions(-DUNICODE -D_UNICODE)
 
+# Suppress CRT "unsafe function" deprecation warnings (e.g. strncpy) - the
+# bundled Firebase C++ SDK for Windows triggers these, and /WX below would
+# otherwise turn them into hard build errors.
+add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+
 # Compilation settings that should be applied to most targets.
 #
 # Be cautious about adding new options here, as plugins use this function by

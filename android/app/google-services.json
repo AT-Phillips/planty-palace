@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "559764786171",
+    "project_id": "planty-palace",
+    "storage_bucket": "planty-palace.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:559764786171:android:15f004e6f10a75b919995e",
+        "android_client_info": {
+          "package_name": "com.austinphillips.thicket"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCp1qBuTMREOCMXLv83xuOH5FyVarJHLc8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

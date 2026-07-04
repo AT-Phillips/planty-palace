@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import 'firebase_options.dart';
 import 'screens/main_shell.dart';
+import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/theme_controller.dart';
 import 'styles/app_theme.dart';
@@ -14,6 +17,13 @@ void main() async {
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     sqfliteFfiInit();
     databaseFactory = databaseFactoryFfi;
+  }
+
+  // Firebase isn't configured for Windows/Linux desktop (used for local dev)
+  // - skip there so `flutter run -d windows` keeps working.
+  if (Platform.isAndroid || Platform.isIOS) {
+    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    await AuthService.instance.ensureSignedIn();
   }
 
   await NotificationService().initialize();
