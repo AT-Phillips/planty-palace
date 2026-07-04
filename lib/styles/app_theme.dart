@@ -17,6 +17,15 @@ class AppTheme {
         ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
         : GoogleFonts.interTextTheme();
 
+    // Material 3's auto-generated dark tonal palette keeps surface and its
+    // "container" tiers too close together to read as distinct layers, so
+    // cards blend into the background. Blend in a controlled, fixed amount
+    // of white for a card color that's reliably one clear step lighter than
+    // the scaffold behind it, regardless of what the seed color generates.
+    final cardColor = brightness == Brightness.dark
+        ? Color.alphaBlend(Colors.white.withValues(alpha: 0.09), colorScheme.surface)
+        : colorScheme.surfaceContainerHigh;
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -32,7 +41,7 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         elevation: 0,
-        color: colorScheme.surfaceContainerHigh,
+        color: cardColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
         ),
@@ -49,13 +58,49 @@ class AppTheme {
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: colorScheme.outline),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(radius),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: colorScheme.surfaceContainerHighest,
+        selectedColor: colorScheme.primary,
+        labelStyle: TextStyle(color: colorScheme.onSurface),
+        secondaryLabelStyle: TextStyle(color: colorScheme.onPrimary),
+        shape: StadiumBorder(side: BorderSide(color: colorScheme.outlineVariant)),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: SegmentedButton.styleFrom(
+          backgroundColor: colorScheme.surfaceContainerHighest,
+          selectedBackgroundColor: colorScheme.primary,
+          selectedForegroundColor: colorScheme.onPrimary,
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(radius)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radius),
+          borderSide: BorderSide(color: colorScheme.outlineVariant),
+        ),
         filled: true,
         fillColor: colorScheme.surfaceContainerHighest,
         contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       ),
       dialogTheme: DialogThemeData(
+        backgroundColor: cardColor,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
         ),
@@ -63,9 +108,7 @@ class AppTheme {
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radius),
-        ),
+        shape: const CircleBorder(),
       ),
     );
   }
