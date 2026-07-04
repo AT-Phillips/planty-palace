@@ -6,6 +6,20 @@ import 'package:http_parser/http_parser.dart';
 import 'package:mime/mime.dart';
 import 'package:path/path.dart';
 
+/// One candidate match from an identification request, ranked by [score]
+/// (PlantNet's own confidence, 0.0-1.0).
+class PlantSuggestion {
+  final String scientificName;
+  final String? commonName;
+  final double score;
+
+  PlantSuggestion({
+    required this.scientificName,
+    required this.commonName,
+    required this.score,
+  });
+}
+
 class PlantIdentifierService {
   static const _apiKey = String.fromEnvironment('PLANTNET_API_KEY');
 
@@ -37,7 +51,7 @@ class PlantIdentifierService {
     }
   }
 
-  Future<List<String>> identifyPlant() async {
+  Future<List<PlantSuggestion>> identifyPlant() async {
     final file = imageFile;
     if (file == null) return [];
 
@@ -67,9 +81,21 @@ class PlantIdentifierService {
     if (response.statusCode == 200) {
       final data = json.decode(responseBody);
       final results = data['results'] as List;
-      return results
-          .map((r) => r['species']['scientificNameWithoutAuthor'].toString())
-          .toList();
+
+      final suggestions = results.map((r) {
+        final species = r['species'] as Map<String, dynamic>;
+        final commonNames = species['commonNames'] as List?;
+        return PlantSuggestion(
+          scientificName: species['scientificNameWithoutAuthor'].toString(),
+          commonName: (commonNames != null && commonNames.isNotEmpty)
+              ? commonNames.first.toString()
+              : null,
+          score: (r['score'] as num?)?.toDouble() ?? 0.0,
+        );
+      }).toList();
+
+      suggestions.sort((a, b) => b.score.compareTo(a.score));
+      return suggestions.take(5).toList();
     } else {
       throw Exception('Failed to identify plant: ${response.statusCode}');
     }
