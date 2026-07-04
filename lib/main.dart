@@ -20,10 +20,17 @@ void main() async {
   }
 
   // Firebase isn't configured for Windows/Linux desktop (used for local dev)
-  // - skip there so `flutter run -d windows` keeps working.
+  // - skip there so `flutter run -d windows` keeps working. Any Firebase
+  // failure here (e.g. a sign-in provider not yet enabled in the console)
+  // must never block app startup - the rest of the app works fine without
+  // an authenticated user.
   if (Platform.isAndroid || Platform.isIOS) {
-    await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-    await AuthService.instance.ensureSignedIn();
+    try {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await AuthService.instance.ensureSignedIn();
+    } catch (e) {
+      debugPrint('Firebase init/sign-in failed, continuing without it: $e');
+    }
   }
 
   await NotificationService().initialize();
