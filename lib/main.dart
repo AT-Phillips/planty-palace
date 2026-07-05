@@ -4,11 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'firebase_options.dart';
+import 'helpers/database_helper.dart';
 import 'screens/main_shell.dart';
 import 'services/auth_service.dart';
+import 'services/notification_preferences.dart';
 import 'services/notification_service.dart';
 import 'services/theme_controller.dart';
+import 'services/weather_preferences.dart';
 import 'styles/app_theme.dart';
+import 'utils/app_scroll_behavior.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +39,14 @@ void main() async {
 
   await NotificationService().initialize();
   await ThemeController.instance.load();
+  await NotificationPreferences.instance.load();
+  await WeatherPreferences.instance.load();
+  NotificationPreferences.instance.onReminderTimeChanged = () async {
+    final plants = await DatabaseHelper().getPlants();
+    for (final plant in plants) {
+      await NotificationService().scheduleWateringReminder(plant);
+    }
+  };
 
   runApp(const ThicketApp());
 }
@@ -52,6 +64,7 @@ class ThicketApp extends StatelessWidget {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: mode,
+          scrollBehavior: AppScrollBehavior(),
           home: const MainShell(),
         );
       },

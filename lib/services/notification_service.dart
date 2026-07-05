@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/plant.dart';
+import 'notification_preferences.dart';
 
 /// Schedules local "time to water" reminders.
 ///
@@ -57,13 +58,15 @@ class NotificationService {
 
     if (lastWatered == null || intervalDays == null) return;
 
+    final reminderTime = NotificationPreferences.instance.reminderTime.value;
     final dueDate = DateTime.parse(lastWatered).add(Duration(days: intervalDays));
     var scheduledDate = tz.TZDateTime(
       tz.local,
       dueDate.year,
       dueDate.month,
       dueDate.day,
-      9, // 9am local time
+      reminderTime.hour,
+      reminderTime.minute,
     );
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
       scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));

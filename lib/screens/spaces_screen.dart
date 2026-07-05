@@ -4,6 +4,7 @@ import '../helpers/database_helper.dart';
 import '../models/garden.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/weather_card.dart';
 import 'my_plants_screen.dart';
 
 class SpacesScreen extends StatefulWidget {
@@ -99,19 +100,26 @@ class _SpacesScreenState extends State<SpacesScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const FrostedAppBar(title: 'My Spaces'),
-      body: _spaces.isEmpty
-          ? EmptyState(
-              icon: Icons.home_outlined,
-              title: 'No Spaces yet',
-              message: 'Create a Space for each area of your home — '
-                  'Living Room, Backyard, Office — to organize your plants.',
-              actionLabel: 'Create a Space',
-              onAction: _createSpace,
-            )
-          : ListView.builder(
-              itemCount: _spaces.length,
-              itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),
-            ),
+      body: Column(
+        children: [
+          const WeatherCard(),
+          Expanded(
+            child: _spaces.isEmpty
+                ? EmptyState(
+                    icon: Icons.home_outlined,
+                    title: 'No Spaces yet',
+                    message: 'Create a Space for each area of your home — '
+                        'Living Room, Backyard, Office — to organize your plants.',
+                    actionLabel: 'Create a Space',
+                    onAction: _createSpace,
+                  )
+                : ListView.builder(
+                    itemCount: _spaces.length,
+                    itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),
+                  ),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: _createSpace,
         child: const Icon(Icons.add),
