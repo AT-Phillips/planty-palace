@@ -1,13 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
-import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
+import '../services/plant_repository.dart';
 import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/plant_thumbnail.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
 /// attention soonest surfaces first.
@@ -19,9 +18,9 @@ class CareScreen extends StatefulWidget {
 }
 
 class _CareScreenState extends State<CareScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final PlantRepository _repository = PlantRepository();
   List<Plant> _plants = [];
-  Map<int, String> _spaceNames = {};
+  Map<String, String> _spaceNames = {};
 
   @override
   void initState() {
@@ -30,37 +29,32 @@ class _CareScreenState extends State<CareScreen> {
   }
 
   Future<void> _load() async {
-    final spaces = await _dbHelper.getGardens();
-    final plants = await _dbHelper.getPlants();
+    try {
+      final spaces = await _repository.getGardens();
+      final plants = await _repository.getPlants();
 
-    plants.sort((a, b) {
-      final aDue = daysUntilDue(a);
-      final bDue = daysUntilDue(b);
-      if (aDue == null && bDue == null) return 0;
-      if (aDue == null) return 1;
-      if (bDue == null) return -1;
-      return aDue.compareTo(bDue);
-    });
+      plants.sort((a, b) {
+        final aDue = daysUntilDue(a);
+        final bDue = daysUntilDue(b);
+        if (aDue == null && bDue == null) return 0;
+        if (aDue == null) return 1;
+        if (bDue == null) return -1;
+        return aDue.compareTo(bDue);
+      });
 
-    if (!mounted) return;
-    setState(() {
-      _spaceNames = {for (final s in spaces) s.id!: s.name};
-      _plants = plants;
-    });
+      if (!mounted) return;
+      setState(() {
+        _spaceNames = {for (final s in spaces) s.id!: s.name};
+        _plants = plants;
+      });
+    } catch (e) {
+      debugPrint('Failed to load Care data: $e');
+    }
   }
 
   Future<void> _markWatered(Plant plant) async {
-    await _dbHelper.markWatered(plant.id!);
-    final updated = Plant(
-      id: plant.id,
-      name: plant.name,
-      species: plant.species,
-      imagePath: plant.imagePath,
-      careInstructions: plant.careInstructions,
-      gardenId: plant.gardenId,
-      lastWatered: DateTime.now().toIso8601String(),
-      wateringIntervalDays: plant.wateringIntervalDays,
-    );
+    await _repository.markWatered(plant.id!);
+    final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
     await NotificationService().scheduleWateringReminder(updated);
     if (!mounted) return;
     _load();
@@ -68,30 +62,13 @@ class _CareScreenState extends State<CareScreen> {
 
   Widget _buildCareCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
-    Widget leadingWidget;
-
-    if (plant.imagePath.isNotEmpty) {
-      leadingWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(plant.imagePath),
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-        ),
-      );
-    } else {
-      leadingWidget = const Icon(Icons.local_florist);
-    }
-
     final spaceName = _spaceNames[plant.gardenId] ?? '';
     final overdue = isOverdue(plant);
 
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: leadingWidget,
+        leading: PlantThumbnail(plant: plant),
         title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           '$spaceName\n${wateringStatusText(plant)}',

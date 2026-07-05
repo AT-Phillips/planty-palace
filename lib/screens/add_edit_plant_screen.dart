@@ -4,17 +4,18 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/perenual_service.dart';
+import '../services/photo_storage_service.dart';
 import '../services/plant_identifier_service.dart';
+import '../services/plant_repository.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
 
 class AddEditPlantScreen extends StatefulWidget {
   final Plant? plant;
-  final int gardenId;
+  final String gardenId;
 
   const AddEditPlantScreen({super.key, this.plant, required this.gardenId});
 
@@ -25,7 +26,8 @@ class AddEditPlantScreen extends StatefulWidget {
 class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   final PlantIdentifierService _identifierService = PlantIdentifierService();
   final PerenualService _careService = PerenualService();
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final PlantRepository _repository = PlantRepository();
+  final PhotoStorageService _photoStorage = PhotoStorageService();
   bool isLoading = false;
   bool isSaving = false;
   bool isFetchingCareInfo = false;
@@ -187,6 +189,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         name: nickname.isEmpty ? selectedName! : nickname,
         species: selectedName!,
         imagePath: permanentImage.path,
+        photoUrl: widget.plant?.photoUrl,
         careInstructions: careInstructionsController.text,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
         lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
@@ -195,23 +198,25 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
 
       Plant savedPlant;
       if (widget.plant == null) {
-        final id = await _dbHelper.insertPlant(plant);
-        await _dbHelper.logCareEvent(id, plant.lastWatered!);
-        savedPlant = Plant(
-          id: id,
-          name: plant.name,
-          species: plant.species,
-          imagePath: plant.imagePath,
-          careInstructions: plant.careInstructions,
-          gardenId: plant.gardenId,
-          lastWatered: plant.lastWatered,
-          wateringIntervalDays: plant.wateringIntervalDays,
-        );
+        final id = await _repository.insertPlant(plant);
+        await _repository.logCareEvent(id, plant.lastWatered!);
+        savedPlant = plant.copyWith(id: id);
       } else {
-        await _dbHelper.updatePlant(plant);
+        await _repository.updatePlant(plant);
         savedPlant = plant;
       }
       await NotificationService().scheduleWateringReminder(savedPlant);
+
+      // Upload the photo after the plant document exists (upload is keyed by
+      // the doc ID) - a failure here shouldn't block the save, since the
+      // plant is already fully usable locally without cross-device sync.
+      try {
+        final photoUrl =
+            await _photoStorage.uploadPlantPhoto(savedPlant.id!, permanentImage);
+        await _repository.updatePlant(savedPlant.copyWith(photoUrl: photoUrl));
+      } catch (_) {
+        // Photo sync can be retried later; not a blocking failure.
+      }
 
       if (!mounted) return;
       Navigator.pop(context, true);

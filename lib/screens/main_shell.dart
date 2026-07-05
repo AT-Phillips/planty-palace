@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../helpers/database_helper.dart';
+import '../services/plant_repository.dart';
 import '../widgets/main_bottom_nav_bar.dart';
 import 'account_screen.dart';
 import 'add_edit_plant_screen.dart';
@@ -30,7 +30,7 @@ class _MainShellState extends State<MainShell> {
   ];
 
   Future<void> _openCamera() async {
-    final defaultSpaceId = await DatabaseHelper().getOrCreateDefaultGardenId();
+    final defaultSpaceId = await PlantRepository().getOrCreateDefaultGardenId();
     if (!mounted) return;
     await Navigator.push(
       context,

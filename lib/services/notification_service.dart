@@ -5,6 +5,7 @@ import 'package:timezone/data/latest.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import '../models/plant.dart';
+import '../utils/stable_id.dart';
 import 'notification_preferences.dart';
 
 /// Schedules local "time to water" reminders.
@@ -54,6 +55,7 @@ class NotificationService {
     final intervalDays = plant.wateringIntervalDays;
     if (plantId == null) return;
 
+    final notificationId = stableNotificationId(plantId);
     await cancelReminder(plantId);
 
     if (lastWatered == null || intervalDays == null) return;
@@ -73,7 +75,7 @@ class NotificationService {
     }
 
     await _plugin.zonedSchedule(
-      plantId,
+      notificationId,
       'Time to water ${plant.name}',
       'It\'s been $intervalDays days since ${plant.name} was last watered.',
       scheduledDate,
@@ -91,8 +93,8 @@ class NotificationService {
     );
   }
 
-  Future<void> cancelReminder(int plantId) async {
+  Future<void> cancelReminder(String plantId) async {
     if (Platform.isWindows) return;
-    await _plugin.cancel(plantId);
+    await _plugin.cancel(stableNotificationId(plantId));
   }
 }

@@ -1,14 +1,13 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 
-import '../helpers/database_helper.dart';
 import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
+import '../services/plant_repository.dart';
 import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
 
 /// Shows the plants inside a single [Garden].
@@ -22,7 +21,7 @@ class MyPlantsScreen extends StatefulWidget {
 }
 
 class _MyPlantsScreenState extends State<MyPlantsScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final PlantRepository _repository = PlantRepository();
   List<Plant> _plants = [];
 
   @override
@@ -32,9 +31,13 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   Future<void> _loadPlants() async {
-    final plants = await _dbHelper.getPlantsByGarden(widget.garden.id!);
-    if (!mounted) return;
-    setState(() => _plants = plants);
+    try {
+      final plants = await _repository.getPlantsByGarden(widget.garden.id!);
+      if (!mounted) return;
+      setState(() => _plants = plants);
+    } catch (e) {
+      debugPrint('Failed to load plants: $e');
+    }
   }
 
   Future<void> _navigateToAddPlant() async {
@@ -65,24 +68,15 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   Future<void> _markWatered(Plant plant) async {
-    await _dbHelper.markWatered(plant.id!);
-    final updated = Plant(
-      id: plant.id,
-      name: plant.name,
-      species: plant.species,
-      imagePath: plant.imagePath,
-      careInstructions: plant.careInstructions,
-      gardenId: plant.gardenId,
-      lastWatered: DateTime.now().toIso8601String(),
-      wateringIntervalDays: plant.wateringIntervalDays,
-    );
+    await _repository.markWatered(plant.id!);
+    final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
     await NotificationService().scheduleWateringReminder(updated);
     if (!mounted) return;
     _loadPlants();
   }
 
   Future<void> _deletePlant(Plant plant) async {
-    await _dbHelper.deletePlant(plant.id!);
+    await _repository.deletePlant(plant.id!);
     await NotificationService().cancelReminder(plant.id!);
     if (!mounted) return;
     setState(() => _plants.removeWhere((p) => p.id == plant.id));
@@ -90,23 +84,6 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
 
   Widget _buildPlantCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
-    Widget leadingWidget;
-
-    if (plant.imagePath.isNotEmpty) {
-      leadingWidget = ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: Image.file(
-          File(plant.imagePath),
-          width: 50,
-          height: 50,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
-        ),
-      );
-    } else {
-      leadingWidget = const Icon(Icons.local_florist);
-    }
-
     final overdue = isOverdue(plant);
 
     return Dismissible(
@@ -126,7 +103,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       child: Card(
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: leadingWidget,
+          leading: PlantThumbnail(plant: plant),
           title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
           subtitle: Text(
             '${plant.species}\n${wateringStatusText(plant)}',

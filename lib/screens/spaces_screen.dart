@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../helpers/database_helper.dart';
 import '../models/garden.dart';
+import '../services/plant_repository.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/weather_card.dart';
@@ -15,9 +15,9 @@ class SpacesScreen extends StatefulWidget {
 }
 
 class _SpacesScreenState extends State<SpacesScreen> {
-  final DatabaseHelper _dbHelper = DatabaseHelper();
+  final PlantRepository _repository = PlantRepository();
   List<Garden> _spaces = [];
-  Map<int, int> _plantCounts = {};
+  Map<String, int> _plantCounts = {};
 
   @override
   void initState() {
@@ -26,16 +26,20 @@ class _SpacesScreenState extends State<SpacesScreen> {
   }
 
   Future<void> _loadSpaces() async {
-    final spaces = await _dbHelper.getGardens();
-    final counts = <int, int>{};
-    for (final space in spaces) {
-      counts[space.id!] = await _dbHelper.getPlantCountForGarden(space.id!);
+    try {
+      final spaces = await _repository.getGardens();
+      final counts = <String, int>{};
+      for (final space in spaces) {
+        counts[space.id!] = await _repository.getPlantCountForGarden(space.id!);
+      }
+      if (!mounted) return;
+      setState(() {
+        _spaces = spaces;
+        _plantCounts = counts;
+      });
+    } catch (e) {
+      debugPrint('Failed to load Spaces: $e');
     }
-    if (!mounted) return;
-    setState(() {
-      _spaces = spaces;
-      _plantCounts = counts;
-    });
   }
 
   Future<void> _navigateToSpace(Garden space) async {
@@ -71,7 +75,7 @@ class _SpacesScreenState extends State<SpacesScreen> {
     );
 
     if (name != null && name.isNotEmpty) {
-      await _dbHelper.insertGarden(Garden(name: name));
+      await _repository.insertGarden(Garden(name: name));
       _loadSpaces();
     }
   }

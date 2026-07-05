@@ -1,5 +1,5 @@
 class Garden {
-  final int? id;
+  final String? id;
   final String name;
 
   Garden({
@@ -9,14 +9,13 @@ class Garden {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'name': name,
     };
   }
 
-  factory Garden.fromMap(Map<String, dynamic> map) {
+  factory Garden.fromMap(Map<String, dynamic> map, {String? id}) {
     return Garden(
-      id: map['id'],
+      id: id,
       name: map['name'],
     );
   }
