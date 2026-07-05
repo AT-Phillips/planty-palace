@@ -6,6 +6,7 @@ import '../helpers/database_helper.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../utils/watering_status.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
@@ -111,7 +112,12 @@ class _CareScreenState extends State<CareScreen> {
     return Scaffold(
       appBar: const FrostedAppBar(title: 'Care'),
       body: _plants.isEmpty
-          ? const Center(child: Text('No plants yet.'))
+          ? const EmptyState(
+              icon: Icons.water_drop_outlined,
+              title: 'Nothing to water yet',
+              message: 'Once you add plants with a watering schedule, '
+                  "they'll show up here when they need attention.",
+            )
           : ListView.builder(
               itemCount: _plants.length,
               itemBuilder: (context, index) => _buildCareCard(_plants[index]),

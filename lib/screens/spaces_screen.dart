@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../helpers/database_helper.dart';
 import '../models/garden.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import 'my_plants_screen.dart';
 
@@ -99,7 +100,14 @@ class _SpacesScreenState extends State<SpacesScreen> {
     return Scaffold(
       appBar: const FrostedAppBar(title: 'My Spaces'),
       body: _spaces.isEmpty
-          ? const Center(child: Text('No spaces yet.'))
+          ? EmptyState(
+              icon: Icons.home_outlined,
+              title: 'No Spaces yet',
+              message: 'Create a Space for each area of your home — '
+                  'Living Room, Backyard, Office — to organize your plants.',
+              actionLabel: 'Create a Space',
+              onAction: _createSpace,
+            )
           : ListView.builder(
               itemCount: _spaces.length,
               itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),

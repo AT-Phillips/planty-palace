@@ -7,6 +7,7 @@ import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../utils/watering_status.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import 'add_edit_plant_screen.dart';
 
@@ -148,7 +149,13 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     return Scaffold(
       appBar: FrostedAppBar(title: widget.garden.name),
       body: _plants.isEmpty
-          ? const Center(child: Text('No plants yet.'))
+          ? EmptyState(
+              icon: Icons.local_florist_outlined,
+              title: 'No plants in ${widget.garden.name} yet',
+              message: 'Tap the + button to identify and add your first plant here.',
+              actionLabel: 'Add a Plant',
+              onAction: _navigateToAddPlant,
+            )
           : ListView.builder(
               itemCount: _plants.length,
               itemBuilder: (context, index) => _buildPlantCard(_plants[index]),
