@@ -55,6 +55,8 @@
 	<string>This app may save plant photos to your photo library if needed.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app uses your location to show local weather conditions relevant to your plants' care.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>This app uses your location to show local weather conditions relevant to your plants' care.</string>
 
 	<!-- Only standard OS-provided HTTPS/Keychain encryption is used (no
 	     custom crypto implemented in-app) - skips Apple's per-build export
