@@ -49,8 +49,10 @@ class SpeciesDetailScreen extends StatelessWidget {
         species.family != null ||
         species.poisonousToHumans != null ||
         species.poisonousToPets != null;
-    final displayImageUrl = species.imageUrl ?? fallbackImageUrl;
-    final usingFallbackImage = species.imageUrl == null && fallbackImageUrl != null;
+    final speciesImageUrl =
+        (species.imageUrl != null && species.imageUrl!.isNotEmpty) ? species.imageUrl : null;
+    final displayImageUrl = speciesImageUrl ?? fallbackImageUrl;
+    final usingFallbackImage = speciesImageUrl == null && fallbackImageUrl != null;
 
     return Scaffold(
       appBar: FrostedAppBar(title: species.commonName ?? species.scientificName),

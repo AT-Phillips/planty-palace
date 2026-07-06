@@ -40,6 +40,13 @@ function asBool(value: unknown): boolean | null {
   return null;
 }
 
+/** Perenual sometimes returns an empty-string URL instead of omitting the
+ * field entirely - normalize that to null so `??` fallback chains actually
+ * fall through to the next candidate field. */
+function emptyToNull(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value : null;
+}
+
 export function parseSearchResults(raw: unknown): SpeciesSummary[] {
   const results = ((raw as { data?: unknown[] })?.data ?? []) as Record<string, unknown>[];
   return results.map((entry) => {
@@ -50,8 +57,7 @@ export function parseSearchResults(raw: unknown): SpeciesSummary[] {
       id: entry.id as number,
       scientificName: scientificNames?.[0]?.toString() ?? commonName ?? "Unknown species",
       commonName,
-      thumbnailUrl:
-        (image?.thumbnail as string | undefined) ?? (image?.small_url as string | undefined) ?? null,
+      thumbnailUrl: emptyToNull(image?.thumbnail) ?? emptyToNull(image?.small_url),
     };
   });
 }
@@ -80,8 +86,7 @@ export function parseDetail(data: Record<string, unknown>): SpeciesDetail {
   return {
     scientificName: scientificNames?.[0]?.toString() ?? commonName ?? "Unknown species",
     commonName,
-    imageUrl:
-      (image?.regular_url as string | undefined) ?? (image?.medium_url as string | undefined) ?? null,
+    imageUrl: emptyToNull(image?.regular_url) ?? emptyToNull(image?.medium_url),
     wateringIntervalDays,
     careInstructions: careParts.join("\n"),
     description: description ? description : null,

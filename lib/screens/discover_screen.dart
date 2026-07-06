@@ -28,6 +28,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   bool _searched = false;
   String? _error;
 
+  /// Guards against duplicate detail-screen pushes from rapid/repeated taps,
+  /// and doubles as which row shows a loading indicator while its fetch is
+  /// in flight.
+  int? _openingSpeciesId;
+
   @override
   void dispose() {
     _debounce?.cancel();
@@ -80,25 +85,32 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _openSpecies(PerenualSpeciesSummary summary) async {
-    final detail = await _service.fetchSpeciesDetail(summary.id);
-    if (!mounted || detail == null) return;
+    if (_openingSpeciesId != null) return;
+    setState(() => _openingSpeciesId = summary.id);
+    try {
+      final detail = await _service.fetchSpeciesDetail(summary.id);
+      if (!mounted || detail == null) return;
 
-    WikimediaImage? fallbackImage;
-    if (detail.imageUrl == null) {
-      fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
-    }
-    if (!mounted) return;
+      WikimediaImage? fallbackImage;
+      final imageUrl = detail.imageUrl;
+      if (imageUrl == null || imageUrl.isEmpty) {
+        fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
+      }
+      if (!mounted) return;
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => SpeciesDetailScreen(
-          species: detail,
-          fallbackImageUrl: fallbackImage?.url,
-          fallbackImageAttribution: fallbackImage?.attribution,
+      await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => SpeciesDetailScreen(
+            species: detail,
+            fallbackImageUrl: fallbackImage?.url,
+            fallbackImageAttribution: fallbackImage?.attribution,
+          ),
         ),
-      ),
-    );
+      );
+    } finally {
+      if (mounted) setState(() => _openingSpeciesId = null);
+    }
   }
 
   @override
@@ -150,30 +162,75 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final result = _results[index];
+                  final isOpening = _openingSpeciesId == result.id;
                   return ListTile(
-                    leading: result.thumbnailUrl != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              result.thumbnailUrl!,
-                              width: 44,
-                              height: 44,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(Icons.local_florist),
-                            ),
-                          )
-                        : const Icon(Icons.local_florist),
+                    leading: _SpeciesThumbnail(key: ValueKey(result.id), summary: result),
                     title: Text(
                       result.scientificName,
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
                     subtitle: result.commonName != null ? Text(result.commonName!) : null,
+                    trailing: isOpening
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                          )
+                        : null,
                     onTap: () => _openSpecies(result),
                   );
                 },
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// List-row thumbnail for a search result: Perenual's image when present,
+/// otherwise a lazily-fetched Wikimedia Commons fallback (mirrors the
+/// detail screen's fallback), otherwise a generic icon.
+class _SpeciesThumbnail extends StatefulWidget {
+  final PerenualSpeciesSummary summary;
+
+  const _SpeciesThumbnail({super.key, required this.summary});
+
+  @override
+  State<_SpeciesThumbnail> createState() => _SpeciesThumbnailState();
+}
+
+class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
+  String? _fallbackUrl;
+
+  bool get _hasPerenualThumb =>
+      widget.summary.thumbnailUrl != null && widget.summary.thumbnailUrl!.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    if (!_hasPerenualThumb) _fetchFallback();
+  }
+
+  Future<void> _fetchFallback() async {
+    final image = await WikimediaImageService().fetchImage(widget.summary.scientificName);
+    if (!mounted) return;
+    setState(() => _fallbackUrl = image?.url);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final url = _hasPerenualThumb ? widget.summary.thumbnailUrl : _fallbackUrl;
+    if (url == null) return const Icon(Icons.local_florist);
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(8),
+      child: Image.network(
+        url,
+        width: 44,
+        height: 44,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Icon(Icons.local_florist),
       ),
     );
   }

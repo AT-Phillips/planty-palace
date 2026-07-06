@@ -21,6 +21,18 @@ describe("parseSearchResults", () => {
     assert.strictEqual(results[0].thumbnailUrl, "https://example.com/thumb.jpg");
   });
 
+  it("treats an empty-string image URL as absent and falls through to the next field", () => {
+    const fallsThrough = parseSearchResults({
+      data: [{ id: 1, default_image: { thumbnail: "", small_url: "https://example.com/s.jpg" } }],
+    });
+    assert.strictEqual(fallsThrough[0].thumbnailUrl, "https://example.com/s.jpg");
+
+    const bothEmpty = parseSearchResults({
+      data: [{ id: 2, default_image: { thumbnail: "", small_url: "" } }],
+    });
+    assert.strictEqual(bothEmpty[0].thumbnailUrl, null);
+  });
+
   it("falls back to common name, then 'Unknown species', when scientific name is missing", () => {
     const withCommonOnly = parseSearchResults({
       data: [{ id: 1, common_name: "Some Plant" }],
@@ -72,5 +84,17 @@ describe("parseDetail", () => {
     assert.strictEqual(detail.description, null);
     assert.strictEqual(detail.origin, null);
     assert.strictEqual(detail.careInstructions, "");
+  });
+
+  it("treats an empty-string image URL as absent and falls through to the next field", () => {
+    const fallsThrough = parseDetail({
+      default_image: { regular_url: "", medium_url: "https://example.com/m.jpg" },
+    });
+    assert.strictEqual(fallsThrough.imageUrl, "https://example.com/m.jpg");
+
+    const bothEmpty = parseDetail({
+      default_image: { regular_url: "", medium_url: "" },
+    });
+    assert.strictEqual(bothEmpty.imageUrl, null);
   });
 });

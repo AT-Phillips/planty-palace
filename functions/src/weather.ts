@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import { getFirestore } from "firebase-admin/firestore";
 import { cachedFetch, normalizeKey } from "./cache";
 import { openWeatherApiKey } from "./secrets";
@@ -46,14 +47,17 @@ export const fetchWeather = onCall({ secrets: [openWeatherApiKey] }, async (requ
   }
 
   try {
-    return await cachedFetch(
+    const result = await cachedFetch(
       getFirestore(),
       "weather_cache",
       gridKey(lat, lon),
       TWENTY_MINUTES_MS,
       () => fetchWeatherLive(lat, lon, openWeatherApiKey.value())
     );
+    logger.info("fetchWeather ok", { lat, lon });
+    return result;
   } catch (err) {
+    logger.error("fetchWeather failed", { lat, lon, error: (err as Error).message });
     throw new HttpsError("unavailable", `Weather fetch failed: ${(err as Error).message}`);
   }
 });
@@ -77,13 +81,46 @@ export function parseGeocodingResults(raw: unknown): GeocodingResult[] {
   }));
 }
 
-async function fetchGeocodingLive(query: string, apiKey: string): Promise<GeocodingResult[]> {
+/** Thrown when a (possibly retried) geocoding query genuinely has no
+ * matches, so callers can distinguish "no results" from a real failure and
+ * skip caching it - see cachedFetch, which would otherwise persist an empty
+ * array for the full TTL. */
+export class NoGeocodingResultsError extends Error {
+  constructor(query: string) {
+    super(`No geocoding results for "${query}"`);
+    this.name = "NoGeocodingResultsError";
+  }
+}
+
+// Matches a plain "City, ST" query: comma-separated, with a 2-letter
+// alphabetic second part (a US state code, not a country code).
+const US_STATE_QUERY = /^[^,]+,\s*[A-Za-z]{2}$/;
+
+async function fetchGeocodingOnce(query: string, apiKey: string): Promise<GeocodingResult[]> {
   const uri = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${apiKey}`;
   const response = await fetch(uri);
   if (!response.ok) {
     throw new Error(`OpenWeatherMap geocoding returned ${response.status}`);
   }
   return parseGeocodingResults(await response.json());
+}
+
+/**
+ * OWM's Direct Geocoding endpoint only recognizes a 2-letter US state code
+ * as the middle segment of a 3-part "city,state,country" query - a 2-part
+ * "City, ST" query makes OWM read "ST" as an invalid country code and
+ * legitimately return zero results. Retry with an explicit ",US" appended
+ * in that case before giving up.
+ */
+export async function fetchGeocodingLive(query: string, apiKey: string): Promise<GeocodingResult[]> {
+  let results = await fetchGeocodingOnce(query, apiKey);
+  if (results.length === 0 && US_STATE_QUERY.test(query)) {
+    results = await fetchGeocodingOnce(`${query},US`, apiKey);
+  }
+  if (results.length === 0) {
+    throw new NoGeocodingResultsError(query);
+  }
+  return results;
 }
 
 // City coordinates are effectively static - a much longer freshness window
@@ -93,14 +130,21 @@ export const geocodeCity = onCall({ secrets: [openWeatherApiKey] }, async (reque
   if (!query) return [];
 
   try {
-    return await cachedFetch(
+    const results = await cachedFetch(
       getFirestore(),
       "geocoding_cache",
       normalizeKey(query),
       NINETY_DAYS_MS,
       () => fetchGeocodingLive(query, openWeatherApiKey.value())
     );
+    logger.info("geocodeCity ok", { query, count: results.length });
+    return results;
   } catch (err) {
+    if (err instanceof NoGeocodingResultsError) {
+      logger.info("geocodeCity no results", { query });
+      return [];
+    }
+    logger.error("geocodeCity failed", { query, error: (err as Error).message });
     throw new HttpsError("unavailable", `City search failed: ${(err as Error).message}`);
   }
 });

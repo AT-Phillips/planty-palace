@@ -7,12 +7,9 @@ import '../content/faq_content.dart';
 import '../content/help_content.dart';
 import '../content/legal_content.dart';
 import '../screens/info_screen.dart';
-import '../screens/location_picker_screen.dart';
-import '../services/location_preferences.dart';
-import '../services/notification_preferences.dart';
+import '../screens/schedules_screen.dart';
+import '../screens/weather_settings_screen.dart';
 import '../services/theme_controller.dart';
-import '../services/unit_preferences.dart';
-import '../services/weather_preferences.dart';
 
 /// All former Settings-tab content, extracted into a plain widget (no
 /// Scaffold/AppBar of its own) so it can be embedded inline at the bottom of
@@ -33,14 +30,6 @@ class SettingsSections extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  Future<void> _pickReminderTime(BuildContext context) async {
-    final current = NotificationPreferences.instance.reminderTime.value;
-    final picked = await showTimePicker(context: context, initialTime: current);
-    if (picked != null) {
-      await NotificationPreferences.instance.setReminderTime(picked);
-    }
   }
 
   void _showComingSoon(BuildContext context, String feature) {
@@ -135,102 +124,24 @@ class SettingsSections extends StatelessWidget {
                 },
               ),
               const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: NotificationPreferences.instance.enabled,
-                builder: (context, enabled, _) {
-                  return Column(
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Schedules',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ),
-                      SwitchListTile(
-                        title: const Text('Reminders'),
-                        subtitle: const Text('Watering, fertilizing, repotting & pruning'),
-                        value: enabled,
-                        onChanged: (value) => NotificationPreferences.instance.setEnabled(value),
-                      ),
-                      if (enabled)
-                        ValueListenableBuilder<TimeOfDay>(
-                          valueListenable: NotificationPreferences.instance.reminderTime,
-                          builder: (context, time, _) {
-                            return ListTile(
-                              leading: const Icon(Icons.notifications_outlined),
-                              title: const Text('Daily reminder time'),
-                              subtitle: Text(time.format(context)),
-                              trailing: const Icon(Icons.chevron_right),
-                              onTap: () => _pickReminderTime(context),
-                            );
-                          },
-                        ),
-                    ],
-                  );
-                },
+              ListTile(
+                leading: const Icon(Icons.notifications_outlined),
+                title: const Text('Schedules'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SchedulesScreen()),
+                ),
               ),
               const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: UnitPreferences.instance.useMetric,
-                builder: (context, useMetric, _) {
-                  return ListTile(
-                    leading: const Icon(Icons.straighten_outlined),
-                    title: const Text('Unit System'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          useMetric ? 'Metric' : 'Imperial',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const Icon(Icons.chevron_right),
-                      ],
-                    ),
-                    onTap: () => UnitPreferences.instance.setUseMetric(!useMetric),
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: LocationPreferences.instance.useGps,
-                builder: (context, useGps, _) {
-                  return ValueListenableBuilder<String?>(
-                    valueListenable: LocationPreferences.instance.manualLabel,
-                    builder: (context, manualLabel, _) {
-                      return ListTile(
-                        leading: const Icon(Icons.location_on_outlined),
-                        title: Text(
-                          useGps ? 'Using device location' : (manualLabel ?? 'Manual location'),
-                        ),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const LocationPickerScreen()),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: WeatherPreferences.instance.enabled,
-                builder: (context, enabled, _) {
-                  return SwitchListTile(
-                    secondary: const Icon(Icons.wb_sunny_outlined),
-                    title: const Text('Show local weather'),
-                    subtitle: const Text('Displayed at the top of My Spaces'),
-                    value: enabled,
-                    onChanged: (value) => WeatherPreferences.instance.setEnabled(value),
-                  );
-                },
+              ListTile(
+                leading: const Icon(Icons.wb_sunny_outlined),
+                title: const Text('Weather'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const WeatherSettingsScreen()),
+                ),
               ),
               const Divider(height: 1),
               ListTile(
