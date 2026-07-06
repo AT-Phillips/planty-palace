@@ -4,11 +4,13 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/main_shell.dart';
+import 'screens/onboarding_screen.dart';
 import 'services/auth_service.dart';
 import 'services/home_widget_service.dart';
 import 'services/location_preferences.dart';
 import 'services/notification_preferences.dart';
 import 'services/notification_service.dart';
+import 'services/onboarding_preferences.dart';
 import 'services/theme_controller.dart';
 import 'services/unit_preferences.dart';
 import 'services/weather_preferences.dart';
@@ -38,6 +40,7 @@ void main() async {
   await WeatherPreferences.instance.load();
   await UnitPreferences.instance.load();
   await LocationPreferences.instance.load();
+  await OnboardingPreferences.instance.load();
   NotificationPreferences.instance.onReminderTimeChanged =
       () => NotificationService().refreshAllReminders();
   NotificationPreferences.instance.onEnabledChanged =
@@ -71,7 +74,9 @@ class ThicketApp extends StatelessWidget {
               darkTheme: AppTheme.darkTheme(seedColor: seedColor),
               themeMode: mode,
               scrollBehavior: AppScrollBehavior(),
-              home: const MainShell(),
+              home: OnboardingPreferences.instance.completed.value
+                  ? const MainShell()
+                  : const OnboardingScreen(),
             );
           },
         );
