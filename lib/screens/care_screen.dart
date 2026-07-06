@@ -41,6 +41,8 @@ class _CareScreenState extends State<CareScreen> {
   String _query = '';
   PlantSortOption _sortOption = PlantSortOption.urgency;
   bool _overdueOnly = false;
+  bool _selectionMode = false;
+  Set<String> _selectedIds = {};
 
   @override
   void initState() {
@@ -150,6 +152,68 @@ class _CareScreenState extends State<CareScreen> {
     }
   }
 
+  void _startSelection(Plant plant) {
+    setState(() {
+      _selectionMode = true;
+      _selectedIds = {plant.id!};
+    });
+  }
+
+  void _toggleSelection(Plant plant) {
+    setState(() {
+      if (_selectedIds.contains(plant.id)) {
+        _selectedIds.remove(plant.id);
+        if (_selectedIds.isEmpty) _selectionMode = false;
+      } else {
+        _selectedIds.add(plant.id!);
+      }
+    });
+  }
+
+  void _exitSelection() {
+    setState(() {
+      _selectionMode = false;
+      _selectedIds = {};
+    });
+  }
+
+  bool get _anySelectedHasFertilizing =>
+      _plants.any((p) => _selectedIds.contains(p.id) && p.fertilizingIntervalDays != null);
+  bool get _anySelectedHasRepotting =>
+      _plants.any((p) => _selectedIds.contains(p.id) && p.repottingIntervalDays != null);
+  bool get _anySelectedHasPruning =>
+      _plants.any((p) => _selectedIds.contains(p.id) && p.pruningIntervalDays != null);
+
+  Future<void> _bulkAction(String action) async {
+    final selected = _plants.where((p) => _selectedIds.contains(p.id)).toList();
+    for (final plant in selected) {
+      if (action == 'water') {
+        await _repository.markWatered(plant.id!);
+        await NotificationService().scheduleWateringReminder(
+          plant.copyWith(lastWatered: DateTime.now().toIso8601String()),
+        );
+      } else if (action == 'fertilize' && plant.fertilizingIntervalDays != null) {
+        await _repository.markFertilized(plant.id!);
+        await NotificationService().scheduleFertilizingReminder(
+          plant.copyWith(lastFertilized: DateTime.now().toIso8601String()),
+        );
+      } else if (action == 'repot' && plant.repottingIntervalDays != null) {
+        await _repository.markRepotted(plant.id!);
+        await NotificationService().scheduleRepottingReminder(
+          plant.copyWith(lastRepotted: DateTime.now().toIso8601String()),
+        );
+      } else if (action == 'prune' && plant.pruningIntervalDays != null) {
+        await _repository.markPruned(plant.id!);
+        await NotificationService().schedulePruningReminder(
+          plant.copyWith(lastPruned: DateTime.now().toIso8601String()),
+        );
+      }
+    }
+    if (!mounted) return;
+    _exitSelection();
+    _load();
+  }
+
   String _sortLabel(PlantSortOption option) {
     switch (option) {
       case PlantSortOption.name:
@@ -202,11 +266,15 @@ class _CareScreenState extends State<CareScreen> {
     final hasFertilizingSchedule = plant.fertilizingIntervalDays != null;
     final hasRepottingSchedule = plant.repottingIntervalDays != null;
     final hasPruningSchedule = plant.pruningIntervalDays != null;
+    final selected = _selectedIds.contains(plant.id);
 
     return Card(
+      color: selected ? scheme.primaryContainer.withValues(alpha: 0.4) : null,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: PlantThumbnail(plant: plant),
+        leading: _selectionMode
+            ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(plant))
+            : PlantThumbnail(plant: plant),
         title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -233,20 +301,23 @@ class _CareScreenState extends State<CareScreen> {
               ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
-          onSelected: (action) => _handleCareAction(action, plant),
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'water', child: Text('Mark Watered')),
-            if (hasFertilizingSchedule)
-              const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
-            if (hasRepottingSchedule)
-              const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
-            if (hasPruningSchedule)
-              const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
-          ],
-        ),
-        onTap: () => _navigateToDetail(plant),
+        trailing: _selectionMode
+            ? null
+            : PopupMenuButton<String>(
+                icon: const Icon(Icons.more_vert),
+                onSelected: (action) => _handleCareAction(action, plant),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'water', child: Text('Mark Watered')),
+                  if (hasFertilizingSchedule)
+                    const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
+                  if (hasRepottingSchedule)
+                    const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
+                  if (hasPruningSchedule)
+                    const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
+                ],
+              ),
+        onTap: () => _selectionMode ? _toggleSelection(plant) : _navigateToDetail(plant),
+        onLongPress: _selectionMode ? null : () => _startSelection(plant),
       ),
     );
   }
@@ -256,7 +327,31 @@ class _CareScreenState extends State<CareScreen> {
     final filtered = _filteredPlants;
 
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Care'),
+      appBar: _selectionMode
+          ? FrostedAppBar(
+              title: '${_selectedIds.length} selected',
+              leading: IconButton(icon: const Icon(Icons.close), onPressed: _exitSelection),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.water_drop),
+                  tooltip: 'Mark Watered',
+                  onPressed: () => _bulkAction('water'),
+                ),
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert),
+                  onSelected: _bulkAction,
+                  itemBuilder: (context) => [
+                    if (_anySelectedHasFertilizing)
+                      const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
+                    if (_anySelectedHasRepotting)
+                      const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
+                    if (_anySelectedHasPruning)
+                      const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
+                  ],
+                ),
+              ],
+            )
+          : const FrostedAppBar(title: 'Care'),
       body: _plants.isEmpty
           ? const EmptyState(
               icon: Icons.water_drop_outlined,

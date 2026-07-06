@@ -10,8 +10,9 @@ import 'package:flutter/material.dart';
 class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
+  final Widget? leading;
 
-  const FrostedAppBar({super.key, required this.title, this.actions});
+  const FrostedAppBar({super.key, required this.title, this.actions, this.leading});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -26,6 +27,7 @@ class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
         child: AppBar(
           title: Text(title),
           actions: actions,
+          leading: leading,
           backgroundColor: scheme.surface.withValues(alpha: 0.7),
           surfaceTintColor: Colors.transparent,
           elevation: 0,
