@@ -100,36 +100,43 @@ class PerenualService {
 
   /// Returns several candidate species matching [query], for the Discover
   /// catalog's live search - not just the single best match.
+  ///
+  /// Unlike [lookupCareInfo] (purely additive enrichment, safe to swallow
+  /// failures), this throws on failure instead of silently returning an
+  /// empty list - Discover's search is the primary content of that screen,
+  /// so a misconfigured API key or an exhausted Perenual quota needs to be
+  /// visibly distinguishable from "no species actually matched."
   Future<List<PerenualSpeciesSummary>> searchSpecies(String query) async {
-    if (_apiKey.isEmpty || query.trim().isEmpty) return [];
-
-    try {
-      final uri = Uri.parse(
-        '$_baseUrl/species-list?key=$_apiKey&q=${Uri.encodeQueryComponent(query)}',
-      );
-      final response = await http.get(uri);
-      if (response.statusCode != 200) return [];
-
-      final data = json.decode(response.body);
-      final results = data['data'] as List?;
-      if (results == null) return [];
-
-      return results.map((entry) {
-        final map = entry as Map<String, dynamic>;
-        final commonNames = map['common_name'] as String?;
-        final image = map['default_image'] as Map<String, dynamic>?;
-        return PerenualSpeciesSummary(
-          id: map['id'] as int,
-          scientificName: (map['scientific_name'] as List?)?.first?.toString() ??
-              commonNames ??
-              'Unknown species',
-          commonName: commonNames,
-          thumbnailUrl: image?['thumbnail'] as String? ?? image?['small_url'] as String?,
-        );
-      }).toList();
-    } catch (_) {
-      return [];
+    if (query.trim().isEmpty) return [];
+    if (_apiKey.isEmpty) {
+      throw Exception('No Perenual API key configured for this build.');
     }
+
+    final uri = Uri.parse(
+      '$_baseUrl/species-list?key=$_apiKey&q=${Uri.encodeQueryComponent(query)}',
+    );
+    final response = await http.get(uri);
+    if (response.statusCode != 200) {
+      throw Exception('Perenual returned ${response.statusCode}: ${response.body}');
+    }
+
+    final data = json.decode(response.body);
+    final results = data['data'] as List?;
+    if (results == null) return [];
+
+    return results.map((entry) {
+      final map = entry as Map<String, dynamic>;
+      final commonNames = map['common_name'] as String?;
+      final image = map['default_image'] as Map<String, dynamic>?;
+      return PerenualSpeciesSummary(
+        id: map['id'] as int,
+        scientificName: (map['scientific_name'] as List?)?.first?.toString() ??
+            commonNames ??
+            'Unknown species',
+        commonName: commonNames,
+        thumbnailUrl: image?['thumbnail'] as String? ?? image?['small_url'] as String?,
+      );
+    }).toList();
   }
 
   Future<PerenualSpeciesDetail?> fetchSpeciesDetail(int id) async {

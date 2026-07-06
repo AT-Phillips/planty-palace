@@ -26,6 +26,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   List<PerenualSpeciesSummary> _results = [];
   bool _searching = false;
   bool _searched = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -55,14 +56,27 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       return;
     }
 
-    setState(() => _searching = true);
-    final results = await _service.searchSpecies(query);
-    if (!mounted) return;
     setState(() {
-      _results = results;
-      _searching = false;
-      _searched = true;
+      _searching = true;
+      _error = null;
     });
+    try {
+      final results = await _service.searchSpecies(query);
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _searching = false;
+        _searched = true;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _results = [];
+        _searching = false;
+        _searched = true;
+        _error = e.toString();
+      });
+    }
   }
 
   Future<void> _openSpecies(PerenualSpeciesSummary summary) async {
@@ -105,7 +119,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             padding: EdgeInsets.all(24),
             child: CircularProgressIndicator.adaptive(),
           ),
-          if (!_searching && _searched && _results.isEmpty)
+          if (!_searching && _searched && _results.isEmpty && _error != null)
+            Expanded(
+              child: EmptyState(
+                icon: Icons.error_outline,
+                title: 'Search unavailable',
+                message: _error!,
+              ),
+            ),
+          if (!_searching && _searched && _results.isEmpty && _error == null)
             const Expanded(
               child: EmptyState(
                 icon: Icons.search_off,
