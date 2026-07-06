@@ -66,6 +66,15 @@ class PlantRepository {
     await _gardens.doc(id).delete();
   }
 
+  /// Hard-deletes every garden doc, including the default one - only for
+  /// full account deletion, where there's no data left to reassign into.
+  Future<void> deleteAllGardens() async {
+    final snapshot = await _gardens.get();
+    for (final doc in snapshot.docs) {
+      await doc.reference.delete();
+    }
+  }
+
   Future<String> getOrCreateDefaultGardenId() async {
     final existing =
         await _gardens.where('name', isEqualTo: _defaultGardenName).limit(1).get();

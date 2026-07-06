@@ -16,7 +16,9 @@ import '../services/weather_preferences.dart';
 
 /// All former Settings-tab content, extracted into a plain widget (no
 /// Scaffold/AppBar of its own) so it can be embedded inline at the bottom of
-/// the Account tab instead of living in a separate tab.
+/// the Account tab instead of living in a separate tab. Deliberately kept to
+/// exactly two sections (General, Support) with single-line controls where
+/// possible, rather than a section header per setting.
 class SettingsSections extends StatelessWidget {
   const SettingsSections({super.key});
 
@@ -65,36 +67,31 @@ class SettingsSections extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        _sectionHeader(context, 'Appearance'),
+        _sectionHeader(context, 'General'),
         ValueListenableBuilder<ThemeMode>(
           valueListenable: ThemeController.instance.themeMode,
           builder: (context, mode, _) {
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  RadioListTile<ThemeMode>(
-                    title: const Text('System'),
-                    value: ThemeMode.system,
-                    groupValue: mode,
-                    onChanged: (value) => ThemeController.instance.setThemeMode(value!),
-                  ),
-                  RadioListTile<ThemeMode>(
-                    title: const Text('Light'),
-                    value: ThemeMode.light,
-                    groupValue: mode,
-                    onChanged: (value) => ThemeController.instance.setThemeMode(value!),
-                  ),
-                  RadioListTile<ThemeMode>(
-                    title: const Text('Dark'),
-                    value: ThemeMode.dark,
-                    groupValue: mode,
-                    onChanged: (value) => ThemeController.instance.setThemeMode(value!),
-                  ),
-                  const Divider(height: 1),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text('Theme'),
+                    const SizedBox(height: 8),
+                    SegmentedButton<ThemeMode>(
+                      segments: const [
+                        ButtonSegment(value: ThemeMode.system, label: Text('System')),
+                        ButtonSegment(value: ThemeMode.light, label: Text('Light')),
+                        ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                      ],
+                      selected: {mode},
+                      onSelectionChanged: (selection) =>
+                          ThemeController.instance.setThemeMode(selection.first),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
                       children: [
                         const Text('Accent color'),
                         const Spacer(),
@@ -130,13 +127,12 @@ class SettingsSections extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
         ),
-        _sectionHeader(context, 'Notifications'),
         ValueListenableBuilder<bool>(
           valueListenable: NotificationPreferences.instance.enabled,
           builder: (context, enabled, _) {
@@ -167,27 +163,22 @@ class SettingsSections extends StatelessWidget {
             );
           },
         ),
-        _sectionHeader(context, 'Units'),
         ValueListenableBuilder<bool>(
           valueListenable: UnitPreferences.instance.useMetric,
           builder: (context, useMetric, _) {
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                children: [
-                  RadioListTile<bool>(
-                    title: const Text('Metric (°C)'),
-                    value: true,
-                    groupValue: useMetric,
-                    onChanged: (value) => UnitPreferences.instance.setUseMetric(value!),
-                  ),
-                  RadioListTile<bool>(
-                    title: const Text('Imperial (°F)'),
-                    value: false,
-                    groupValue: useMetric,
-                    onChanged: (value) => UnitPreferences.instance.setUseMetric(value!),
-                  ),
-                ],
+              child: ListTile(
+                leading: const Icon(Icons.straighten_outlined),
+                title: const Text('Unit System'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(useMetric ? 'Metric' : 'Imperial'),
+                    const Icon(Icons.chevron_right),
+                  ],
+                ),
+                onTap: () => UnitPreferences.instance.setUseMetric(!useMetric),
               ),
             );
           },
@@ -291,14 +282,7 @@ class SettingsSections extends StatelessWidget {
                 title: const Text('Share Thicket'),
                 onTap: _shareApp,
               ),
-            ],
-          ),
-        ),
-        _sectionHeader(context, 'Legal'),
-        Card(
-          margin: const EdgeInsets.symmetric(horizontal: 16),
-          child: Column(
-            children: [
+              const Divider(height: 1),
               ListTile(
                 title: const Text('Privacy Policy'),
                 trailing: const Icon(Icons.chevron_right),

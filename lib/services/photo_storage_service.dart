@@ -22,6 +22,23 @@ class PhotoStorageService {
   Reference _timelinePhotoRef(String plantId, String photoId) =>
       FirebaseStorage.instance.ref('plant_photos/$_uid/$plantId/$photoId.jpg');
 
+  Reference _profilePhotoRef(String uid) =>
+      FirebaseStorage.instance.ref('profile_photos/$uid.jpg');
+
+  Future<String> uploadProfilePhoto(String uid, File file) async {
+    final ref = _profilePhotoRef(uid);
+    await ref.putFile(file);
+    return ref.getDownloadURL();
+  }
+
+  Future<void> deleteProfilePhoto(String uid) async {
+    try {
+      await _profilePhotoRef(uid).delete();
+    } catch (_) {
+      // Nothing to delete, or already gone - not an error worth surfacing.
+    }
+  }
+
   Future<String> uploadTimelinePhoto(String plantId, String photoId, File file) async {
     final ref = _timelinePhotoRef(plantId, photoId);
     await ref.putFile(file);
