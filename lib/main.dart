@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
@@ -30,9 +31,28 @@ void main() async {
   if (Platform.isAndroid || Platform.isIOS) {
     try {
       await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    } catch (e) {
+      debugPrint('Firebase init failed, continuing without it: $e');
+    }
+
+    // Attests requests genuinely come from this app before Functions/
+    // Firestore/Storage serve them (bug/bot/abuse protection). DeviceCheck
+    // provider chosen over App Attest specifically because it needs no
+    // Xcode capability/entitlements change - see the project roadmap.
+    // Monitor-only for now: enforcement isn't turned on server-side yet.
+    try {
+      await FirebaseAppCheck.instance.activate(
+        appleProvider: AppleProvider.deviceCheck,
+        androidProvider: AndroidProvider.playIntegrity,
+      );
+    } catch (e) {
+      debugPrint('App Check activation failed, continuing without it: $e');
+    }
+
+    try {
       await AuthService.instance.ensureSignedIn();
     } catch (e) {
-      debugPrint('Firebase init/sign-in failed, continuing without it: $e');
+      debugPrint('Sign-in failed, continuing without it: $e');
     }
   }
 
