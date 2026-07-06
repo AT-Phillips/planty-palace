@@ -23,18 +23,27 @@ class _AccountScreenState extends State<AccountScreen> {
   }
 
   Widget _profileRow() {
+    final scheme = Theme.of(context).colorScheme;
+    final isAnonymous = AuthService.instance.isAnonymous;
     final displayName = AuthService.instance.displayName;
     final email = AuthService.instance.email;
-    final subtitle = displayName?.isNotEmpty == true
-        ? displayName!
-        : (email ?? 'Add your name, photo, and more');
+
+    final String subtitle;
+    final Color? subtitleColor;
+    if (isAnonymous) {
+      subtitle = 'Not backed up — tap to save your account';
+      subtitleColor = scheme.error;
+    } else {
+      subtitle = displayName?.isNotEmpty == true ? displayName! : (email ?? '');
+      subtitleColor = null;
+    }
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 6),
       child: ListTile(
         leading: ProfileAvatar(photoUrl: AuthService.instance.photoUrl),
         title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle),
+        subtitle: Text(subtitle, style: TextStyle(color: subtitleColor)),
         trailing: const Icon(Icons.chevron_right),
         onTap: _openEditProfile,
       ),
