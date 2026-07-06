@@ -10,11 +10,11 @@ class UnitPreferences {
 
   static const _useMetricKey = 'useMetric';
 
-  final ValueNotifier<bool> useMetric = ValueNotifier(true);
+  final ValueNotifier<bool> useMetric = ValueNotifier(false);
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
-    useMetric.value = prefs.getBool(_useMetricKey) ?? true;
+    useMetric.value = prefs.getBool(_useMetricKey) ?? false;
   }
 
   Future<void> setUseMetric(bool value) async {

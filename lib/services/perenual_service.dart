@@ -8,10 +8,54 @@ class PerenualCareInfo {
   PerenualCareInfo({required this.wateringIntervalDays, required this.careInstructions});
 }
 
-/// Looks up plant-care data (watering frequency, sunlight, care level) from
-/// the Perenual species database, to enrich a plant once PlantNet has
-/// identified its species. Purely additive enrichment — any failure or "no
-/// match" is treated as no data, never an error the user has to deal with.
+class PerenualSpeciesSummary {
+  final int id;
+  final String scientificName;
+  final String? commonName;
+  final String? thumbnailUrl;
+
+  PerenualSpeciesSummary({
+    required this.id,
+    required this.scientificName,
+    this.commonName,
+    this.thumbnailUrl,
+  });
+}
+
+/// Fuller species info for the Discover catalog - everything in
+/// [PerenualCareInfo] plus genuinely sourced reference facts. Every extra
+/// field is nullable/omitted if Perenual didn't return it for that species -
+/// never fabricated content presented as fact.
+class PerenualSpeciesDetail {
+  final String scientificName;
+  final String? commonName;
+  final String? imageUrl;
+  final int? wateringIntervalDays;
+  final String careInstructions;
+  final String? description;
+  final String? origin;
+  final String? family;
+  final bool? poisonousToHumans;
+  final bool? poisonousToPets;
+
+  PerenualSpeciesDetail({
+    required this.scientificName,
+    this.commonName,
+    this.imageUrl,
+    required this.wateringIntervalDays,
+    required this.careInstructions,
+    this.description,
+    this.origin,
+    this.family,
+    this.poisonousToHumans,
+    this.poisonousToPets,
+  });
+}
+
+/// Looks up plant-care data (watering frequency, sunlight, care level) and
+/// reference facts from the Perenual species database. Purely additive
+/// enrichment - any failure or "no match" is treated as no data, never an
+/// error the user has to deal with.
 class PerenualService {
   static const _apiKey = String.fromEnvironment('PERENUAL_API_KEY');
   static const _baseUrl = 'https://perenual.com/api/v2';
@@ -29,7 +73,12 @@ class PerenualService {
     try {
       final id = await _findSpeciesId(speciesName);
       if (id == null) return null;
-      return await _fetchCareInfo(id);
+      final detail = await fetchSpeciesDetail(id);
+      if (detail == null) return null;
+      return PerenualCareInfo(
+        wateringIntervalDays: detail.wateringIntervalDays,
+        careInstructions: detail.careInstructions,
+      );
     } catch (_) {
       return null;
     }
@@ -49,29 +98,91 @@ class PerenualService {
     return results.first['id'] as int?;
   }
 
-  Future<PerenualCareInfo?> _fetchCareInfo(int id) async {
-    final uri = Uri.parse('$_baseUrl/species/details/$id?key=$_apiKey');
-    final response = await http.get(uri);
-    if (response.statusCode != 200) return null;
+  /// Returns several candidate species matching [query], for the Discover
+  /// catalog's live search - not just the single best match.
+  Future<List<PerenualSpeciesSummary>> searchSpecies(String query) async {
+    if (_apiKey.isEmpty || query.trim().isEmpty) return [];
 
-    final data = json.decode(response.body) as Map<String, dynamic>;
+    try {
+      final uri = Uri.parse(
+        '$_baseUrl/species-list?key=$_apiKey&q=${Uri.encodeQueryComponent(query)}',
+      );
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return [];
 
-    final watering = (data['watering'] as String?)?.toLowerCase();
-    final wateringIntervalDays = watering != null ? _wateringToDays[watering] : null;
+      final data = json.decode(response.body);
+      final results = data['data'] as List?;
+      if (results == null) return [];
 
-    final sunlight = data['sunlight'];
-    final sunlightText = sunlight is List ? sunlight.join(', ') : sunlight?.toString();
-    final careLevel = data['care_level'] as String?;
+      return results.map((entry) {
+        final map = entry as Map<String, dynamic>;
+        final commonNames = map['common_name'] as String?;
+        final image = map['default_image'] as Map<String, dynamic>?;
+        return PerenualSpeciesSummary(
+          id: map['id'] as int,
+          scientificName: (map['scientific_name'] as List?)?.first?.toString() ??
+              commonNames ??
+              'Unknown species',
+          commonName: commonNames,
+          thumbnailUrl: image?['thumbnail'] as String? ?? image?['small_url'] as String?,
+        );
+      }).toList();
+    } catch (_) {
+      return [];
+    }
+  }
 
-    final parts = <String>[
-      if (data['watering'] != null) 'Watering: ${data['watering']}',
-      if (sunlightText != null && sunlightText.isNotEmpty) 'Sunlight: $sunlightText',
-      if (careLevel != null) 'Care level: $careLevel',
-    ];
+  Future<PerenualSpeciesDetail?> fetchSpeciesDetail(int id) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/species/details/$id?key=$_apiKey');
+      final response = await http.get(uri);
+      if (response.statusCode != 200) return null;
 
-    return PerenualCareInfo(
-      wateringIntervalDays: wateringIntervalDays,
-      careInstructions: parts.join('\n'),
-    );
+      final data = json.decode(response.body) as Map<String, dynamic>;
+
+      final watering = (data['watering'] as String?)?.toLowerCase();
+      final wateringIntervalDays = watering != null ? _wateringToDays[watering] : null;
+
+      final sunlight = data['sunlight'];
+      final sunlightText = sunlight is List ? sunlight.join(', ') : sunlight?.toString();
+      final careLevel = data['care_level'] as String?;
+
+      final careParts = <String>[
+        if (data['watering'] != null) 'Watering: ${data['watering']}',
+        if (sunlightText != null && sunlightText.isNotEmpty) 'Sunlight: $sunlightText',
+        if (careLevel != null) 'Care level: $careLevel',
+      ];
+
+      final origin = data['origin'];
+      final originText = origin is List ? origin.join(', ') : origin?.toString();
+      final image = data['default_image'] as Map<String, dynamic>?;
+      final scientificName = (data['scientific_name'] as List?)?.first?.toString() ??
+          data['common_name'] as String? ??
+          'Unknown species';
+
+      return PerenualSpeciesDetail(
+        scientificName: scientificName,
+        commonName: data['common_name'] as String?,
+        imageUrl: image?['regular_url'] as String? ?? image?['medium_url'] as String?,
+        wateringIntervalDays: wateringIntervalDays,
+        careInstructions: careParts.join('\n'),
+        description: (data['description'] as String?)?.trim().isNotEmpty == true
+            ? data['description'] as String
+            : null,
+        origin: (originText != null && originText.isNotEmpty) ? originText : null,
+        family: data['family'] as String?,
+        poisonousToHumans: _asBool(data['poisonous_to_humans']),
+        poisonousToPets: _asBool(data['poisonous_to_pets']),
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool? _asBool(dynamic value) {
+    if (value == null) return null;
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    return null;
   }
 }

@@ -5,10 +5,11 @@ import '../widgets/main_bottom_nav_bar.dart';
 import 'account_screen.dart';
 import 'add_edit_plant_screen.dart';
 import 'care_screen.dart';
-import 'settings_screen.dart';
+import 'discover_screen.dart';
 import 'spaces_screen.dart';
 
-/// Hosts the app's 4 persistent tabs plus the camera quick-action.
+/// Hosts the app's 4 persistent tabs (Spaces, Care, Find, Account - Settings
+/// now lives inline at the bottom of Account) plus the camera quick-action.
 /// Tabs are rebuilt fresh on every switch (not an IndexedStack) so a plant
 /// added via the global camera button shows up immediately regardless of
 /// which tab you're on.
@@ -25,7 +26,7 @@ class _MainShellState extends State<MainShell> {
   static const _tabs = [
     SpacesScreen(),
     CareScreen(),
-    SettingsScreen(),
+    DiscoverScreen(),
     AccountScreen(),
   ];
 

@@ -19,18 +19,32 @@ class PhotoStorageService {
     return uid;
   }
 
-  Reference _photoRef(String plantId) =>
-      FirebaseStorage.instance.ref('plant_photos/$_uid/$plantId.jpg');
+  Reference _timelinePhotoRef(String plantId, String photoId) =>
+      FirebaseStorage.instance.ref('plant_photos/$_uid/$plantId/$photoId.jpg');
 
-  Future<String> uploadPlantPhoto(String plantId, File file) async {
-    final ref = _photoRef(plantId);
+  Future<String> uploadTimelinePhoto(String plantId, String photoId, File file) async {
+    final ref = _timelinePhotoRef(plantId, photoId);
     await ref.putFile(file);
     return ref.getDownloadURL();
   }
 
-  Future<void> deletePlantPhoto(String plantId) async {
+  Future<void> deleteTimelinePhoto(String plantId, String photoId) async {
     try {
-      await _photoRef(plantId).delete();
+      await _timelinePhotoRef(plantId, photoId).delete();
+    } catch (_) {
+      // Nothing to delete, or already gone - not an error worth surfacing.
+    }
+  }
+
+  /// Deletes every photo ever uploaded for this plant - used when the plant
+  /// itself is deleted.
+  Future<void> deleteAllPhotosForPlant(String plantId) async {
+    try {
+      final folder = FirebaseStorage.instance.ref('plant_photos/$_uid/$plantId');
+      final listing = await folder.listAll();
+      for (final item in listing.items) {
+        await item.delete();
+      }
     } catch (_) {
       // Nothing to delete, or already gone - not an error worth surfacing.
     }

@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
-
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/perenual_service.dart';
-import '../services/photo_storage_service.dart';
 import '../services/plant_identifier_service.dart';
 import '../services/plant_repository.dart';
+import '../utils/permanent_image.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
 
@@ -17,7 +14,20 @@ class AddEditPlantScreen extends StatefulWidget {
   final Plant? plant;
   final String gardenId;
 
-  const AddEditPlantScreen({super.key, this.plant, required this.gardenId});
+  /// Pre-fills species/care info without requiring a camera ID pass first -
+  /// used when adding a plant found via Discover's catalog search.
+  final String? prefillSpecies;
+  final String? prefillCareInstructions;
+  final int? prefillWateringIntervalDays;
+
+  const AddEditPlantScreen({
+    super.key,
+    this.plant,
+    required this.gardenId,
+    this.prefillSpecies,
+    this.prefillCareInstructions,
+    this.prefillWateringIntervalDays,
+  });
 
   @override
   State<AddEditPlantScreen> createState() => _AddEditPlantScreenState();
@@ -27,7 +37,6 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   final PlantIdentifierService _identifierService = PlantIdentifierService();
   final PerenualService _careService = PerenualService();
   final PlantRepository _repository = PlantRepository();
-  final PhotoStorageService _photoStorage = PhotoStorageService();
   bool isLoading = false;
   bool isSaving = false;
   bool isFetchingCareInfo = false;
@@ -51,6 +60,15 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       careInstructionsController.text = plant.careInstructions;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
+      }
+    } else if (widget.prefillSpecies != null) {
+      selectedName = widget.prefillSpecies;
+      if (widget.prefillCareInstructions != null) {
+        careInstructionsController.text = widget.prefillCareInstructions!;
+      }
+      if (widget.prefillWateringIntervalDays != null) {
+        wateringIntervalDays = widget.prefillWateringIntervalDays!;
+        wateringManuallySet = true;
       }
     }
 
@@ -148,31 +166,10 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     _lookupCareInfo(suggestion.scientificName);
   }
 
-  /// Ensures the given image file lives in permanent app storage, copying it
-  /// there if it currently points at a transient picker/cache location.
-  Future<File> _ensurePermanentImage(File file) async {
-    final appDocDir = await getApplicationDocumentsDirectory();
-    final plantImagesDir = Directory(p.join(appDocDir.path, 'plant_images'));
-
-    if (p.isWithin(plantImagesDir.path, file.path)) {
-      return file;
-    }
-
-    if (!await plantImagesDir.exists()) {
-      await plantImagesDir.create(recursive: true);
-    }
-
-    final newPath = p.join(
-      plantImagesDir.path,
-      '${DateTime.now().millisecondsSinceEpoch}_${p.basename(file.path)}',
-    );
-    return file.copy(newPath);
-  }
-
   Future<void> _savePlant() async {
-    if (selectedName == null || _identifierService.imageFile == null) {
+    if (selectedName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a plant and image')),
+        const SnackBar(content: Text('Please select a plant')),
       );
       return;
     }
@@ -180,15 +177,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     setState(() => isSaving = true);
 
     try {
+      final pickedImage = _identifierService.imageFile;
       final permanentImage =
-          await _ensurePermanentImage(_identifierService.imageFile!);
+          pickedImage == null ? null : await ensurePermanentPlantImage(pickedImage);
       final nickname = nicknameController.text.trim();
 
       final plant = Plant(
         id: widget.plant?.id,
         name: nickname.isEmpty ? selectedName! : nickname,
         species: selectedName!,
-        imagePath: permanentImage.path,
+        imagePath: permanentImage?.path ?? widget.plant?.imagePath ?? '',
         photoUrl: widget.plant?.photoUrl,
         careInstructions: careInstructionsController.text,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
@@ -207,15 +205,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       }
       await NotificationService().scheduleWateringReminder(savedPlant);
 
-      // Upload the photo after the plant document exists (upload is keyed by
-      // the doc ID) - a failure here shouldn't block the save, since the
-      // plant is already fully usable locally without cross-device sync.
-      try {
-        final photoUrl =
-            await _photoStorage.uploadPlantPhoto(savedPlant.id!, permanentImage);
-        await _repository.updatePlant(savedPlant.copyWith(photoUrl: photoUrl));
-      } catch (_) {
-        // Photo sync can be retried later; not a blocking failure.
+      // A freshly picked photo becomes the first (or newest) growth-timeline
+      // entry after the plant document exists (upload is keyed by the doc
+      // ID) - a failure here shouldn't block the save, since the plant is
+      // already fully usable locally without cross-device photo sync.
+      if (permanentImage != null) {
+        try {
+          await _repository.addPhoto(savedPlant.id!, permanentImage);
+        } catch (_) {
+          // Photo sync can be retried later; not a blocking failure.
+        }
       }
 
       if (!mounted) return;

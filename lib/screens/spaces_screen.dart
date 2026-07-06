@@ -16,8 +16,16 @@ class SpacesScreen extends StatefulWidget {
 
 class _SpacesScreenState extends State<SpacesScreen> {
   final PlantRepository _repository = PlantRepository();
-  List<Garden> _spaces = [];
-  Map<String, int> _plantCounts = {};
+
+  // MainShell rebuilds each tab fresh on every switch (not an IndexedStack),
+  // so this State is recreated every time the user taps this tab. Seeding
+  // from the last successful load avoids a flash of the empty state while
+  // the new fetch is in flight.
+  static List<Garden>? _cachedSpaces;
+  static Map<String, int>? _cachedPlantCounts;
+
+  List<Garden> _spaces = _cachedSpaces ?? [];
+  Map<String, int> _plantCounts = _cachedPlantCounts ?? {};
 
   @override
   void initState() {
@@ -32,6 +40,8 @@ class _SpacesScreenState extends State<SpacesScreen> {
       for (final space in spaces) {
         counts[space.id!] = await _repository.getPlantCountForGarden(space.id!);
       }
+      _cachedSpaces = spaces;
+      _cachedPlantCounts = counts;
       if (!mounted) return;
       setState(() {
         _spaces = spaces;

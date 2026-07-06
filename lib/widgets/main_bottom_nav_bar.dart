@@ -50,8 +50,8 @@ class MainBottomNavBar extends StatelessWidget {
             ),
             _CameraNavItem(onTap: onCameraTap),
             _NavItem(
-              icon: Icons.settings_outlined,
-              label: 'Settings',
+              icon: Icons.travel_explore_outlined,
+              label: 'Find',
               selected: selectedIndex == 2,
               onTap: () => onTap(2),
             ),

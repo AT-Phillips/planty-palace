@@ -9,6 +9,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
+import 'plant_detail_screen.dart';
 
 /// Shows the plants inside a single [Garden].
 class MyPlantsScreen extends StatefulWidget {
@@ -22,12 +23,31 @@ class MyPlantsScreen extends StatefulWidget {
 
 class _MyPlantsScreenState extends State<MyPlantsScreen> {
   final PlantRepository _repository = PlantRepository();
+  final TextEditingController _searchController = TextEditingController();
   List<Plant> _plants = [];
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _loadPlants();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Plant> get _filteredPlants {
+    if (_query.isEmpty) return _plants;
+    return _plants
+        .where((p) =>
+            p.name.toLowerCase().contains(_query) || p.species.toLowerCase().contains(_query))
+        .toList();
   }
 
   Future<void> _loadPlants() async {
@@ -52,15 +72,10 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     }
   }
 
-  Future<void> _navigateToEditPlant(Plant plant) async {
+  Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditPlantScreen(
-          plant: plant,
-          gardenId: widget.garden.id!,
-        ),
-      ),
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: plant)),
     );
     if (result == true && mounted) {
       _loadPlants();
@@ -115,7 +130,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             tooltip: 'Mark as watered',
             onPressed: () => _markWatered(plant),
           ),
-          onTap: () => _navigateToEditPlant(plant),
+          onTap: () => _navigateToDetail(plant),
         ),
       ),
     );
@@ -123,6 +138,8 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredPlants;
+
     return Scaffold(
       appBar: FrostedAppBar(title: widget.garden.name),
       body: _plants.isEmpty
@@ -133,9 +150,25 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
               actionLabel: 'Add a Plant',
               onAction: _navigateToAddPlant,
             )
-          : ListView.builder(
-              itemCount: _plants.length,
-              itemBuilder: (context, index) => _buildPlantCard(_plants[index]),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Search this Space',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) => _buildPlantCard(filtered[index]),
+                  ),
+                ),
+              ],
             ),
       floatingActionButton: FloatingActionButton(
         onPressed: _navigateToAddPlant,

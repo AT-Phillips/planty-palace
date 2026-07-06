@@ -9,8 +9,9 @@ import 'package:flutter/material.dart';
 /// (Spaces, plants) can legitimately be short.
 class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
+  final List<Widget>? actions;
 
-  const FrostedAppBar({super.key, required this.title});
+  const FrostedAppBar({super.key, required this.title, this.actions});
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -24,6 +25,7 @@ class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
         filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
         child: AppBar(
           title: Text(title),
+          actions: actions,
           backgroundColor: scheme.surface.withValues(alpha: 0.7),
           surfaceTintColor: Colors.transparent,
           elevation: 0,

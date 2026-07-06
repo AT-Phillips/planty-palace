@@ -1,0 +1,96 @@
+import 'package:flutter/material.dart';
+
+import '../services/perenual_service.dart';
+import '../services/plant_repository.dart';
+import '../widgets/frosted_app_bar.dart';
+import 'add_edit_plant_screen.dart';
+
+/// Read-only reference view for a species from Perenual's catalog - shown
+/// whether or not the plant is already in the user's collection. Works
+/// purely as a lookup, with an optional "Add to My Plants" action.
+class SpeciesDetailScreen extends StatelessWidget {
+  final PerenualSpeciesDetail species;
+
+  const SpeciesDetailScreen({super.key, required this.species});
+
+  Future<void> _addToMyPlants(BuildContext context) async {
+    final gardenId = await PlantRepository().getOrCreateDefaultGardenId();
+    if (!context.mounted) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditPlantScreen(
+          gardenId: gardenId,
+          prefillSpecies: species.scientificName,
+          prefillCareInstructions:
+              species.careInstructions.isEmpty ? null : species.careInstructions,
+          prefillWateringIntervalDays: species.wateringIntervalDays,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final hasFacts = species.description != null ||
+        species.origin != null ||
+        species.family != null ||
+        species.poisonousToHumans != null ||
+        species.poisonousToPets != null;
+
+    return Scaffold(
+      appBar: FrostedAppBar(title: species.commonName ?? species.scientificName),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          if (species.imageUrl != null)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.network(
+                species.imageUrl!,
+                height: 220,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+          const SizedBox(height: 16),
+          Text(
+            species.scientificName,
+            style: const TextStyle(fontStyle: FontStyle.italic, fontWeight: FontWeight.w700, fontSize: 18),
+          ),
+          if (species.commonName != null)
+            Text(species.commonName!, style: TextStyle(color: scheme.onSurfaceVariant)),
+          if (species.careInstructions.isNotEmpty) ...[
+            const SizedBox(height: 20),
+            Text('Care Info', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+            const SizedBox(height: 8),
+            Text(species.careInstructions),
+          ],
+          if (hasFacts) ...[
+            const SizedBox(height: 20),
+            Text('Facts', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+            const SizedBox(height: 8),
+            if (species.description != null) ...[
+              Text(species.description!),
+              const SizedBox(height: 8),
+            ],
+            if (species.family != null) Text('Family: ${species.family}'),
+            if (species.origin != null) Text('Origin: ${species.origin}'),
+            if (species.poisonousToHumans != null)
+              Text('Toxic to humans: ${species.poisonousToHumans! ? 'Yes' : 'No'}'),
+            if (species.poisonousToPets != null)
+              Text('Toxic to pets: ${species.poisonousToPets! ? 'Yes' : 'No'}'),
+          ],
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: () => _addToMyPlants(context),
+            icon: const Icon(Icons.add),
+            label: const Text('Add to My Plants'),
+          ),
+        ],
+      ),
+    );
+  }
+}

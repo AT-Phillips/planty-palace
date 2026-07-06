@@ -7,9 +7,11 @@ import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
+import 'plant_detail_screen.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
-/// attention soonest surfaces first.
+/// attention soonest surfaces first. Also doubles as the "browse all my
+/// plants regardless of Space" view.
 class CareScreen extends StatefulWidget {
   const CareScreen({super.key});
 
@@ -19,13 +21,40 @@ class CareScreen extends StatefulWidget {
 
 class _CareScreenState extends State<CareScreen> {
   final PlantRepository _repository = PlantRepository();
-  List<Plant> _plants = [];
-  Map<String, String> _spaceNames = {};
+  final TextEditingController _searchController = TextEditingController();
+
+  // MainShell rebuilds each tab fresh on every switch (not an IndexedStack),
+  // so this State is recreated every time the user taps this tab. Seeding
+  // from the last successful load avoids a flash of the empty state while
+  // the new fetch is in flight.
+  static List<Plant>? _cachedPlants;
+  static Map<String, String>? _cachedSpaceNames;
+
+  List<Plant> _plants = _cachedPlants ?? [];
+  Map<String, String> _spaceNames = _cachedSpaceNames ?? {};
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+    _searchController.addListener(() {
+      setState(() => _query = _searchController.text.trim().toLowerCase());
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<Plant> get _filteredPlants {
+    if (_query.isEmpty) return _plants;
+    return _plants
+        .where((p) =>
+            p.name.toLowerCase().contains(_query) || p.species.toLowerCase().contains(_query))
+        .toList();
   }
 
   Future<void> _load() async {
@@ -42,9 +71,12 @@ class _CareScreenState extends State<CareScreen> {
         return aDue.compareTo(bDue);
       });
 
+      final spaceNames = {for (final s in spaces) s.id!: s.name};
+      _cachedPlants = plants;
+      _cachedSpaceNames = spaceNames;
       if (!mounted) return;
       setState(() {
-        _spaceNames = {for (final s in spaces) s.id!: s.name};
+        _spaceNames = spaceNames;
         _plants = plants;
       });
     } catch (e) {
@@ -58,6 +90,16 @@ class _CareScreenState extends State<CareScreen> {
     await NotificationService().scheduleWateringReminder(updated);
     if (!mounted) return;
     _load();
+  }
+
+  Future<void> _navigateToDetail(Plant plant) async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: plant)),
+    );
+    if (result == true && mounted) {
+      _load();
+    }
   }
 
   Widget _buildCareCard(Plant plant) {
@@ -80,12 +122,15 @@ class _CareScreenState extends State<CareScreen> {
           tooltip: 'Mark as watered',
           onPressed: () => _markWatered(plant),
         ),
+        onTap: () => _navigateToDetail(plant),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredPlants;
+
     return Scaffold(
       appBar: const FrostedAppBar(title: 'Care'),
       body: _plants.isEmpty
@@ -95,9 +140,25 @@ class _CareScreenState extends State<CareScreen> {
               message: 'Once you add plants with a watering schedule, '
                   "they'll show up here when they need attention.",
             )
-          : ListView.builder(
-              itemCount: _plants.length,
-              itemBuilder: (context, index) => _buildCareCard(_plants[index]),
+          : Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: TextField(
+                    controller: _searchController,
+                    decoration: const InputDecoration(
+                      hintText: 'Search all your plants',
+                      prefixIcon: Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder: (context, index) => _buildCareCard(filtered[index]),
+                  ),
+                ),
+              ],
             ),
     );
   }

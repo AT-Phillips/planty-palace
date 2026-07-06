@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/garden.dart';
 import '../models/plant.dart';
+import '../models/plant_photo.dart';
 import 'auth_service.dart';
 import 'photo_storage_service.dart';
 
@@ -29,6 +32,9 @@ class PlantRepository {
 
   CollectionReference<Map<String, dynamic>> get _careLog =>
       FirebaseFirestore.instance.collection('users').doc(_uid).collection('care_log');
+
+  CollectionReference<Map<String, dynamic>> _photos(String plantId) =>
+      _plants.doc(plantId).collection('photos');
 
   // --- Gardens ---
 
@@ -109,7 +115,50 @@ class PlantRepository {
       await doc.reference.delete();
     }
 
-    await PhotoStorageService().deletePlantPhoto(id);
+    await PhotoStorageService().deleteAllPhotosForPlant(id);
+  }
+
+  // --- Growth photo timeline ---
+
+  Future<List<PlantPhoto>> getPhotos(String plantId) async {
+    final snapshot = await _photos(plantId).orderBy('takenAt', descending: true).get();
+    return snapshot.docs.map((d) => PlantPhoto.fromMap(d.data(), id: d.id)).toList();
+  }
+
+  /// Uploads a new dated photo, adds it to the timeline, and makes it the
+  /// plant's cover photo (shown in list views) since it's the newest.
+  Future<PlantPhoto> addPhoto(String plantId, File file) async {
+    final doc = _photos(plantId).doc();
+    final takenAt = DateTime.now().toIso8601String();
+    final photoUrl = await PhotoStorageService().uploadTimelinePhoto(plantId, doc.id, file);
+    await doc.set({'photoUrl': photoUrl, 'takenAt': takenAt});
+    await _plants.doc(plantId).update({'photoUrl': photoUrl, 'imagePath': file.path});
+    return PlantPhoto(id: doc.id, photoUrl: photoUrl, takenAt: takenAt);
+  }
+
+  /// Deletes one timeline photo. If it was the current cover, the next most
+  /// recent remaining photo becomes the new cover (or the cover is cleared
+  /// if none remain).
+  Future<void> deletePhoto(String plantId, PlantPhoto photo) async {
+    await PhotoStorageService().deleteTimelinePhoto(plantId, photo.id);
+    await _photos(plantId).doc(photo.id).delete();
+
+    final plantDoc = await _plants.doc(plantId).get();
+    final currentCoverUrl = plantDoc.data()?['photoUrl'] as String?;
+    if (currentCoverUrl != photo.photoUrl) return;
+
+    final remaining = await getPhotos(plantId);
+    if (remaining.isEmpty) {
+      await _plants.doc(plantId).update({'photoUrl': null, 'imagePath': ''});
+    } else {
+      await _plants.doc(plantId).update({'photoUrl': remaining.first.photoUrl, 'imagePath': ''});
+    }
+  }
+
+  /// Sets an existing timeline photo as the cover without changing the
+  /// timeline itself.
+  Future<void> setCoverPhoto(String plantId, PlantPhoto photo) async {
+    await _plants.doc(plantId).update({'photoUrl': photo.photoUrl, 'imagePath': ''});
   }
 
   // --- Care log ---
