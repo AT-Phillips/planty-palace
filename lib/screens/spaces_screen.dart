@@ -167,10 +167,25 @@ class _SpacesScreenState extends State<SpacesScreen> {
       ),
     );
 
-    if (confirmed == true) {
-      await _repository.deleteGarden(space.id!);
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _spaces.removeWhere((s) => s.id == space.id));
+
+    final controller = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${space.name} deleted'),
+        action: SnackBarAction(label: 'Undo', onPressed: () {}),
+      ),
+    );
+
+    final reason = await controller.closed;
+    if (!mounted) return;
+    if (reason == SnackBarClosedReason.action) {
       _loadSpaces();
+      return;
     }
+
+    await _repository.deleteGarden(space.id!);
   }
 
   Widget _buildSpaceCard(Garden space) {

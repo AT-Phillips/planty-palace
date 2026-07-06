@@ -4,6 +4,7 @@ import '../models/plant.dart';
 // import '../services/home_widget_service.dart'; // widget disabled for now
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../utils/care_overdue.dart';
 import '../utils/fertilizing_status.dart';
 import '../utils/pruning_status.dart';
 import '../utils/repotting_status.dart';
@@ -38,6 +39,8 @@ class _CareScreenState extends State<CareScreen> {
   List<Plant> _plants = _cachedPlants ?? [];
   Map<String, String> _spaceNames = _cachedSpaceNames ?? {};
   String _query = '';
+  PlantSortOption _sortOption = PlantSortOption.urgency;
+  bool _overdueOnly = false;
 
   @override
   void initState() {
@@ -55,39 +58,23 @@ class _CareScreenState extends State<CareScreen> {
   }
 
   List<Plant> get _filteredPlants {
-    if (_query.isEmpty) return _plants;
-    return _plants
-        .where((p) =>
-            p.name.toLowerCase().contains(_query) || p.species.toLowerCase().contains(_query))
-        .toList();
-  }
-
-  /// The soonest due-in-days across watering/fertilizing/repotting/pruning
-  /// (whichever is more urgent), or null if none has a schedule set.
-  int? _mostUrgentDueIn(Plant plant) {
-    final candidates = [
-      daysUntilDue(plant),
-      daysUntilFertilizeDue(plant),
-      daysUntilRepotDue(plant),
-      daysUntilPruneDue(plant),
-    ].whereType<int>().toList();
-    if (candidates.isEmpty) return null;
-    return candidates.reduce((a, b) => a < b ? a : b);
+    final list = _plants.where((p) {
+      if (_query.isNotEmpty &&
+          !p.name.toLowerCase().contains(_query) &&
+          !p.species.toLowerCase().contains(_query)) {
+        return false;
+      }
+      if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
+      return true;
+    }).toList();
+    sortPlants(list, _sortOption);
+    return list;
   }
 
   Future<void> _load() async {
     try {
       final spaces = await _repository.getGardens();
       final plants = await _repository.getPlants();
-
-      plants.sort((a, b) {
-        final aDue = _mostUrgentDueIn(a);
-        final bDue = _mostUrgentDueIn(b);
-        if (aDue == null && bDue == null) return 0;
-        if (aDue == null) return 1;
-        if (bDue == null) return -1;
-        return aDue.compareTo(bDue);
-      });
 
       final spaceNames = {for (final s in spaces) s.id!: s.name};
       _cachedPlants = plants;
@@ -161,6 +148,48 @@ class _CareScreenState extends State<CareScreen> {
         await _markPruned(plant);
         break;
     }
+  }
+
+  String _sortLabel(PlantSortOption option) {
+    switch (option) {
+      case PlantSortOption.name:
+        return 'Name';
+      case PlantSortOption.dateAdded:
+        return 'Date added';
+      case PlantSortOption.urgency:
+        return 'Most urgent';
+    }
+  }
+
+  Widget _buildFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('Overdue only'),
+            selected: _overdueOnly,
+            onSelected: (value) => setState(() => _overdueOnly = value),
+          ),
+          const Spacer(),
+          PopupMenuButton<PlantSortOption>(
+            initialValue: _sortOption,
+            onSelected: (option) => setState(() => _sortOption = option),
+            itemBuilder: (context) => PlantSortOption.values
+                .map((option) => PopupMenuItem(value: option, child: Text(_sortLabel(option))))
+                .toList(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.sort, size: 18),
+                const SizedBox(width: 4),
+                Text(_sortLabel(_sortOption)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildCareCard(Plant plant) {
@@ -244,11 +273,20 @@ class _CareScreenState extends State<CareScreen> {
                     hintText: 'Search all your plants',
                   ),
                 ),
+                _buildFilterBar(),
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) => _buildCareCard(filtered[index]),
-                  ),
+                  child: filtered.isEmpty
+                      ? EmptyState(
+                          icon: Icons.filter_alt_off_outlined,
+                          title: 'No matching plants',
+                          message: _overdueOnly
+                              ? 'Nothing is overdue right now.'
+                              : 'Try a different search.',
+                        )
+                      : ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) => _buildCareCard(filtered[index]),
+                        ),
                 ),
               ],
             ),

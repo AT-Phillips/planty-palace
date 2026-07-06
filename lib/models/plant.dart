@@ -6,6 +6,7 @@ class Plant {
   final String? photoUrl;
   final String careInstructions;
   final String? gardenId;
+  final String? createdAt;
   final String? lastWatered;
   final int? wateringIntervalDays;
   final String? lastFertilized;
@@ -23,6 +24,7 @@ class Plant {
     this.photoUrl,
     required this.careInstructions,
     this.gardenId,
+    this.createdAt,
     this.lastWatered,
     this.wateringIntervalDays,
     this.lastFertilized,
@@ -41,6 +43,7 @@ class Plant {
       'photoUrl': photoUrl,
       'careInstructions': careInstructions,
       'gardenId': gardenId,
+      'createdAt': createdAt,
       'lastWatered': lastWatered,
       'wateringIntervalDays': wateringIntervalDays,
       'lastFertilized': lastFertilized,
@@ -61,6 +64,10 @@ class Plant {
       photoUrl: map['photoUrl'],
       careInstructions: map['careInstructions'] ?? '',
       gardenId: map['gardenId'],
+      // Older plants created before this field existed don't have it - fall
+      // back to lastWatered (set to "now" at creation time historically) so
+      // sort-by-date-added still puts them in a sensible position.
+      createdAt: map['createdAt'] ?? map['lastWatered'],
       lastWatered: map['lastWatered'],
       wateringIntervalDays: map['wateringIntervalDays'],
       lastFertilized: map['lastFertilized'],
@@ -80,6 +87,7 @@ class Plant {
     String? photoUrl,
     String? careInstructions,
     String? gardenId,
+    String? createdAt,
     String? lastWatered,
     int? wateringIntervalDays,
     String? lastFertilized,
@@ -97,6 +105,7 @@ class Plant {
       photoUrl: photoUrl ?? this.photoUrl,
       careInstructions: careInstructions ?? this.careInstructions,
       gardenId: gardenId ?? this.gardenId,
+      createdAt: createdAt ?? this.createdAt,
       lastWatered: lastWatered ?? this.lastWatered,
       wateringIntervalDays: wateringIntervalDays ?? this.wateringIntervalDays,
       lastFertilized: lastFertilized ?? this.lastFertilized,

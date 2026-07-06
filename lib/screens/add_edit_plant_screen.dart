@@ -205,6 +205,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         photoUrl: widget.plant?.photoUrl,
         careInstructions: careInstructionsController.text,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
+        createdAt: widget.plant?.createdAt ?? DateTime.now().toIso8601String(),
         lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
         wateringIntervalDays: wateringIntervalDays,
         lastFertilized: widget.plant?.lastFertilized ??

@@ -4,6 +4,7 @@ import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../utils/care_overdue.dart';
 import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
@@ -27,6 +28,8 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Plant> _plants = [];
   String _query = '';
+  PlantSortOption _sortOption = PlantSortOption.name;
+  bool _overdueOnly = false;
 
   @override
   void initState() {
@@ -44,11 +47,17 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   List<Plant> get _filteredPlants {
-    if (_query.isEmpty) return _plants;
-    return _plants
-        .where((p) =>
-            p.name.toLowerCase().contains(_query) || p.species.toLowerCase().contains(_query))
-        .toList();
+    final list = _plants.where((p) {
+      if (_query.isNotEmpty &&
+          !p.name.toLowerCase().contains(_query) &&
+          !p.species.toLowerCase().contains(_query)) {
+        return false;
+      }
+      if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
+      return true;
+    }).toList();
+    sortPlants(list, _sortOption);
+    return list;
   }
 
   Future<void> _loadPlants() async {
@@ -92,10 +101,66 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   Future<void> _deletePlant(Plant plant) async {
+    setState(() => _plants.removeWhere((p) => p.id == plant.id));
+
+    final controller = ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('${plant.name} deleted'),
+        action: SnackBarAction(label: 'Undo', onPressed: () {}),
+      ),
+    );
+
+    final reason = await controller.closed;
+    if (!mounted) return;
+    if (reason == SnackBarClosedReason.action) {
+      _loadPlants();
+      return;
+    }
+
     await _repository.deletePlant(plant.id!);
     await NotificationService().cancelReminder(plant.id!);
-    if (!mounted) return;
-    setState(() => _plants.removeWhere((p) => p.id == plant.id));
+  }
+
+  String _sortLabel(PlantSortOption option) {
+    switch (option) {
+      case PlantSortOption.name:
+        return 'Name';
+      case PlantSortOption.dateAdded:
+        return 'Date added';
+      case PlantSortOption.urgency:
+        return 'Most urgent';
+    }
+  }
+
+  Widget _buildFilterBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Row(
+        children: [
+          FilterChip(
+            label: const Text('Overdue only'),
+            selected: _overdueOnly,
+            onSelected: (value) => setState(() => _overdueOnly = value),
+          ),
+          const Spacer(),
+          PopupMenuButton<PlantSortOption>(
+            initialValue: _sortOption,
+            onSelected: (option) => setState(() => _sortOption = option),
+            itemBuilder: (context) => PlantSortOption.values
+                .map((option) => PopupMenuItem(value: option, child: Text(_sortLabel(option))))
+                .toList(),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.sort, size: 18),
+                const SizedBox(width: 4),
+                Text(_sortLabel(_sortOption)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildPlantCard(Plant plant) {
@@ -160,11 +225,20 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
                     hintText: 'Search this Space',
                   ),
                 ),
+                _buildFilterBar(),
                 Expanded(
-                  child: ListView.builder(
-                    itemCount: filtered.length,
-                    itemBuilder: (context, index) => _buildPlantCard(filtered[index]),
-                  ),
+                  child: filtered.isEmpty
+                      ? EmptyState(
+                          icon: Icons.filter_alt_off_outlined,
+                          title: 'No matching plants',
+                          message: _overdueOnly
+                              ? 'Nothing is overdue right now.'
+                              : 'Try a different search.',
+                        )
+                      : ListView.builder(
+                          itemCount: filtered.length,
+                          itemBuilder: (context, index) => _buildPlantCard(filtered[index]),
+                        ),
                 ),
               ],
             ),
