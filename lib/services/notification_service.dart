@@ -7,6 +7,7 @@ import 'package:timezone/timezone.dart' as tz;
 import '../models/plant.dart';
 import '../utils/stable_id.dart';
 import 'notification_preferences.dart';
+import 'plant_repository.dart';
 
 /// Schedules local "time to water" reminders.
 ///
@@ -49,6 +50,7 @@ class NotificationService {
   Future<void> scheduleWateringReminder(Plant plant) async {
     if (Platform.isWindows) return;
     if (!_initialized) return;
+    if (!NotificationPreferences.instance.enabled.value) return;
 
     final plantId = plant.id;
     final lastWatered = plant.lastWatered;
@@ -96,5 +98,21 @@ class NotificationService {
   Future<void> cancelReminder(String plantId) async {
     if (Platform.isWindows) return;
     await _plugin.cancel(stableNotificationId(plantId));
+  }
+
+  /// Re-syncs every plant's reminder against the current reminder time and
+  /// enabled/disabled state - schedules all of them if enabled, cancels all
+  /// of them if disabled. Called whenever either setting changes.
+  Future<void> refreshAllReminders() async {
+    final plants = await PlantRepository().getPlants();
+    if (NotificationPreferences.instance.enabled.value) {
+      for (final plant in plants) {
+        await scheduleWateringReminder(plant);
+      }
+    } else {
+      for (final plant in plants) {
+        await cancelReminder(plant.id!);
+      }
+    }
   }
 }

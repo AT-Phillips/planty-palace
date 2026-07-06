@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 
+import 'location_preferences.dart';
+
 class WeatherInfo {
   final double tempCelsius;
   final String condition;
@@ -29,11 +31,11 @@ class WeatherService {
     if (_apiKey.isEmpty) return null;
 
     try {
-      final position = await _getCurrentPosition();
-      if (position == null) return null;
+      final coordinates = await _resolveCoordinates();
+      if (coordinates == null) return null;
 
       final uri = Uri.parse(
-        '$_baseUrl?lat=${position.latitude}&lon=${position.longitude}'
+        '$_baseUrl?lat=${coordinates.$1}&lon=${coordinates.$2}'
         '&appid=$_apiKey&units=metric',
       );
       final response = await http.get(uri);
@@ -53,6 +55,19 @@ class WeatherService {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<(double, double)?> _resolveCoordinates() async {
+    final prefs = LocationPreferences.instance;
+    if (!prefs.useGps.value) {
+      final lat = prefs.manualLat.value;
+      final lon = prefs.manualLon.value;
+      if (lat != null && lon != null) return (lat, lon);
+    }
+
+    final position = await _getCurrentPosition();
+    if (position == null) return null;
+    return (position.latitude, position.longitude);
   }
 
   Future<Position?> _getCurrentPosition() async {

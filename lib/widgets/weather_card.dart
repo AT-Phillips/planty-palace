@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/unit_preferences.dart';
 import '../services/weather_preferences.dart';
 import '../services/weather_service.dart';
 
@@ -69,10 +70,10 @@ class _WeatherCardState extends State<WeatherCard> {
         final weather = _weather!;
 
         return ValueListenableBuilder<bool>(
-          valueListenable: WeatherPreferences.instance.useCelsius,
-          builder: (context, celsius, _) {
-            final temp = celsius ? weather.tempCelsius : weather.tempFahrenheit;
-            final unit = celsius ? '°C' : '°F';
+          valueListenable: UnitPreferences.instance.useMetric,
+          builder: (context, useMetric, _) {
+            final temp = useMetric ? weather.tempCelsius : weather.tempFahrenheit;
+            final unit = useMetric ? '°C' : '°F';
 
             return Card(
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),

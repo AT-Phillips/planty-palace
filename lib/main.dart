@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'screens/main_shell.dart';
-import 'services/plant_repository.dart';
 import 'services/auth_service.dart';
+import 'services/location_preferences.dart';
 import 'services/notification_preferences.dart';
 import 'services/notification_service.dart';
 import 'services/theme_controller.dart';
+import 'services/unit_preferences.dart';
 import 'services/weather_preferences.dart';
 import 'styles/app_theme.dart';
 import 'utils/app_scroll_behavior.dart';
@@ -34,12 +35,12 @@ void main() async {
   await ThemeController.instance.load();
   await NotificationPreferences.instance.load();
   await WeatherPreferences.instance.load();
-  NotificationPreferences.instance.onReminderTimeChanged = () async {
-    final plants = await PlantRepository().getPlants();
-    for (final plant in plants) {
-      await NotificationService().scheduleWateringReminder(plant);
-    }
-  };
+  await UnitPreferences.instance.load();
+  await LocationPreferences.instance.load();
+  NotificationPreferences.instance.onReminderTimeChanged =
+      () => NotificationService().refreshAllReminders();
+  NotificationPreferences.instance.onEnabledChanged =
+      () => NotificationService().refreshAllReminders();
 
   runApp(const ThicketApp());
 }
@@ -52,13 +53,19 @@ class ThicketApp extends StatelessWidget {
     return ValueListenableBuilder<ThemeMode>(
       valueListenable: ThemeController.instance.themeMode,
       builder: (context, mode, _) {
-        return MaterialApp(
-          title: 'Thicket',
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: mode,
-          scrollBehavior: AppScrollBehavior(),
-          home: const MainShell(),
+        return ValueListenableBuilder<int>(
+          valueListenable: ThemeController.instance.accentColorIndex,
+          builder: (context, accentIndex, _) {
+            final seedColor = ThemeController.accentColors[accentIndex];
+            return MaterialApp(
+              title: 'Thicket',
+              theme: AppTheme.lightTheme(seedColor: seedColor),
+              darkTheme: AppTheme.darkTheme(seedColor: seedColor),
+              themeMode: mode,
+              scrollBehavior: AppScrollBehavior(),
+              home: const MainShell(),
+            );
+          },
         );
       },
     );

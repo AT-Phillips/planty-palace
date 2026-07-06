@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  static const Color seedColor = Color(0xFF2E6B4F); // deep, considered sage green
+  static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
   static const double radius = 20.0;
 
-  static ThemeData get lightTheme => _themeFor(Brightness.light);
-  static ThemeData get darkTheme => _themeFor(Brightness.dark);
+  static ThemeData lightTheme({Color seedColor = defaultSeedColor}) =>
+      _themeFor(Brightness.light, seedColor);
+  static ThemeData darkTheme({Color seedColor = defaultSeedColor}) =>
+      _themeFor(Brightness.dark, seedColor);
 
   // Material 3's auto-generated dark tonal palette keeps surface and its
   // "container" tiers too close together to read as distinct layers (a
@@ -18,7 +20,13 @@ class AppTheme {
   static const _darkCard = Color(0xFF1C2A22);
   static const _darkInputFill = Color(0xFF2A3931);
 
-  static ThemeData _themeFor(Brightness brightness) {
+  // Material 3's light seed-generated surface lands essentially at pure
+  // white, which reads as stark/clinical for a plant-care app. A subtle
+  // warm off-white keeps the light theme soft without darkening it enough
+  // to look muddy.
+  static const _lightBackground = Color(0xFFF6F7F2);
+
+  static ThemeData _themeFor(Brightness brightness, Color seedColor) {
     var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
@@ -28,6 +36,8 @@ class AppTheme {
         surface: _darkBackground,
         surfaceContainerHighest: _darkInputFill,
       );
+    } else {
+      colorScheme = colorScheme.copyWith(surface: _lightBackground);
     }
     final baseTextTheme = brightness == Brightness.dark
         ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
