@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/plant.dart';
+import '../services/home_widget_service.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../utils/fertilizing_status.dart';
@@ -100,6 +101,7 @@ class _CareScreenState extends State<CareScreen> {
     await _repository.markWatered(plant.id!);
     final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
     await NotificationService().scheduleWateringReminder(updated);
+    HomeWidgetService().refresh();
     if (!mounted) return;
     _load();
   }
@@ -108,6 +110,7 @@ class _CareScreenState extends State<CareScreen> {
     await _repository.markFertilized(plant.id!);
     final updated = plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
     await NotificationService().scheduleFertilizingReminder(updated);
+    HomeWidgetService().refresh();
     if (!mounted) return;
     _load();
   }

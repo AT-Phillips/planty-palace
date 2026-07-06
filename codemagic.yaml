@@ -8,7 +8,9 @@ workflows:
     environment:
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: com.austinphillips.thicket
+        bundle_identifier:
+          - com.austinphillips.thicket
+          - com.austinphillips.thicket.widget
       groups:
         - plantnet
         - perenual
@@ -17,11 +19,15 @@ workflows:
       xcode: latest
       cocoapods: default
     scripts:
+      - name: Get Flutter packages
+        script: flutter packages pub get
+      - name: Add ThicketWidgetExtension target to Xcode project
+        script: |
+          gem list -i xcodeproj || gem install xcodeproj
+          ruby ios/scripts/add_widget_target.rb
       - name: Set up code signing settings on Xcode project
         script: |
           xcode-project use-profiles --custom-export-options='{"testFlightInternalTestingOnly": true}'
-      - name: Get Flutter packages
-        script: flutter packages pub get
       - name: Install CocoaPods dependencies
         script: |
           find . -name "Podfile" -maxdepth 2 -execdir pod install \;

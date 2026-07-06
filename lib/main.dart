@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'firebase_options.dart';
 import 'screens/main_shell.dart';
 import 'services/auth_service.dart';
+import 'services/home_widget_service.dart';
 import 'services/location_preferences.dart';
 import 'services/notification_preferences.dart';
 import 'services/notification_service.dart';
@@ -41,6 +42,13 @@ void main() async {
       () => NotificationService().refreshAllReminders();
   NotificationPreferences.instance.onEnabledChanged =
       () => NotificationService().refreshAllReminders();
+
+  if (Platform.isAndroid || Platform.isIOS) {
+    HomeWidgetService().refresh();
+    AppLifecycleListener(
+      onResume: () => HomeWidgetService().refresh(),
+    );
+  }
 
   runApp(const ThicketApp());
 }
