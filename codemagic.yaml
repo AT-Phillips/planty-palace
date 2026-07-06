@@ -9,10 +9,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.austinphillips.thicket
-      groups:
-        - plantnet
-        - perenual
-        - openweather
       flutter: stable
       xcode: latest
       cocoapods: default
@@ -35,9 +31,6 @@ workflows:
       - name: Flutter build ipa
         script: |
           flutter build ipa --release \
-            --dart-define=PLANTNET_API_KEY=$PLANTNET_API_KEY \
-            --dart-define=PERENUAL_API_KEY=$PERENUAL_API_KEY \
-            --dart-define=OPENWEATHER_API_KEY=$OPENWEATHER_API_KEY \
             --export-options-plist=/Users/builder/export_options.plist
     artifacts:
       - build/ios/ipa/*.ipa

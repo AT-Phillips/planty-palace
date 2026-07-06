@@ -1,1 +1,34 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"planty-palace","appId":"1:559764786171:android:15f004e6f10a75b919995e","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"planty-palace","configurations":{"android":"1:559764786171:android:15f004e6f10a75b919995e","ios":"1:559764786171:ios:d51af209abb73d5819995e"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "planty-palace",
+          "appId": "1:559764786171:android:15f004e6f10a75b919995e",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "planty-palace",
+          "configurations": {
+            "android": "1:559764786171:android:15f004e6f10a75b919995e",
+            "ios": "1:559764786171:ios:d51af209abb73d5819995e"
+          }
+        }
+      }
+    }
+  },
+  "functions": {
+    "source": "functions",
+    "predeploy": ["npm --prefix \"$RESOURCE_DIR\" run build"]
+  },
+  "emulators": {
+    "functions": {
+      "port": 5001
+    },
+    "firestore": {
+      "port": 8080
+    }
+  }
+}

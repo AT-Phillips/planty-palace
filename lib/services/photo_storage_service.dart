@@ -82,9 +82,21 @@ class PhotoStorageService {
       return localFile;
     }
 
-    final response = await http.get(Uri.parse(photoUrl));
-    if (response.statusCode != 200) {
-      throw Exception('Failed to download photo: ${response.statusCode}');
+    // One short retry on transient failures (dropped connection, brief
+    // server hiccup) before giving up - cheap reliability improvement for
+    // something that otherwise fails permanently on the first blip.
+    http.Response? response;
+    for (var attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await http.get(Uri.parse(photoUrl));
+        if (response.statusCode == 200) break;
+      } catch (_) {
+        if (attempt == 1) rethrow;
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+    }
+    if (response == null || response.statusCode != 200) {
+      throw Exception('Failed to download photo: ${response?.statusCode}');
     }
     await localFile.writeAsBytes(response.bodyBytes);
     return localFile;

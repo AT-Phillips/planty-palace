@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:io';
+
+import 'package:cloud_functions/cloud_functions.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:http/http.dart' as http;
-import 'package:http_parser/http_parser.dart';
-import 'package:mime/mime.dart';
-import 'package:path/path.dart';
+
+import 'auth_service.dart';
 
 /// One candidate match from an identification request, ranked by [score]
 /// (PlantNet's own confidence, 0.0-1.0).
@@ -18,11 +18,21 @@ class PlantSuggestion {
     required this.commonName,
     required this.score,
   });
+
+  factory PlantSuggestion.fromMap(Map<String, dynamic> map) {
+    return PlantSuggestion(
+      scientificName: map['scientificName'] as String,
+      commonName: map['commonName'] as String?,
+      score: (map['score'] as num?)?.toDouble() ?? 0.0,
+    );
+  }
 }
 
+/// Identifies a plant from a photo via the `identifyPlant` Cloud Function
+/// (see functions/src/identify.ts), which holds the real PlantNet API key
+/// server-side and enforces a per-user daily cap - rather than calling
+/// PlantNet directly with a key embedded in the client.
 class PlantIdentifierService {
-  static const _apiKey = String.fromEnvironment('PLANTNET_API_KEY');
-
   final ImagePicker _picker = ImagePicker();
 
   File? imageFile;
@@ -55,49 +65,29 @@ class PlantIdentifierService {
     final file = imageFile;
     if (file == null) return [];
 
-    if (_apiKey.isEmpty) {
-      throw Exception(
-        'Missing PlantNet API key. Run with --dart-define=PLANTNET_API_KEY=<key>.',
-      );
+    final uid = AuthService.instance.currentUser?.uid;
+    if (uid == null) {
+      throw Exception('No signed-in user - sign-in must complete before identifying a plant.');
     }
 
-    final uri = Uri.parse(
-      'https://my-api.plantnet.org/v2/identify/all?api-key=$_apiKey',
-    );
-    final mimeType = lookupMimeType(file.path) ?? 'image/jpeg';
+    final tempPath = 'identify_temp/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final ref = FirebaseStorage.instance.ref(tempPath);
+    await ref.putFile(file);
 
-    final request = http.MultipartRequest('POST', uri)
-      ..fields['organs'] = organ
-      ..files.add(await http.MultipartFile.fromPath(
-        'images',
-        file.path,
-        contentType: MediaType.parse(mimeType),
-        filename: basename(file.path),
-      ));
-
-    final response = await request.send();
-    final responseBody = await response.stream.bytesToString();
-
-    if (response.statusCode == 200) {
-      final data = json.decode(responseBody);
-      final results = data['results'] as List;
-
-      final suggestions = results.map((r) {
-        final species = r['species'] as Map<String, dynamic>;
-        final commonNames = species['commonNames'] as List?;
-        return PlantSuggestion(
-          scientificName: species['scientificNameWithoutAuthor'].toString(),
-          commonName: (commonNames != null && commonNames.isNotEmpty)
-              ? commonNames.first.toString()
-              : null,
-          score: (r['score'] as num?)?.toDouble() ?? 0.0,
-        );
-      }).toList();
-
-      suggestions.sort((a, b) => b.score.compareTo(a.score));
-      return suggestions.take(5).toList();
-    } else {
-      throw Exception('Failed to identify plant: ${response.statusCode}');
+    try {
+      final result = await FirebaseFunctions.instance.httpsCallable('identifyPlant').call({
+        'imagePath': tempPath,
+        'organ': organ,
+      });
+      final data = result.data as List;
+      return data
+          .map((entry) => PlantSuggestion.fromMap(Map<String, dynamic>.from(entry)))
+          .toList();
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'resource-exhausted') {
+        throw Exception(e.message ?? 'Daily identification limit reached. Try again tomorrow.');
+      }
+      throw Exception(e.message ?? 'Failed to identify plant.');
     }
   }
 }

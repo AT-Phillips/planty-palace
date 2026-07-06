@@ -1,7 +1,5 @@
-import 'dart:convert';
-
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:http/http.dart' as http;
 
 import 'location_preferences.dart';
 
@@ -17,41 +15,35 @@ class WeatherInfo {
   });
 
   double get tempFahrenheit => tempCelsius * 9 / 5 + 32;
+
+  factory WeatherInfo.fromMap(Map<String, dynamic> map) {
+    return WeatherInfo(
+      tempCelsius: (map['tempCelsius'] as num).toDouble(),
+      condition: map['condition'] as String? ?? '',
+      iconCode: map['iconCode'] as String? ?? '',
+    );
+  }
 }
 
-/// Fetches current local weather from OpenWeatherMap using the device's GPS
-/// location, for plant-care context. Purely additive - any failure (denied
-/// permission, no signal, network error, missing API key) returns null and
-/// the caller just hides the weather card, never shows an error.
+/// Fetches current local weather for plant-care context, via the
+/// `fetchWeather` Cloud Function (see functions/src/weather.ts), which
+/// holds the real OpenWeatherMap API key server-side and serves a shared
+/// Firestore cache keyed by a coarse location grid - rather than calling
+/// OpenWeatherMap directly with a key embedded in the client. Purely
+/// additive - any failure (denied permission, no signal, network error)
+/// returns null and the caller just hides the weather card, never shows an
+/// error.
 class WeatherService {
-  static const _apiKey = String.fromEnvironment('OPENWEATHER_API_KEY');
-  static const _baseUrl = 'https://api.openweathermap.org/data/2.5/weather';
-
   Future<WeatherInfo?> fetchCurrentWeather() async {
-    if (_apiKey.isEmpty) return null;
-
     try {
       final coordinates = await _resolveCoordinates();
       if (coordinates == null) return null;
 
-      final uri = Uri.parse(
-        '$_baseUrl?lat=${coordinates.$1}&lon=${coordinates.$2}'
-        '&appid=$_apiKey&units=metric',
-      );
-      final response = await http.get(uri);
-      if (response.statusCode != 200) return null;
-
-      final data = json.decode(response.body) as Map<String, dynamic>;
-      final main = data['main'] as Map<String, dynamic>?;
-      final weatherList = data['weather'] as List?;
-      if (main == null || weatherList == null || weatherList.isEmpty) return null;
-
-      final weather = weatherList.first as Map<String, dynamic>;
-      return WeatherInfo(
-        tempCelsius: (main['temp'] as num).toDouble(),
-        condition: (weather['main'] as String?) ?? '',
-        iconCode: (weather['icon'] as String?) ?? '',
-      );
+      final result = await FirebaseFunctions.instance.httpsCallable('fetchWeather').call({
+        'lat': coordinates.$1,
+        'lon': coordinates.$2,
+      });
+      return WeatherInfo.fromMap(Map<String, dynamic>.from(result.data as Map));
     } catch (_) {
       return null;
     }

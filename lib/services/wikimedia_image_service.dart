@@ -28,8 +28,19 @@ class WikimediaImageService {
         '&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=500'
         '&format=json&origin=*',
       );
-      final response = await http.get(uri);
-      if (response.statusCode != 200) return null;
+
+      // One short retry on transient failures before giving up.
+      http.Response? response;
+      for (var attempt = 0; attempt < 2; attempt++) {
+        try {
+          response = await http.get(uri);
+          if (response.statusCode == 200) break;
+        } catch (_) {
+          if (attempt == 1) rethrow;
+          await Future.delayed(const Duration(milliseconds: 500));
+        }
+      }
+      if (response == null || response.statusCode != 200) return null;
 
       final data = json.decode(response.body) as Map<String, dynamic>;
       final pages = data['query']?['pages'] as Map<String, dynamic>?;
