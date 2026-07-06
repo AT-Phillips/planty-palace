@@ -112,9 +112,71 @@ class _SpacesScreenState extends State<SpacesScreen> {
     }
   }
 
+  Future<void> _editSpace(Garden space) async {
+    final controller = TextEditingController(text: space.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Space'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'e.g. Living Room'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (name != null && name.isNotEmpty && name != space.name) {
+      await _repository.updateGarden(Garden(id: space.id, name: name));
+      _loadSpaces();
+    }
+  }
+
+  Future<void> _deleteSpace(Garden space) async {
+    final count = _plantCounts[space.id] ?? 0;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Space?'),
+        content: Text(
+          count > 0
+              ? 'This deletes "${space.name}". Its $count plant${count == 1 ? '' : 's'} '
+                  'will move to ${PlantRepository.defaultGardenName} instead of being deleted.'
+              : 'This deletes "${space.name}".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await _repository.deleteGarden(space.id!);
+      _loadSpaces();
+    }
+  }
+
   Widget _buildSpaceCard(Garden space) {
     final scheme = Theme.of(context).colorScheme;
     final count = _plantCounts[space.id] ?? 0;
+    final isDefault = space.name == PlantRepository.defaultGardenName;
 
     return Card(
       child: ListTile(
@@ -126,7 +188,17 @@ class _SpacesScreenState extends State<SpacesScreen> {
         ),
         title: Text(space.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text('$count plant${count == 1 ? '' : 's'}'),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (action) {
+            if (action == 'edit') _editSpace(space);
+            if (action == 'delete') _deleteSpace(space);
+          },
+          itemBuilder: (context) => [
+            const PopupMenuItem(value: 'edit', child: Text('Rename')),
+            if (!isDefault) const PopupMenuItem(value: 'delete', child: Text('Delete')),
+          ],
+        ),
         onTap: () => _navigateToSpace(space),
       ),
     );

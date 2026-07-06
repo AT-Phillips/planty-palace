@@ -16,7 +16,7 @@ import 'photo_storage_service.dart';
 /// account. Firestore's client SDK has built-in offline caching, so this is
 /// the single source of truth - there's no separate local database anymore.
 class PlantRepository {
-  static const _defaultGardenName = 'My Plants';
+  static const defaultGardenName = 'My Plants';
 
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
@@ -81,11 +81,11 @@ class PlantRepository {
 
   Future<String> getOrCreateDefaultGardenId() async {
     final existing =
-        await _gardens.where('name', isEqualTo: _defaultGardenName).limit(1).get();
+        await _gardens.where('name', isEqualTo: defaultGardenName).limit(1).get();
     if (existing.docs.isNotEmpty) {
       return existing.docs.first.id;
     }
-    final doc = await _gardens.add({'name': _defaultGardenName});
+    final doc = await _gardens.add({'name': defaultGardenName});
     return doc.id;
   }
 
