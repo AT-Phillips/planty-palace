@@ -41,8 +41,15 @@ class WeatherCard extends StatefulWidget {
 
 class _WeatherCardState extends State<WeatherCard> {
   final WeatherService _service = WeatherService();
-  WeatherInfo? _weather;
-  bool _loading = true;
+
+  // MainShell rebuilds each tab fresh on every switch (not an IndexedStack),
+  // so this State is recreated every time Spaces is shown - seeding from the
+  // last successful fetch avoids a flash of "hidden" while the new fetch is
+  // in flight.
+  static WeatherInfo? _cachedWeather;
+
+  WeatherInfo? _weather = _cachedWeather;
+  bool _loading = _cachedWeather == null;
 
   @override
   void initState() {
@@ -52,6 +59,7 @@ class _WeatherCardState extends State<WeatherCard> {
 
   Future<void> _load() async {
     final weather = await _service.fetchCurrentWeather();
+    _cachedWeather = weather;
     if (!mounted) return;
     setState(() {
       _weather = weather;
