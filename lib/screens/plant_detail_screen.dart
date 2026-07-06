@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/care_log_entry.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
-import '../services/home_widget_service.dart';
+// import '../services/home_widget_service.dart'; // widget disabled for now
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../utils/fertilizing_status.dart';
@@ -59,7 +59,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     await _repository.markWatered(_plant.id!);
     final updated = _plant.copyWith(lastWatered: DateTime.now().toIso8601String());
     await NotificationService().scheduleWateringReminder(updated);
-    HomeWidgetService().refresh();
+    // HomeWidgetService().refresh(); // widget disabled for now
     if (!mounted) return;
     setState(() => _plant = updated);
     _load();
@@ -69,7 +69,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     await _repository.markFertilized(_plant.id!);
     final updated = _plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
     await NotificationService().scheduleFertilizingReminder(updated);
-    HomeWidgetService().refresh();
+    // HomeWidgetService().refresh(); // widget disabled for now
     if (!mounted) return;
     setState(() => _plant = updated);
     _load();
