@@ -11,7 +11,18 @@ import 'add_edit_plant_screen.dart';
 class SpeciesDetailScreen extends StatelessWidget {
   final PerenualSpeciesDetail species;
 
-  const SpeciesDetailScreen({super.key, required this.species});
+  /// Shown only when Perenual had no image for this species - sourced from
+  /// Wikimedia Commons (see [WikimediaImageService]), which requires visible
+  /// attribution as a condition of the image's license.
+  final String? fallbackImageUrl;
+  final String? fallbackImageAttribution;
+
+  const SpeciesDetailScreen({
+    super.key,
+    required this.species,
+    this.fallbackImageUrl,
+    this.fallbackImageAttribution,
+  });
 
   Future<void> _addToMyPlants(BuildContext context) async {
     final gardenId = await PlantRepository().getOrCreateDefaultGardenId();
@@ -38,23 +49,33 @@ class SpeciesDetailScreen extends StatelessWidget {
         species.family != null ||
         species.poisonousToHumans != null ||
         species.poisonousToPets != null;
+    final displayImageUrl = species.imageUrl ?? fallbackImageUrl;
+    final usingFallbackImage = species.imageUrl == null && fallbackImageUrl != null;
 
     return Scaffold(
       appBar: FrostedAppBar(title: species.commonName ?? species.scientificName),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (species.imageUrl != null)
+          if (displayImageUrl != null) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(20),
               child: Image.network(
-                species.imageUrl!,
+                displayImageUrl,
                 height: 220,
                 width: double.infinity,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
+            if (usingFallbackImage && fallbackImageAttribution != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Photo: $fallbackImageAttribution',
+                style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+              ),
+            ],
+          ],
           const SizedBox(height: 16),
           Text(
             species.scientificName,

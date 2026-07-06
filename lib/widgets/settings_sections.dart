@@ -192,7 +192,6 @@ class SettingsSections extends StatelessWidget {
             );
           },
         ),
-        _sectionHeader(context, 'Location'),
         ValueListenableBuilder<bool>(
           valueListenable: LocationPreferences.instance.useGps,
           builder: (context, useGps, _) {
@@ -215,13 +214,13 @@ class SettingsSections extends StatelessWidget {
             );
           },
         ),
-        _sectionHeader(context, 'Weather'),
         ValueListenableBuilder<bool>(
           valueListenable: WeatherPreferences.instance.enabled,
           builder: (context, enabled, _) {
             return Card(
               margin: const EdgeInsets.symmetric(horizontal: 16),
               child: SwitchListTile(
+                secondary: const Icon(Icons.wb_sunny_outlined),
                 title: const Text('Show local weather'),
                 subtitle: const Text('Displayed at the top of My Spaces'),
                 value: enabled,
@@ -230,7 +229,6 @@ class SettingsSections extends StatelessWidget {
             );
           },
         ),
-        _sectionHeader(context, 'Language'),
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           child: ListTile(
@@ -240,7 +238,6 @@ class SettingsSections extends StatelessWidget {
             onTap: () => _showComingSoon(context, 'More languages'),
           ),
         ),
-        _sectionHeader(context, 'Subscription'),
         Card(
           margin: const EdgeInsets.symmetric(horizontal: 16),
           child: ListTile(

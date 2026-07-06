@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/perenual_service.dart';
+import '../services/wikimedia_image_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
@@ -67,9 +68,22 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _openSpecies(PerenualSpeciesSummary summary) async {
     final detail = await _service.fetchSpeciesDetail(summary.id);
     if (!mounted || detail == null) return;
+
+    WikimediaImage? fallbackImage;
+    if (detail.imageUrl == null) {
+      fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
+    }
+    if (!mounted) return;
+
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => SpeciesDetailScreen(species: detail)),
+      MaterialPageRoute(
+        builder: (_) => SpeciesDetailScreen(
+          species: detail,
+          fallbackImageUrl: fallbackImage?.url,
+          fallbackImageAttribution: fallbackImage?.attribution,
+        ),
+      ),
     );
   }
 
