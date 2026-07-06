@@ -5,6 +5,8 @@ import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../utils/fertilizing_status.dart';
+import '../utils/pruning_status.dart';
+import '../utils/repotting_status.dart';
 import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
@@ -60,14 +62,17 @@ class _CareScreenState extends State<CareScreen> {
         .toList();
   }
 
-  /// The sooner of watering/fertilizing due-in-days (whichever is more
-  /// urgent), or null if neither has a schedule set.
+  /// The soonest due-in-days across watering/fertilizing/repotting/pruning
+  /// (whichever is more urgent), or null if none has a schedule set.
   int? _mostUrgentDueIn(Plant plant) {
-    final watering = daysUntilDue(plant);
-    final fertilizing = daysUntilFertilizeDue(plant);
-    if (watering == null) return fertilizing;
-    if (fertilizing == null) return watering;
-    return watering < fertilizing ? watering : fertilizing;
+    final candidates = [
+      daysUntilDue(plant),
+      daysUntilFertilizeDue(plant),
+      daysUntilRepotDue(plant),
+      daysUntilPruneDue(plant),
+    ].whereType<int>().toList();
+    if (candidates.isEmpty) return null;
+    return candidates.reduce((a, b) => a < b ? a : b);
   }
 
   Future<void> _load() async {
@@ -115,6 +120,22 @@ class _CareScreenState extends State<CareScreen> {
     _load();
   }
 
+  Future<void> _markRepotted(Plant plant) async {
+    await _repository.markRepotted(plant.id!);
+    final updated = plant.copyWith(lastRepotted: DateTime.now().toIso8601String());
+    await NotificationService().scheduleRepottingReminder(updated);
+    if (!mounted) return;
+    _load();
+  }
+
+  Future<void> _markPruned(Plant plant) async {
+    await _repository.markPruned(plant.id!);
+    final updated = plant.copyWith(lastPruned: DateTime.now().toIso8601String());
+    await NotificationService().schedulePruningReminder(updated);
+    if (!mounted) return;
+    _load();
+  }
+
   Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
@@ -125,12 +146,33 @@ class _CareScreenState extends State<CareScreen> {
     }
   }
 
+  Future<void> _handleCareAction(String action, Plant plant) async {
+    switch (action) {
+      case 'water':
+        await _markWatered(plant);
+        break;
+      case 'fertilize':
+        await _markFertilized(plant);
+        break;
+      case 'repot':
+        await _markRepotted(plant);
+        break;
+      case 'prune':
+        await _markPruned(plant);
+        break;
+    }
+  }
+
   Widget _buildCareCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
     final spaceName = _spaceNames[plant.gardenId] ?? '';
     final overdue = isOverdue(plant);
     final fertilizingOverdue = isFertilizingOverdue(plant);
+    final repottingOverdue = isRepottingOverdue(plant);
+    final pruningOverdue = isPruningOverdue(plant);
     final hasFertilizingSchedule = plant.fertilizingIntervalDays != null;
+    final hasRepottingSchedule = plant.repottingIntervalDays != null;
+    final hasPruningSchedule = plant.pruningIntervalDays != null;
 
     return Card(
       child: ListTile(
@@ -150,22 +192,29 @@ class _CareScreenState extends State<CareScreen> {
                 fertilizingStatusText(plant),
                 style: fertilizingOverdue ? TextStyle(color: scheme.error) : null,
               ),
+            if (hasRepottingSchedule)
+              Text(
+                repottingStatusText(plant),
+                style: repottingOverdue ? TextStyle(color: scheme.error) : null,
+              ),
+            if (hasPruningSchedule)
+              Text(
+                pruningStatusText(plant),
+                style: pruningOverdue ? TextStyle(color: scheme.error) : null,
+              ),
           ],
         ),
-        trailing: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.water_drop),
-              tooltip: 'Mark as watered',
-              onPressed: () => _markWatered(plant),
-            ),
+        trailing: PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert),
+          onSelected: (action) => _handleCareAction(action, plant),
+          itemBuilder: (context) => [
+            const PopupMenuItem(value: 'water', child: Text('Mark Watered')),
             if (hasFertilizingSchedule)
-              IconButton(
-                icon: const Icon(Icons.eco_outlined),
-                tooltip: 'Mark as fertilized',
-                onPressed: () => _markFertilized(plant),
-              ),
+              const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
+            if (hasRepottingSchedule)
+              const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
+            if (hasPruningSchedule)
+              const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
           ],
         ),
         onTap: () => _navigateToDetail(plant),

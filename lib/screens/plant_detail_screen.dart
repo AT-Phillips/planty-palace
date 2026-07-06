@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/care_log_entry.dart';
+import '../models/journal_entry.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
 // import '../services/home_widget_service.dart'; // widget disabled for now
@@ -11,10 +12,38 @@ import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../utils/fertilizing_status.dart';
 import '../utils/permanent_image.dart';
+import '../utils/pruning_status.dart';
+import '../utils/repotting_status.dart';
 import '../utils/watering_status.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
+
+IconData _careIconFor(String type) {
+  switch (type) {
+    case 'fertilizing':
+      return Icons.eco_outlined;
+    case 'repotting':
+      return Icons.yard_outlined;
+    case 'pruning':
+      return Icons.content_cut;
+    default:
+      return Icons.water_drop_outlined;
+  }
+}
+
+String _careLabelFor(String type) {
+  switch (type) {
+    case 'fertilizing':
+      return 'Fertilized';
+    case 'repotting':
+      return 'Repotted';
+    case 'pruning':
+      return 'Pruned';
+    default:
+      return 'Watered';
+  }
+}
 
 class PlantDetailScreen extends StatefulWidget {
   final Plant plant;
@@ -30,6 +59,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   late Plant _plant;
   List<PlantPhoto> _timeline = [];
   List<CareLogEntry> _careHistory = [];
+  List<JournalEntry> _journal = [];
   bool _loading = true;
 
   @override
@@ -43,10 +73,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     try {
       final timeline = await _repository.getPhotos(_plant.id!);
       final history = await _repository.getCareHistory(_plant.id!);
+      final journal = await _repository.getJournalEntries(_plant.id!);
       if (!mounted) return;
       setState(() {
         _timeline = timeline;
         _careHistory = history;
+        _journal = journal;
         _loading = false;
       });
     } catch (e) {
@@ -73,6 +105,62 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (!mounted) return;
     setState(() => _plant = updated);
     _load();
+  }
+
+  Future<void> _markRepotted() async {
+    await _repository.markRepotted(_plant.id!);
+    final updated = _plant.copyWith(lastRepotted: DateTime.now().toIso8601String());
+    await NotificationService().scheduleRepottingReminder(updated);
+    if (!mounted) return;
+    setState(() => _plant = updated);
+    _load();
+  }
+
+  Future<void> _markPruned() async {
+    await _repository.markPruned(_plant.id!);
+    final updated = _plant.copyWith(lastPruned: DateTime.now().toIso8601String());
+    await NotificationService().schedulePruningReminder(updated);
+    if (!mounted) return;
+    setState(() => _plant = updated);
+    _load();
+  }
+
+  Future<void> _addJournalEntry() async {
+    final controller = TextEditingController();
+    final text = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Add journal entry'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          minLines: 3,
+          decoration: const InputDecoration(hintText: 'What did you notice?'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text.trim()),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    if (text == null || text.isEmpty) return;
+
+    final entry = await _repository.addJournalEntry(_plant.id!, text);
+    if (!mounted) return;
+    setState(() => _journal = [entry, ..._journal]);
+  }
+
+  Future<void> _deleteJournalEntry(JournalEntry entry) async {
+    await _repository.deleteJournalEntry(_plant.id!, entry.id);
+    if (!mounted) return;
+    setState(() => _journal = _journal.where((e) => e.id != entry.id).toList());
   }
 
   Future<void> _editPlant() async {
@@ -203,6 +291,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final scheme = Theme.of(context).colorScheme;
     final overdue = isOverdue(_plant);
     final fertilizingOverdue = isFertilizingOverdue(_plant);
+    final repottingOverdue = isRepottingOverdue(_plant);
+    final pruningOverdue = isPruningOverdue(_plant);
 
     return Scaffold(
       appBar: FrostedAppBar(
@@ -272,6 +362,44 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         onPressed: _markFertilized,
                         icon: const Icon(Icons.eco_outlined, size: 18),
                         label: const Text('Fertilized'),
+                      ),
+                    ],
+                  ),
+                if (_plant.repottingIntervalDays != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          repottingStatusText(_plant),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: repottingOverdue ? scheme.error : scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _markRepotted,
+                        icon: const Icon(Icons.yard_outlined, size: 18),
+                        label: const Text('Repotted'),
+                      ),
+                    ],
+                  ),
+                if (_plant.pruningIntervalDays != null)
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          pruningStatusText(_plant),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: pruningOverdue ? scheme.error : scheme.onSurface,
+                          ),
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _markPruned,
+                        icon: const Icon(Icons.content_cut, size: 18),
+                        label: const Text('Pruned'),
                       ),
                     ],
                   ),
@@ -347,17 +475,54 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Row(
                         children: [
-                          Icon(
-                            entry.type == 'fertilizing' ? Icons.eco_outlined : Icons.water_drop_outlined,
-                            size: 16,
-                            color: scheme.onSurfaceVariant,
-                          ),
+                          Icon(_careIconFor(entry.type), size: 16, color: scheme.onSurfaceVariant),
                           const SizedBox(width: 8),
                           Text(
-                            '${entry.type == 'fertilizing' ? 'Fertilized' : 'Watered'} — '
+                            '${_careLabelFor(entry.type)} — '
                             '${DateTime.parse(entry.timestamp).toLocal().toString().split('.').first}',
                           ),
                         ],
+                      ),
+                    ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Journal', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                    TextButton.icon(
+                      onPressed: _addJournalEntry,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add'),
+                    ),
+                  ],
+                ),
+                if (_journal.isEmpty)
+                  Text('No journal entries yet.', style: TextStyle(color: scheme.onSurfaceVariant))
+                else
+                  for (final entry in _journal)
+                    Dismissible(
+                      key: ValueKey(entry.id),
+                      direction: DismissDirection.endToStart,
+                      onDismissed: (_) => _deleteJournalEntry(entry),
+                      background: Container(
+                        color: scheme.errorContainer,
+                        alignment: Alignment.centerRight,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: Icon(Icons.delete, color: scheme.onErrorContainer),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 6),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateTime.parse(entry.createdAt).toLocal().toString().split('.').first,
+                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(entry.text),
+                          ],
+                        ),
                       ),
                     ),
               ],

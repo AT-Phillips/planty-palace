@@ -10,6 +10,8 @@ import '../utils/permanent_image.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
 const _fertilizingIntervalOptions = [14, 30, 60, 90];
+const _repottingIntervalOptions = [180, 365, 730];
+const _pruningIntervalOptions = [30, 60, 90, 180];
 
 class AddEditPlantScreen extends StatefulWidget {
   final Plant? plant;
@@ -50,6 +52,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   String? selectedName;
   int wateringIntervalDays = 7;
   int? fertilizingIntervalDays;
+  int? repottingIntervalDays;
+  int? pruningIntervalDays;
   final TextEditingController nicknameController = TextEditingController();
   final TextEditingController careInstructionsController = TextEditingController();
 
@@ -63,6 +67,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       nicknameController.text = plant.name;
       wateringIntervalDays = plant.wateringIntervalDays ?? 7;
       fertilizingIntervalDays = plant.fertilizingIntervalDays;
+      repottingIntervalDays = plant.repottingIntervalDays;
+      pruningIntervalDays = plant.pruningIntervalDays;
       careInstructionsController.text = plant.careInstructions;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
@@ -204,6 +210,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         lastFertilized: widget.plant?.lastFertilized ??
             (fertilizingIntervalDays != null ? DateTime.now().toIso8601String() : null),
         fertilizingIntervalDays: fertilizingIntervalDays,
+        lastRepotted: widget.plant?.lastRepotted ??
+            (repottingIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        repottingIntervalDays: repottingIntervalDays,
+        lastPruned: widget.plant?.lastPruned ??
+            (pruningIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        pruningIntervalDays: pruningIntervalDays,
       );
 
       Plant savedPlant;
@@ -217,6 +229,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       }
       await NotificationService().scheduleWateringReminder(savedPlant);
       await NotificationService().scheduleFertilizingReminder(savedPlant);
+      await NotificationService().scheduleRepottingReminder(savedPlant);
+      await NotificationService().schedulePruningReminder(savedPlant);
 
       // A freshly picked photo becomes the first (or newest) growth-timeline
       // entry after the plant document exists (upload is keyed by the doc
@@ -539,6 +553,62 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     );
   }
 
+  Widget _buildRepottingSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sectionHeader(Icons.yard_outlined, 'Repotting'),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              value: repottingIntervalDays,
+              decoration: const InputDecoration(labelText: 'Repot every'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('No schedule')),
+                ..._repottingIntervalOptions.map(
+                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() => repottingIntervalDays = value);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPruningSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sectionHeader(Icons.content_cut, 'Pruning'),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              value: pruningIntervalDays,
+              decoration: const InputDecoration(labelText: 'Prune every'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('No schedule')),
+                ..._pruningIntervalOptions.map(
+                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() => pruningIntervalDays = value);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCareInfoSection() {
     return Card(
       child: Padding(
@@ -611,6 +681,10 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           _buildWateringSection(),
           const SizedBox(height: 12),
           _buildFertilizingSection(),
+          const SizedBox(height: 12),
+          _buildRepottingSection(),
+          const SizedBox(height: 12),
+          _buildPruningSection(),
           const SizedBox(height: 12),
           _buildCareInfoSection(),
           const SizedBox(height: 12),

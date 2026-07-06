@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/care_log_entry.dart';
 import '../models/garden.dart';
+import '../models/journal_entry.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
 import 'auth_service.dart';
@@ -36,6 +37,9 @@ class PlantRepository {
 
   CollectionReference<Map<String, dynamic>> _photos(String plantId) =>
       _plants.doc(plantId).collection('photos');
+
+  CollectionReference<Map<String, dynamic>> _journal(String plantId) =>
+      _plants.doc(plantId).collection('journal');
 
   // --- Gardens ---
 
@@ -123,14 +127,35 @@ class PlantRepository {
     await logCareEvent(plantId, now, type: 'fertilizing');
   }
 
-  Future<void> deletePlant(String id) async {
-    await _plants.doc(id).delete();
+  Future<void> markRepotted(String plantId) async {
+    final now = DateTime.now().toIso8601String();
+    await _plants.doc(plantId).update({'lastRepotted': now});
+    await logCareEvent(plantId, now, type: 'repotting');
+  }
 
+  Future<void> markPruned(String plantId) async {
+    final now = DateTime.now().toIso8601String();
+    await _plants.doc(plantId).update({'lastPruned': now});
+    await logCareEvent(plantId, now, type: 'pruning');
+  }
+
+  Future<void> deletePlant(String id) async {
     final logs = await _careLog.where('plantId', isEqualTo: id).get();
     for (final doc in logs.docs) {
       await doc.reference.delete();
     }
 
+    final photoDocs = await _photos(id).get();
+    for (final doc in photoDocs.docs) {
+      await doc.reference.delete();
+    }
+
+    final journalDocs = await _journal(id).get();
+    for (final doc in journalDocs.docs) {
+      await doc.reference.delete();
+    }
+
+    await _plants.doc(id).delete();
     await PhotoStorageService().deleteAllPhotosForPlant(id);
   }
 
@@ -201,5 +226,22 @@ class PlantRepository {
         timestamp: data['wateredAt'] as String,
       );
     }).toList();
+  }
+
+  // --- Journal notes ---
+
+  Future<List<JournalEntry>> getJournalEntries(String plantId) async {
+    final snapshot = await _journal(plantId).orderBy('createdAt', descending: true).get();
+    return snapshot.docs.map((d) => JournalEntry.fromMap(d.data(), id: d.id)).toList();
+  }
+
+  Future<JournalEntry> addJournalEntry(String plantId, String text) async {
+    final createdAt = DateTime.now().toIso8601String();
+    final doc = await _journal(plantId).add({'text': text, 'createdAt': createdAt});
+    return JournalEntry(id: doc.id, text: text, createdAt: createdAt);
+  }
+
+  Future<void> deleteJournalEntry(String plantId, String entryId) async {
+    await _journal(plantId).doc(entryId).delete();
   }
 }

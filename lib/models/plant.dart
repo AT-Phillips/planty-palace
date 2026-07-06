@@ -10,6 +10,10 @@ class Plant {
   final int? wateringIntervalDays;
   final String? lastFertilized;
   final int? fertilizingIntervalDays;
+  final String? lastRepotted;
+  final int? repottingIntervalDays;
+  final String? lastPruned;
+  final int? pruningIntervalDays;
 
   Plant({
     this.id,
@@ -23,6 +27,10 @@ class Plant {
     this.wateringIntervalDays,
     this.lastFertilized,
     this.fertilizingIntervalDays,
+    this.lastRepotted,
+    this.repottingIntervalDays,
+    this.lastPruned,
+    this.pruningIntervalDays,
   });
 
   Map<String, dynamic> toMap() {
@@ -37,6 +45,10 @@ class Plant {
       'wateringIntervalDays': wateringIntervalDays,
       'lastFertilized': lastFertilized,
       'fertilizingIntervalDays': fertilizingIntervalDays,
+      'lastRepotted': lastRepotted,
+      'repottingIntervalDays': repottingIntervalDays,
+      'lastPruned': lastPruned,
+      'pruningIntervalDays': pruningIntervalDays,
     };
   }
 
@@ -53,6 +65,10 @@ class Plant {
       wateringIntervalDays: map['wateringIntervalDays'],
       lastFertilized: map['lastFertilized'],
       fertilizingIntervalDays: map['fertilizingIntervalDays'],
+      lastRepotted: map['lastRepotted'],
+      repottingIntervalDays: map['repottingIntervalDays'],
+      lastPruned: map['lastPruned'],
+      pruningIntervalDays: map['pruningIntervalDays'],
     );
   }
 
@@ -68,6 +84,10 @@ class Plant {
     int? wateringIntervalDays,
     String? lastFertilized,
     int? fertilizingIntervalDays,
+    String? lastRepotted,
+    int? repottingIntervalDays,
+    String? lastPruned,
+    int? pruningIntervalDays,
   }) {
     return Plant(
       id: id ?? this.id,
@@ -81,6 +101,10 @@ class Plant {
       wateringIntervalDays: wateringIntervalDays ?? this.wateringIntervalDays,
       lastFertilized: lastFertilized ?? this.lastFertilized,
       fertilizingIntervalDays: fertilizingIntervalDays ?? this.fertilizingIntervalDays,
+      lastRepotted: lastRepotted ?? this.lastRepotted,
+      repottingIntervalDays: repottingIntervalDays ?? this.repottingIntervalDays,
+      lastPruned: lastPruned ?? this.lastPruned,
+      pruningIntervalDays: pruningIntervalDays ?? this.pruningIntervalDays,
     );
   }
 }
