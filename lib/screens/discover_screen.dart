@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/perenual_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/search_field.dart';
 import 'species_detail_screen.dart';
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
@@ -34,6 +35,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 
   void _onChanged(String query) {
     _debounce?.cancel();
+    if (query.trim().isEmpty) {
+      setState(() {
+        _results = [];
+        _searched = false;
+      });
+      return;
+    }
     _debounce = Timer(const Duration(milliseconds: 400), () => _search(query));
   }
 
@@ -73,13 +81,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: TextField(
+            child: SearchField(
               controller: _controller,
+              hintText: 'Search any plant species...',
               onChanged: _onChanged,
-              decoration: const InputDecoration(
-                hintText: 'Search any plant species...',
-                prefixIcon: Icon(Icons.search),
-              ),
             ),
           ),
           if (_searching) const Padding(

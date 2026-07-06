@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/care_log_entry.dart';
 import '../models/garden.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
@@ -107,6 +108,12 @@ class PlantRepository {
     await logCareEvent(plantId, now);
   }
 
+  Future<void> markFertilized(String plantId) async {
+    final now = DateTime.now().toIso8601String();
+    await _plants.doc(plantId).update({'lastFertilized': now});
+    await logCareEvent(plantId, now, type: 'fertilizing');
+  }
+
   Future<void> deletePlant(String id) async {
     await _plants.doc(id).delete();
 
@@ -163,16 +170,27 @@ class PlantRepository {
 
   // --- Care log ---
 
-  Future<void> logCareEvent(String plantId, String wateredAt) async {
-    await _careLog.add({'plantId': plantId, 'wateredAt': wateredAt});
+  /// [wateredAt] is a historical field name kept for backward compatibility
+  /// with existing entries - it holds the timestamp for any care event type
+  /// (watering or fertilizing), not just watering.
+  Future<void> logCareEvent(String plantId, String wateredAt, {String type = 'watering'}) async {
+    await _careLog.add({'plantId': plantId, 'wateredAt': wateredAt, 'type': type});
   }
 
-  /// Returns watering timestamps for a plant, most recent first.
-  Future<List<String>> getCareHistory(String plantId) async {
+  /// Returns watering and fertilizing events for a plant, most recent first.
+  /// Entries logged before fertilizing tracking existed have no `type`
+  /// field and are treated as watering events.
+  Future<List<CareLogEntry>> getCareHistory(String plantId) async {
     final snapshot = await _careLog
         .where('plantId', isEqualTo: plantId)
         .orderBy('wateredAt', descending: true)
         .get();
-    return snapshot.docs.map((d) => d.data()['wateredAt'] as String).toList();
+    return snapshot.docs.map((d) {
+      final data = d.data();
+      return CareLogEntry(
+        type: data['type'] as String? ?? 'watering',
+        timestamp: data['wateredAt'] as String,
+      );
+    }).toList();
   }
 }

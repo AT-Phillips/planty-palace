@@ -3,110 +3,146 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../models/care_log_entry.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
-import '../services/notification_service.dart';
+import '../models/propagation.dart';
 import '../services/plant_repository.dart';
-import '../utils/fertilizing_status.dart';
+import '../services/propagation_repository.dart';
 import '../utils/permanent_image.dart';
-import '../utils/watering_status.dart';
+import '../utils/relative_time.dart';
 import '../widgets/frosted_app_bar.dart';
-import '../widgets/plant_thumbnail.dart';
+import '../widgets/propagation_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
+import 'add_edit_propagation_screen.dart';
+import 'plant_detail_screen.dart';
 
-class PlantDetailScreen extends StatefulWidget {
-  final Plant plant;
+class PropagationDetailScreen extends StatefulWidget {
+  final Propagation propagation;
 
-  const PlantDetailScreen({super.key, required this.plant});
+  const PropagationDetailScreen({super.key, required this.propagation});
 
   @override
-  State<PlantDetailScreen> createState() => _PlantDetailScreenState();
+  State<PropagationDetailScreen> createState() => _PropagationDetailScreenState();
 }
 
-class _PlantDetailScreenState extends State<PlantDetailScreen> {
-  final PlantRepository _repository = PlantRepository();
-  late Plant _plant;
+class _PropagationDetailScreenState extends State<PropagationDetailScreen> {
+  final PropagationRepository _repository = PropagationRepository();
+  late Propagation _propagation;
   List<PlantPhoto> _timeline = [];
-  List<CareLogEntry> _careHistory = [];
   bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _plant = widget.plant;
+    _propagation = widget.propagation;
     _load();
   }
 
   Future<void> _load() async {
     try {
-      final timeline = await _repository.getPhotos(_plant.id!);
-      final history = await _repository.getCareHistory(_plant.id!);
+      final timeline = await _repository.getPhotos(_propagation.id!);
       if (!mounted) return;
       setState(() {
         _timeline = timeline;
-        _careHistory = history;
         _loading = false;
       });
     } catch (e) {
-      debugPrint('Failed to load plant detail: $e');
+      debugPrint('Failed to load propagation detail: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _markWatered() async {
-    await _repository.markWatered(_plant.id!);
-    final updated = _plant.copyWith(lastWatered: DateTime.now().toIso8601String());
-    await NotificationService().scheduleWateringReminder(updated);
-    if (!mounted) return;
-    setState(() => _plant = updated);
-    _load();
-  }
-
-  Future<void> _markFertilized() async {
-    await _repository.markFertilized(_plant.id!);
-    final updated = _plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
-    await NotificationService().scheduleFertilizingReminder(updated);
-    if (!mounted) return;
-    setState(() => _plant = updated);
-    _load();
-  }
-
-  Future<void> _editPlant() async {
+  Future<void> _editPropagation() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditPlantScreen(plant: _plant, gardenId: _plant.gardenId!),
-      ),
+      MaterialPageRoute(builder: (_) => AddEditPropagationScreen(propagation: _propagation)),
     );
     if (result != null && mounted) {
       Navigator.pop(context, true);
     }
   }
 
-  Future<void> _deletePlant() async {
+  Future<void> _deletePropagation() async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete plant?'),
-        content: Text('This will remove ${_plant.name} and all of its photos and history.'),
+        title: const Text('Delete propagation?'),
+        content: Text('This will remove ${_propagation.name} and all of its photos.'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
         ],
       ),
     );
     if (confirmed != true) return;
 
-    await _repository.deletePlant(_plant.id!);
-    await NotificationService().cancelReminder(_plant.id!);
+    await _repository.deletePropagation(_propagation.id!);
     if (mounted) Navigator.pop(context, true);
+  }
+
+  Future<void> _viewParentPlant() async {
+    final parentId = _propagation.parentPlantId;
+    if (parentId == null) return;
+    final plants = await PlantRepository().getPlants();
+    final matches = plants.where((p) => p.id == parentId);
+    if (matches.isEmpty || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: matches.first)),
+    );
+  }
+
+  Future<void> _viewPromotedPlant() async {
+    final plants = await PlantRepository().getPlants();
+    final matches = plants.where((p) => p.id == _propagation.promotedPlantId);
+    if (matches.isEmpty || !mounted) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: matches.first)),
+    );
+  }
+
+  Future<void> _promote() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Promote to a plant?'),
+        content: Text(
+          '${_propagation.name} will become a new plant you can track watering and care for. '
+          'This propagation stays visible, marked as promoted.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Promote')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    final gardenId = await PlantRepository().getOrCreateDefaultGardenId();
+    if (!mounted) return;
+
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditPlantScreen(
+          gardenId: gardenId,
+          prefillSpecies: _propagation.parentSpeciesSnapshot ?? _propagation.name,
+          prefillImagePath: _propagation.imagePath.isNotEmpty ? _propagation.imagePath : null,
+        ),
+      ),
+    );
+
+    if (result is! Plant || !mounted) return;
+
+    await _repository.markPromoted(_propagation.id!, result.id!);
+    if (!mounted) return;
+    setState(() => _propagation = _propagation.copyWith(isPromoted: true, promotedPlantId: result.id));
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: result)),
+    );
   }
 
   Future<void> _addTimelinePhoto(ImageSource source) async {
@@ -114,11 +150,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (picked == null) return;
 
     final permanentImage = await ensurePermanentPlantImage(File(picked.path));
-    final photo = await _repository.addPhoto(_plant.id!, permanentImage);
+    final photo = await _repository.addPhoto(_propagation.id!, permanentImage);
     if (!mounted) return;
     setState(() {
       _timeline = [photo, ..._timeline];
-      _plant = _plant.copyWith(photoUrl: photo.photoUrl, imagePath: permanentImage.path);
+      _propagation = _propagation.copyWith(photoUrl: photo.photoUrl, imagePath: permanentImage.path);
     });
   }
 
@@ -152,7 +188,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   }
 
   Future<void> _openPhotoOptions(PlantPhoto photo) async {
-    final isCover = photo.photoUrl == _plant.photoUrl;
+    final isCover = photo.photoUrl == _propagation.photoUrl;
     final action = await showModalBottomSheet<String>(
       context: context,
       builder: (context) => SafeArea(
@@ -176,20 +212,17 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     );
 
     if (action == 'cover') {
-      await _repository.setCoverPhoto(_plant.id!, photo);
+      await _repository.setCoverPhoto(_propagation.id!, photo);
       if (!mounted) return;
-      setState(() => _plant = _plant.copyWith(photoUrl: photo.photoUrl, imagePath: ''));
+      setState(() => _propagation = _propagation.copyWith(photoUrl: photo.photoUrl, imagePath: ''));
     } else if (action == 'delete') {
-      await _repository.deletePhoto(_plant.id!, photo);
+      await _repository.deletePhoto(_propagation.id!, photo);
       if (!mounted) return;
       setState(() {
         _timeline = _timeline.where((p) => p.id != photo.id).toList();
-        if (photo.photoUrl == _plant.photoUrl) {
+        if (photo.photoUrl == _propagation.photoUrl) {
           final newCover = _timeline.isEmpty ? null : _timeline.first;
-          _plant = _plant.copyWith(
-            photoUrl: newCover?.photoUrl,
-            imagePath: '',
-          );
+          _propagation = _propagation.copyWith(photoUrl: newCover?.photoUrl, imagePath: '');
         }
       });
     }
@@ -198,15 +231,13 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final overdue = isOverdue(_plant);
-    final fertilizingOverdue = isFertilizingOverdue(_plant);
 
     return Scaffold(
       appBar: FrostedAppBar(
-        title: _plant.name,
+        title: _propagation.name,
         actions: [
-          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: _editPlant),
-          IconButton(icon: const Icon(Icons.delete_outline), onPressed: _deletePlant),
+          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: _editPropagation),
+          IconButton(icon: const Icon(Icons.delete_outline), onPressed: _deletePropagation),
         ],
       ),
       body: _loading
@@ -219,8 +250,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   child: SizedBox(
                     height: 240,
                     width: double.infinity,
-                    child: PlantThumbnail(
-                      plant: _plant,
+                    child: PropagationThumbnail(
+                      propagation: _propagation,
                       size: double.infinity,
                       borderRadius: BorderRadius.zero,
                     ),
@@ -228,55 +259,22 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  _plant.species,
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: scheme.onSurfaceVariant,
-                  ),
+                  '${_propagation.method} · ${startedAgoText(_propagation.startedAt)}',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        wateringStatusText(_plant),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: overdue ? scheme.error : scheme.onSurface,
-                        ),
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _markWatered,
-                      icon: const Icon(Icons.water_drop_outlined, size: 18),
-                      label: const Text('Watered'),
-                    ),
-                  ],
-                ),
-                if (_plant.fertilizingIntervalDays != null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          fertilizingStatusText(_plant),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: fertilizingOverdue ? scheme.error : scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _markFertilized,
-                        icon: const Icon(Icons.eco_outlined, size: 18),
-                        label: const Text('Fertilized'),
-                      ),
-                    ],
-                  ),
-                if (_plant.careInstructions.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Care Info', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                if (_propagation.parentPlantId != null) ...[
                   const SizedBox(height: 8),
-                  Text(_plant.careInstructions),
+                  TextButton.icon(
+                    onPressed: _viewParentPlant,
+                    icon: const Icon(Icons.arrow_back, size: 16),
+                    label: Text('From ${_propagation.parentSpeciesSnapshot ?? 'a plant in your collection'}'),
+                  ),
+                ],
+                if (_propagation.notes.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Text('Notes', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                  const SizedBox(height: 8),
+                  Text(_propagation.notes),
                 ],
                 const SizedBox(height: 20),
                 Row(
@@ -301,7 +299,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       separatorBuilder: (_, __) => const SizedBox(width: 8),
                       itemBuilder: (context, index) {
                         final photo = _timeline[index];
-                        final isCover = photo.photoUrl == _plant.photoUrl;
+                        final isCover = photo.photoUrl == _propagation.photoUrl;
                         return GestureDetector(
                           onTap: () => _openPhotoOptions(photo),
                           child: Stack(
@@ -333,30 +331,19 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       },
                     ),
                   ),
-                const SizedBox(height: 20),
-                Text('Care History', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                const SizedBox(height: 8),
-                if (_careHistory.isEmpty)
-                  Text('No care history yet.', style: TextStyle(color: scheme.onSurfaceVariant))
+                const SizedBox(height: 24),
+                if (_propagation.isPromoted)
+                  OutlinedButton.icon(
+                    onPressed: _viewPromotedPlant,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: const Text('Promoted — View Plant'),
+                  )
                 else
-                  for (final entry in _careHistory)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Icon(
-                            entry.type == 'fertilizing' ? Icons.eco_outlined : Icons.water_drop_outlined,
-                            size: 16,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${entry.type == 'fertilizing' ? 'Fertilized' : 'Watered'} — '
-                            '${DateTime.parse(entry.timestamp).toLocal().toString().split('.').first}',
-                          ),
-                        ],
-                      ),
-                    ),
+                  FilledButton.icon(
+                    onPressed: _promote,
+                    icon: const Icon(Icons.arrow_upward),
+                    label: const Text('Promote to Plant'),
+                  ),
               ],
             ),
     );

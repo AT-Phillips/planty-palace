@@ -8,6 +8,7 @@ import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
+import '../widgets/search_field.dart';
 import 'add_edit_plant_screen.dart';
 import 'plant_detail_screen.dart';
 
@@ -67,7 +68,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
         builder: (_) => AddEditPlantScreen(gardenId: widget.garden.id!),
       ),
     );
-    if (result == true && mounted) {
+    if (result != null && mounted) {
       _loadPlants();
     }
   }
@@ -154,12 +155,9 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: TextField(
+                  child: SearchField(
                     controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search this Space',
-                      prefixIcon: Icon(Icons.search),
-                    ),
+                    hintText: 'Search this Space',
                   ),
                 ),
                 Expanded(

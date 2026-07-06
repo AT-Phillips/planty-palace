@@ -9,16 +9,19 @@ import '../services/plant_repository.dart';
 import '../utils/permanent_image.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
+const _fertilizingIntervalOptions = [14, 30, 60, 90];
 
 class AddEditPlantScreen extends StatefulWidget {
   final Plant? plant;
   final String gardenId;
 
   /// Pre-fills species/care info without requiring a camera ID pass first -
-  /// used when adding a plant found via Discover's catalog search.
+  /// used when adding a plant found via Discover's catalog search, or
+  /// promoting a Propagation.
   final String? prefillSpecies;
   final String? prefillCareInstructions;
   final int? prefillWateringIntervalDays;
+  final String? prefillImagePath;
 
   const AddEditPlantScreen({
     super.key,
@@ -27,6 +30,7 @@ class AddEditPlantScreen extends StatefulWidget {
     this.prefillSpecies,
     this.prefillCareInstructions,
     this.prefillWateringIntervalDays,
+    this.prefillImagePath,
   });
 
   @override
@@ -45,6 +49,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   List<PlantSuggestion> suggestions = [];
   String? selectedName;
   int wateringIntervalDays = 7;
+  int? fertilizingIntervalDays;
   final TextEditingController nicknameController = TextEditingController();
   final TextEditingController careInstructionsController = TextEditingController();
 
@@ -57,6 +62,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       selectedName = plant.species;
       nicknameController.text = plant.name;
       wateringIntervalDays = plant.wateringIntervalDays ?? 7;
+      fertilizingIntervalDays = plant.fertilizingIntervalDays;
       careInstructionsController.text = plant.careInstructions;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
@@ -69,6 +75,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       if (widget.prefillWateringIntervalDays != null) {
         wateringIntervalDays = widget.prefillWateringIntervalDays!;
         wateringManuallySet = true;
+      }
+      if (widget.prefillImagePath != null && widget.prefillImagePath!.isNotEmpty) {
+        _identifierService.imageFile = File(widget.prefillImagePath!);
       }
     }
 
@@ -192,6 +201,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
         lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
         wateringIntervalDays: wateringIntervalDays,
+        lastFertilized: widget.plant?.lastFertilized ??
+            (fertilizingIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        fertilizingIntervalDays: fertilizingIntervalDays,
       );
 
       Plant savedPlant;
@@ -204,6 +216,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         savedPlant = plant;
       }
       await NotificationService().scheduleWateringReminder(savedPlant);
+      await NotificationService().scheduleFertilizingReminder(savedPlant);
 
       // A freshly picked photo becomes the first (or newest) growth-timeline
       // entry after the plant document exists (upload is keyed by the doc
@@ -218,7 +231,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       }
 
       if (!mounted) return;
-      Navigator.pop(context, true);
+      Navigator.pop(context, savedPlant);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -498,6 +511,34 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     );
   }
 
+  Widget _buildFertilizingSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _sectionHeader(Icons.eco_outlined, 'Fertilizing'),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<int?>(
+              value: fertilizingIntervalDays,
+              decoration: const InputDecoration(labelText: 'Fertilize every'),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('No schedule')),
+                ..._fertilizingIntervalOptions.map(
+                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
+                ),
+              ],
+              onChanged: (value) {
+                setState(() => fertilizingIntervalDays = value);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCareInfoSection() {
     return Card(
       child: Padding(
@@ -568,6 +609,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           _buildIdentifySection(),
           const SizedBox(height: 12),
           _buildWateringSection(),
+          const SizedBox(height: 12),
+          _buildFertilizingSection(),
           const SizedBox(height: 12),
           _buildCareInfoSection(),
           const SizedBox(height: 12),

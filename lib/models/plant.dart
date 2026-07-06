@@ -8,6 +8,8 @@ class Plant {
   final String? gardenId;
   final String? lastWatered;
   final int? wateringIntervalDays;
+  final String? lastFertilized;
+  final int? fertilizingIntervalDays;
 
   Plant({
     this.id,
@@ -19,6 +21,8 @@ class Plant {
     this.gardenId,
     this.lastWatered,
     this.wateringIntervalDays,
+    this.lastFertilized,
+    this.fertilizingIntervalDays,
   });
 
   Map<String, dynamic> toMap() {
@@ -31,6 +35,8 @@ class Plant {
       'gardenId': gardenId,
       'lastWatered': lastWatered,
       'wateringIntervalDays': wateringIntervalDays,
+      'lastFertilized': lastFertilized,
+      'fertilizingIntervalDays': fertilizingIntervalDays,
     };
   }
 
@@ -45,6 +51,8 @@ class Plant {
       gardenId: map['gardenId'],
       lastWatered: map['lastWatered'],
       wateringIntervalDays: map['wateringIntervalDays'],
+      lastFertilized: map['lastFertilized'],
+      fertilizingIntervalDays: map['fertilizingIntervalDays'],
     );
   }
 
@@ -58,6 +66,8 @@ class Plant {
     String? gardenId,
     String? lastWatered,
     int? wateringIntervalDays,
+    String? lastFertilized,
+    int? fertilizingIntervalDays,
   }) {
     return Plant(
       id: id ?? this.id,
@@ -69,6 +79,8 @@ class Plant {
       gardenId: gardenId ?? this.gardenId,
       lastWatered: lastWatered ?? this.lastWatered,
       wateringIntervalDays: wateringIntervalDays ?? this.wateringIntervalDays,
+      lastFertilized: lastFertilized ?? this.lastFertilized,
+      fertilizingIntervalDays: fertilizingIntervalDays ?? this.fertilizingIntervalDays,
     );
   }
 }

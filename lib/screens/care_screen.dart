@@ -3,10 +3,12 @@ import 'package:flutter/material.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../utils/fertilizing_status.dart';
 import '../utils/watering_status.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
+import '../widgets/search_field.dart';
 import 'plant_detail_screen.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
@@ -57,14 +59,24 @@ class _CareScreenState extends State<CareScreen> {
         .toList();
   }
 
+  /// The sooner of watering/fertilizing due-in-days (whichever is more
+  /// urgent), or null if neither has a schedule set.
+  int? _mostUrgentDueIn(Plant plant) {
+    final watering = daysUntilDue(plant);
+    final fertilizing = daysUntilFertilizeDue(plant);
+    if (watering == null) return fertilizing;
+    if (fertilizing == null) return watering;
+    return watering < fertilizing ? watering : fertilizing;
+  }
+
   Future<void> _load() async {
     try {
       final spaces = await _repository.getGardens();
       final plants = await _repository.getPlants();
 
       plants.sort((a, b) {
-        final aDue = daysUntilDue(a);
-        final bDue = daysUntilDue(b);
+        final aDue = _mostUrgentDueIn(a);
+        final bDue = _mostUrgentDueIn(b);
         if (aDue == null && bDue == null) return 0;
         if (aDue == null) return 1;
         if (bDue == null) return -1;
@@ -92,6 +104,14 @@ class _CareScreenState extends State<CareScreen> {
     _load();
   }
 
+  Future<void> _markFertilized(Plant plant) async {
+    await _repository.markFertilized(plant.id!);
+    final updated = plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
+    await NotificationService().scheduleFertilizingReminder(updated);
+    if (!mounted) return;
+    _load();
+  }
+
   Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
@@ -106,21 +126,44 @@ class _CareScreenState extends State<CareScreen> {
     final scheme = Theme.of(context).colorScheme;
     final spaceName = _spaceNames[plant.gardenId] ?? '';
     final overdue = isOverdue(plant);
+    final fertilizingOverdue = isFertilizingOverdue(plant);
+    final hasFertilizingSchedule = plant.fertilizingIntervalDays != null;
 
     return Card(
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: PlantThumbnail(plant: plant),
         title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(
-          '$spaceName\n${wateringStatusText(plant)}',
-          style: overdue ? TextStyle(color: scheme.error) : null,
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(spaceName),
+            Text(
+              wateringStatusText(plant),
+              style: overdue ? TextStyle(color: scheme.error) : null,
+            ),
+            if (hasFertilizingSchedule)
+              Text(
+                fertilizingStatusText(plant),
+                style: fertilizingOverdue ? TextStyle(color: scheme.error) : null,
+              ),
+          ],
         ),
-        isThreeLine: true,
-        trailing: IconButton(
-          icon: const Icon(Icons.water_drop),
-          tooltip: 'Mark as watered',
-          onPressed: () => _markWatered(plant),
+        trailing: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.water_drop),
+              tooltip: 'Mark as watered',
+              onPressed: () => _markWatered(plant),
+            ),
+            if (hasFertilizingSchedule)
+              IconButton(
+                icon: const Icon(Icons.eco_outlined),
+                tooltip: 'Mark as fertilized',
+                onPressed: () => _markFertilized(plant),
+              ),
+          ],
         ),
         onTap: () => _navigateToDetail(plant),
       ),
@@ -144,12 +187,9 @@ class _CareScreenState extends State<CareScreen> {
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: TextField(
+                  child: SearchField(
                     controller: _searchController,
-                    decoration: const InputDecoration(
-                      hintText: 'Search all your plants',
-                      prefixIcon: Icon(Icons.search),
-                    ),
+                    hintText: 'Search all your plants',
                   ),
                 ),
                 Expanded(

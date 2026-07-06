@@ -100,18 +100,74 @@ class NotificationService {
     await _plugin.cancel(stableNotificationId(plantId));
   }
 
-  /// Re-syncs every plant's reminder against the current reminder time and
-  /// enabled/disabled state - schedules all of them if enabled, cancels all
-  /// of them if disabled. Called whenever either setting changes.
+  Future<void> scheduleFertilizingReminder(Plant plant) async {
+    if (Platform.isWindows) return;
+    if (!_initialized) return;
+    if (!NotificationPreferences.instance.enabled.value) return;
+
+    final plantId = plant.id;
+    final lastFertilized = plant.lastFertilized;
+    final intervalDays = plant.fertilizingIntervalDays;
+    if (plantId == null) return;
+
+    final notificationId = stableNotificationId('$plantId-fertilize');
+    await cancelFertilizingReminder(plantId);
+
+    if (lastFertilized == null || intervalDays == null) return;
+
+    final reminderTime = NotificationPreferences.instance.reminderTime.value;
+    final dueDate = DateTime.parse(lastFertilized).add(Duration(days: intervalDays));
+    var scheduledDate = tz.TZDateTime(
+      tz.local,
+      dueDate.year,
+      dueDate.month,
+      dueDate.day,
+      reminderTime.hour,
+      reminderTime.minute,
+    );
+    if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
+      scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+    }
+
+    await _plugin.zonedSchedule(
+      notificationId,
+      'Time to fertilize ${plant.name}',
+      'It\'s been $intervalDays days since ${plant.name} was last fertilized.',
+      scheduledDate,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          'fertilizing_reminders',
+          'Fertilizing reminders',
+          channelDescription: 'Reminders to fertilize your plants',
+        ),
+        iOS: DarwinNotificationDetails(),
+      ),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
+    );
+  }
+
+  Future<void> cancelFertilizingReminder(String plantId) async {
+    if (Platform.isWindows) return;
+    await _plugin.cancel(stableNotificationId('$plantId-fertilize'));
+  }
+
+  /// Re-syncs every plant's watering and fertilizing reminders against the
+  /// current reminder time and enabled/disabled state - schedules all of
+  /// them if enabled, cancels all of them if disabled. Called whenever
+  /// either setting changes.
   Future<void> refreshAllReminders() async {
     final plants = await PlantRepository().getPlants();
     if (NotificationPreferences.instance.enabled.value) {
       for (final plant in plants) {
         await scheduleWateringReminder(plant);
+        await scheduleFertilizingReminder(plant);
       }
     } else {
       for (final plant in plants) {
         await cancelReminder(plant.id!);
+        await cancelFertilizingReminder(plant.id!);
       }
     }
   }

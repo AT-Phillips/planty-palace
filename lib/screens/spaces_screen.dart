@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../models/garden.dart';
 import '../services/plant_repository.dart';
+import '../services/propagation_repository.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/weather_card.dart';
 import 'my_plants_screen.dart';
+import 'propagations_screen.dart';
 
 class SpacesScreen extends StatefulWidget {
   const SpacesScreen({super.key});
@@ -26,11 +28,13 @@ class _SpacesScreenState extends State<SpacesScreen> {
 
   List<Garden> _spaces = _cachedSpaces ?? [];
   Map<String, int> _plantCounts = _cachedPlantCounts ?? {};
+  int _propagationCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadSpaces();
+    _loadPropagationCount();
   }
 
   Future<void> _loadSpaces() async {
@@ -52,12 +56,30 @@ class _SpacesScreenState extends State<SpacesScreen> {
     }
   }
 
+  Future<void> _loadPropagationCount() async {
+    try {
+      final count = await PropagationRepository().getPropagationCount();
+      if (!mounted) return;
+      setState(() => _propagationCount = count);
+    } catch (e) {
+      debugPrint('Failed to load propagation count: $e');
+    }
+  }
+
   Future<void> _navigateToSpace(Garden space) async {
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => MyPlantsScreen(garden: space)),
     );
     if (mounted) _loadSpaces();
+  }
+
+  Future<void> _navigateToPropagations() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const PropagationsScreen()),
+    );
+    if (mounted) _loadPropagationCount();
   }
 
   Future<void> _createSpace() async {
@@ -117,6 +139,20 @@ class _SpacesScreenState extends State<SpacesScreen> {
       body: Column(
         children: [
           const WeatherCard(),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+                foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+                child: const Icon(Icons.eco_outlined),
+              ),
+              title: const Text('Propagations', style: TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text('$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _navigateToPropagations,
+            ),
+          ),
           Expanded(
             child: _spaces.isEmpty
                 ? EmptyState(
