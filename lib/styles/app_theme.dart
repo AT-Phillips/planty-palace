@@ -124,6 +124,26 @@ class AppTheme {
           borderRadius: BorderRadius.circular(radius),
         ),
       ),
+      // Soften the default near-square popup menus (e.g. the Spaces/Care
+      // "more" menus) into rounded, card-toned surfaces consistent with the
+      // rest of the app.
+      popupMenuTheme: PopupMenuThemeData(
+        color: cardColor,
+        elevation: 3,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      menuTheme: MenuThemeData(
+        style: MenuStyle(
+          backgroundColor: WidgetStatePropertyAll(cardColor),
+          surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          ),
+        ),
+      ),
       floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: colorScheme.primaryContainer,
         foregroundColor: colorScheme.onPrimaryContainer,

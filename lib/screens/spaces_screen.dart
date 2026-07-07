@@ -218,27 +218,64 @@ class SpacesScreenState extends State<SpacesScreen> {
     );
   }
 
+  int get _totalPlants => _plantCounts.values.fold(0, (sum, count) => sum + count);
+
+  Widget _buildSectionHeader(String title, {String? trailing}) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 15,
+              letterSpacing: 0.2,
+              color: scheme.onSurface,
+            ),
+          ),
+          const Spacer(),
+          if (trailing != null)
+            Text(trailing, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropagationsCard() {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: scheme.secondaryContainer,
+          foregroundColor: scheme.onSecondaryContainer,
+          child: const Icon(Icons.eco_outlined),
+        ),
+        title: const Text('Propagations', style: TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text('$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _navigateToPropagations,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: const FrostedAppBar(title: 'My Spaces'),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const WeatherCard(),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
-                child: const Icon(Icons.eco_outlined),
-              ),
-              title: const Text('Propagations', style: TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text('$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _navigateToPropagations,
+          _buildSectionHeader('Collections'),
+          _buildPropagationsCard(),
+          if (_spaces.isNotEmpty)
+            _buildSectionHeader(
+              'Your Spaces',
+              trailing: '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'}',
             ),
-          ),
           Expanded(
             child: _spaces.isEmpty
                 ? EmptyState(
@@ -250,6 +287,9 @@ class SpacesScreenState extends State<SpacesScreen> {
                     onAction: _createSpace,
                   )
                 : ListView.builder(
+                    // Bottom padding clears the floating action button so the
+                    // last space card isn't tucked behind it.
+                    padding: const EdgeInsets.only(bottom: 88),
                     itemCount: _spaces.length,
                     itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),
                   ),
