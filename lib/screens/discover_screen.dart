@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/perenual_service.dart';
+import '../services/species_cache_service.dart';
 import '../services/wikimedia_image_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
+import 'pest_disease_screen.dart';
 import 'species_detail_screen.dart';
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
@@ -32,6 +34,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// and doubles as which row shows a loading indicator while its fetch is
   /// in flight.
   int? _openingSpeciesId;
+
+  List<RecentSpecies> _recent = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecent();
+  }
+
+  Future<void> _loadRecent() async {
+    final recent = await SpeciesCacheService.instance.getRecent();
+    if (mounted) setState(() => _recent = recent);
+  }
 
   @override
   void dispose() {
@@ -87,29 +102,55 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _openSpecies(PerenualSpeciesSummary summary) async {
     if (_openingSpeciesId != null) return;
     setState(() => _openingSpeciesId = summary.id);
+    var usedOfflineCache = false;
     try {
-      final detail = await _service.fetchSpeciesDetail(summary.id);
+      var detail = await _service.fetchSpeciesDetail(summary.id);
+      if (detail != null) {
+        unawaited(SpeciesCacheService.instance.recordViewed(summary, detail));
+        unawaited(_loadRecent());
+      } else {
+        // Live fetch reported "no data" rather than throwing - still worth
+        // trying whatever was viewed before, same as an outright failure.
+        detail = await SpeciesCacheService.instance.getCachedDetail(summary.id);
+        usedOfflineCache = detail != null;
+      }
       if (!mounted || detail == null) return;
 
       WikimediaImage? fallbackImage;
       final imageUrl = detail.imageUrl;
-      if (imageUrl == null || imageUrl.isEmpty) {
+      if (!usedOfflineCache && (imageUrl == null || imageUrl.isEmpty)) {
         fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
       }
       if (!mounted) return;
+
+      if (usedOfflineCache) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Showing a previously-saved copy (offline or unavailable).')),
+        );
+      }
 
       await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => SpeciesDetailScreen(
-            species: detail,
+            species: detail!,
             fallbackImageUrl: fallbackImage?.url,
             fallbackImageAttribution: fallbackImage?.attribution,
           ),
         ),
       );
     } catch (_) {
-      if (mounted) {
+      final cached = await SpeciesCacheService.instance.getCachedDetail(summary.id);
+      if (!mounted) return;
+      if (cached != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Showing a previously-saved copy (offline or unavailable).')),
+        );
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SpeciesDetailScreen(species: cached)),
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Couldn't load this plant's details. Try again.")),
         );
@@ -122,7 +163,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Find'),
+      appBar: FrostedAppBar(
+        title: 'Find',
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bug_report_outlined),
+            tooltip: 'Common Problems',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PestDiseaseScreen()),
+            ),
+          ),
+        ],
+      ),
       body: Column(
         children: [
           Padding(
@@ -153,13 +206,45 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 message: 'Try a different name or spelling.',
               ),
             ),
-          if (!_searching && _results.isEmpty && !_searched)
+          if (!_searching && _results.isEmpty && !_searched && _recent.isEmpty)
             const Expanded(
               child: EmptyState(
                 icon: Icons.travel_explore_outlined,
                 title: 'Discover any plant',
                 message: 'Search thousands of species for care info and facts - '
                     'whether or not it\'s already in your collection.',
+              ),
+            ),
+          if (!_searching && _results.isEmpty && !_searched && _recent.isNotEmpty)
+            Expanded(
+              child: ListView.builder(
+                padding: const EdgeInsets.only(top: 8),
+                itemCount: _recent.length + 1,
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                      child: Text(
+                        'Recently viewed',
+                        style: Theme.of(context).textTheme.titleSmall,
+                      ),
+                    );
+                  }
+                  final entry = _recent[index - 1];
+                  return ListTile(
+                    leading: _SpeciesThumbnail(
+                      key: ValueKey('recent_${entry.summary.id}'),
+                      summary: entry.summary,
+                    ),
+                    title: Text(
+                      entry.summary.scientificName,
+                      style: const TextStyle(fontStyle: FontStyle.italic),
+                    ),
+                    subtitle:
+                        entry.summary.commonName != null ? Text(entry.summary.commonName!) : null,
+                    onTap: () => _openSpecies(entry.summary),
+                  );
+                },
               ),
             ),
           if (!_searching && _results.isNotEmpty)

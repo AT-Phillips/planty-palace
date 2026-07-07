@@ -3,6 +3,7 @@ import { initializeApp } from "firebase-admin/app";
 initializeApp();
 
 export { searchSpecies, fetchSpeciesDetail } from "./perenual";
+export { searchPestsDiseases } from "./pests";
 export { fetchWeather, geocodeCity } from "./weather";
 export { identifyPlant } from "./identify";
 export { seedCommonSpecies, seedCommonSpeciesWeekly } from "./seed";
