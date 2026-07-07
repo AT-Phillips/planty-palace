@@ -118,6 +118,7 @@ class _PestDiseaseScreenState extends State<PestDiseaseScreen> {
           if (!_searching && _results.isNotEmpty)
             Expanded(
               child: ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final result = _results[index];

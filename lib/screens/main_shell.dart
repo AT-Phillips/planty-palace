@@ -10,9 +10,10 @@ import 'spaces_screen.dart';
 
 /// Hosts the app's 4 persistent tabs (Spaces, Care, Find, Account - Settings
 /// now lives inline at the bottom of Account) plus the camera quick-action.
-/// Tabs are rebuilt fresh on every switch (not an IndexedStack) so a plant
-/// added via the global camera button shows up immediately regardless of
-/// which tab you're on.
+/// Uses an IndexedStack so each tab's state (scroll position, the persistent
+/// weather card, in-flight loads) is preserved across switches instead of
+/// flashing/reloading. A plant added via the global camera button is
+/// reflected by explicitly refreshing the Spaces and Care tabs afterward.
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -23,11 +24,14 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
-  static const _tabs = [
-    SpacesScreen(),
-    CareScreen(),
-    DiscoverScreen(),
-    AccountScreen(),
+  final _spacesKey = GlobalKey<SpacesScreenState>();
+  final _careKey = GlobalKey<CareScreenState>();
+
+  late final List<Widget> _tabs = [
+    SpacesScreen(key: _spacesKey),
+    CareScreen(key: _careKey),
+    const DiscoverScreen(),
+    const AccountScreen(),
   ];
 
   Future<void> _openCamera() async {
@@ -39,13 +43,14 @@ class _MainShellState extends State<MainShell> {
         builder: (_) => AddEditPlantScreen(gardenId: defaultSpaceId),
       ),
     );
-    if (mounted) setState(() {});
+    _spacesKey.currentState?.refresh();
+    _careKey.currentState?.refresh();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _tabs[_selectedIndex],
+      body: IndexedStack(index: _selectedIndex, children: _tabs),
       bottomNavigationBar: MainBottomNavBar(
         selectedIndex: _selectedIndex,
         onTap: (index) => setState(() => _selectedIndex = index),

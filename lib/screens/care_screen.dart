@@ -22,22 +22,15 @@ class CareScreen extends StatefulWidget {
   const CareScreen({super.key});
 
   @override
-  State<CareScreen> createState() => _CareScreenState();
+  State<CareScreen> createState() => CareScreenState();
 }
 
-class _CareScreenState extends State<CareScreen> {
+class CareScreenState extends State<CareScreen> {
   final PlantRepository _repository = PlantRepository();
   final TextEditingController _searchController = TextEditingController();
 
-  // MainShell rebuilds each tab fresh on every switch (not an IndexedStack),
-  // so this State is recreated every time the user taps this tab. Seeding
-  // from the last successful load avoids a flash of the empty state while
-  // the new fetch is in flight.
-  static List<Plant>? _cachedPlants;
-  static Map<String, String>? _cachedSpaceNames;
-
-  List<Plant> _plants = _cachedPlants ?? [];
-  Map<String, String> _spaceNames = _cachedSpaceNames ?? {};
+  List<Plant> _plants = [];
+  Map<String, String> _spaceNames = {};
   String _query = '';
   PlantSortOption _sortOption = PlantSortOption.urgency;
   bool _overdueOnly = false;
@@ -59,6 +52,11 @@ class _CareScreenState extends State<CareScreen> {
     super.dispose();
   }
 
+  /// Reloads all plants - called by MainShell after a plant is added via
+  /// the global camera button, since IndexedStack keeps this tab's state
+  /// alive rather than rebuilding it on return.
+  void refresh() => _load();
+
   List<Plant> get _filteredPlants {
     final list = _plants.where((p) {
       if (_query.isNotEmpty &&
@@ -79,8 +77,6 @@ class _CareScreenState extends State<CareScreen> {
       final plants = await _repository.getPlants();
 
       final spaceNames = {for (final s in spaces) s.id!: s.name};
-      _cachedPlants = plants;
-      _cachedSpaceNames = spaceNames;
       if (!mounted) return;
       setState(() {
         _spaceNames = spaceNames;

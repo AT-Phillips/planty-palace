@@ -40,7 +40,9 @@ class PestDiseaseInfo {
 /// shares the same server-side API key and Firestore cache pattern as
 /// [PerenualService]. See functions/src/pests.ts.
 class PestDiseaseService {
-  final _functions = FirebaseFunctions.instance;
+  // Resolved lazily rather than at construction so simply creating the
+  // service never touches Firebase before it's initialized.
+  FirebaseFunctions get _functions => FirebaseFunctions.instance;
 
   Future<List<PestDiseaseInfo>> search(String query) async {
     if (query.trim().isEmpty) return [];

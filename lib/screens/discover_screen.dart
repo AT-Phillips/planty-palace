@@ -102,32 +102,37 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> _openSpecies(PerenualSpeciesSummary summary) async {
     if (_openingSpeciesId != null) return;
     setState(() => _openingSpeciesId = summary.id);
-    var usedOfflineCache = false;
     try {
       var detail = await _service.fetchSpeciesDetail(summary.id);
+      var detailUnavailable = false;
+
       if (detail != null) {
         unawaited(SpeciesCacheService.instance.recordViewed(summary, detail));
         unawaited(_loadRecent());
       } else {
-        // Live fetch reported "no data" rather than throwing - still worth
-        // trying whatever was viewed before, same as an outright failure.
+        // Perenual's free tier locks full details for many species (esp.
+        // cultivars), and the network can fail - fall back to a previously-
+        // viewed copy, or to a minimal record built from the search result,
+        // so tapping a result always opens something rather than dead-ending.
         detail = await SpeciesCacheService.instance.getCachedDetail(summary.id);
-        usedOfflineCache = detail != null;
+        if (detail == null) {
+          detail = PerenualSpeciesDetail(
+            scientificName: summary.scientificName,
+            commonName: summary.commonName,
+            imageUrl: summary.thumbnailUrl,
+            wateringIntervalDays: null,
+            careInstructions: '',
+          );
+          detailUnavailable = true;
+        }
       }
-      if (!mounted || detail == null) return;
 
       WikimediaImage? fallbackImage;
       final imageUrl = detail.imageUrl;
-      if (!usedOfflineCache && (imageUrl == null || imageUrl.isEmpty)) {
+      if (imageUrl == null || imageUrl.isEmpty) {
         fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
       }
       if (!mounted) return;
-
-      if (usedOfflineCache) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Showing a previously-saved copy (offline or unavailable).')),
-        );
-      }
 
       await Navigator.push(
         context,
@@ -136,25 +141,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             species: detail!,
             fallbackImageUrl: fallbackImage?.url,
             fallbackImageAttribution: fallbackImage?.attribution,
+            detailUnavailable: detailUnavailable,
           ),
         ),
       );
-    } catch (_) {
-      final cached = await SpeciesCacheService.instance.getCachedDetail(summary.id);
-      if (!mounted) return;
-      if (cached != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Showing a previously-saved copy (offline or unavailable).')),
-        );
-        await Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => SpeciesDetailScreen(species: cached)),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't load this plant's details. Try again.")),
-        );
-      }
     } finally {
       if (mounted) setState(() => _openingSpeciesId = null);
     }
@@ -218,6 +208,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           if (!_searching && _results.isEmpty && !_searched && _recent.isNotEmpty)
             Expanded(
               child: ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 padding: const EdgeInsets.only(top: 8),
                 itemCount: _recent.length + 1,
                 itemBuilder: (context, index) {
@@ -250,6 +241,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           if (!_searching && _results.isNotEmpty)
             Expanded(
               child: ListView.builder(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final result = _results[index];
@@ -338,6 +330,10 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
         width: 44,
         height: 44,
         fit: BoxFit.cover,
+        // Decode at roughly the on-screen size (44 logical px at up to ~3x
+        // density) instead of full resolution - much faster to load and
+        // lighter on memory for a list of thumbnails.
+        cacheWidth: 132,
         errorBuilder: (_, __, ___) {
           if (usingPerenual) _onPerenualImageFailed();
           return const Icon(Icons.local_florist);

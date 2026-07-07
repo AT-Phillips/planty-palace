@@ -17,11 +17,18 @@ class SpeciesDetailScreen extends StatelessWidget {
   final String? fallbackImageUrl;
   final String? fallbackImageAttribution;
 
+  /// True when full care details couldn't be loaded (Perenual free-tier
+  /// lock, or a network failure) and this screen is showing only the basics
+  /// from the search result - surfaces a gentle note instead of looking like
+  /// the species simply has no care info.
+  final bool detailUnavailable;
+
   const SpeciesDetailScreen({
     super.key,
     required this.species,
     this.fallbackImageUrl,
     this.fallbackImageAttribution,
+    this.detailUnavailable = false,
   });
 
   Future<void> _addToMyPlants(BuildContext context) async {
@@ -67,6 +74,14 @@ class SpeciesDetailScreen extends StatelessWidget {
                 height: 220,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                cacheWidth: 1080,
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (wasSynchronouslyLoaded || frame != null) return child;
+                  return const SizedBox(
+                    height: 220,
+                    child: Center(child: CircularProgressIndicator.adaptive()),
+                  );
+                },
                 errorBuilder: (_, __, ___) => const SizedBox.shrink(),
               ),
             ),
@@ -85,6 +100,29 @@ class SpeciesDetailScreen extends StatelessWidget {
           ),
           if (species.commonName != null)
             Text(species.commonName!, style: TextStyle(color: scheme.onSurfaceVariant)),
+          if (detailUnavailable) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 20, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      "Detailed care info isn't available for this species yet. "
+                      'You can still add it and set your own care schedule.',
+                      style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (species.careInstructions.isNotEmpty) ...[
             const SizedBox(height: 20),
             Text('Care Info', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),

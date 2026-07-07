@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import { getFirestore } from "firebase-admin/firestore";
 import { cachedFetch, normalizeKey } from "./cache";
 import { perenualApiKey } from "./secrets";
@@ -110,6 +111,11 @@ async function fetchDetailLive(id: number, apiKey: string): Promise<SpeciesDetai
   const uri = `${PERENUAL_BASE}/species/details/${id}?key=${apiKey}`;
   const response = await fetch(uri);
   if (!response.ok) {
+    // Perenual's free tier returns 4xx for species whose full details are
+    // gated behind a paid plan (common for higher-ID cultivars) - log it so
+    // the paywall-vs-transient-failure split is visible when deciding
+    // whether a data-source change is warranted.
+    logger.warn(`Perenual detail fetch failed for species ${id}: HTTP ${response.status}`);
     throw new Error(`Perenual returned ${response.status}`);
   }
   return parseDetail((await response.json()) as Record<string, unknown>);

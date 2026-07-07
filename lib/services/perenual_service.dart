@@ -81,7 +81,10 @@ class PerenualSpeciesDetail {
 /// cache, rather than calling Perenual directly with a key embedded in the
 /// client. See functions/src/perenual.ts.
 class PerenualService {
-  final _functions = FirebaseFunctions.instance;
+  // Resolved lazily rather than at construction so simply creating the
+  // service (e.g. when its screen mounts) never touches Firebase before
+  // it's initialized.
+  FirebaseFunctions get _functions => FirebaseFunctions.instance;
 
   /// Purely additive enrichment - any failure or "no match" is treated as
   /// no data, never an error the user has to deal with.
