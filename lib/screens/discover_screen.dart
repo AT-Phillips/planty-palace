@@ -8,7 +8,6 @@ import '../services/wikimedia_image_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
-import 'pest_disease_screen.dart';
 import 'species_detail_screen.dart';
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
@@ -153,19 +152,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: FrostedAppBar(
-        title: 'Find',
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.bug_report_outlined),
-            tooltip: 'Common Problems',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const PestDiseaseScreen()),
-            ),
-          ),
-        ],
-      ),
+      appBar: const FrostedAppBar(title: 'Find'),
       body: Column(
         children: [
           Padding(
