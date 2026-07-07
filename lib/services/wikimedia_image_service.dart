@@ -21,6 +21,34 @@ class WikimediaImageService {
   Future<WikimediaImage?> fetchImage(String query) async {
     if (query.trim().isEmpty) return null;
 
+    final result = await _searchOnce(query);
+    if (result != null) return result;
+
+    // Obscure cultivars ("Acer palmatum 'Gwen's Rose Delight'") often have no
+    // Commons photo of their own - fall back to the base genus + species so a
+    // representative photo of the species shows instead of a bare placeholder.
+    final base = _baseSpecies(query);
+    if (base != null && base != query.trim()) {
+      return _searchOnce(base);
+    }
+    return null;
+  }
+
+  /// The base name from a fuller one, dropping cultivar quotes and any
+  /// parenthetical, keeping the leading genus (+ species if present) - e.g.
+  /// "Acer palmatum 'Gwen's Rose Delight'" -> "Acer palmatum", and
+  /// "Malus 'Candied Apple'" -> "Malus". Null if nothing is left.
+  String? _baseSpecies(String query) {
+    final cleaned = query
+        .replaceAll(RegExp(r"['‘’“”].*$"), '')
+        .replaceAll(RegExp(r'\(.*\)'), '')
+        .trim();
+    final words = cleaned.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return null;
+    return words.take(2).join(' ');
+  }
+
+  Future<WikimediaImage?> _searchOnce(String query) async {
     try {
       final uri = Uri.parse(
         '$_baseUrl?action=query&generator=search'
