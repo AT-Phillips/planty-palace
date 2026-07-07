@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../screens/weather_settings_screen.dart';
 import '../services/unit_preferences.dart';
 import '../services/weather_preferences.dart';
 import '../services/weather_service.dart';
@@ -72,7 +73,23 @@ class _WeatherCardState extends State<WeatherCard> {
     return ValueListenableBuilder<bool>(
       valueListenable: WeatherPreferences.instance.enabled,
       builder: (context, enabled, _) {
-        if (!enabled || _loading || _weather == null) return const SizedBox.shrink();
+        if (!enabled || _loading) return const SizedBox.shrink();
+
+        if (_weather == null) {
+          final scheme = Theme.of(context).colorScheme;
+          return Card(
+            margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+            child: ListTile(
+              leading: Icon(Icons.location_off_outlined, color: scheme.onSurfaceVariant),
+              title: const Text('Weather unavailable'),
+              subtitle: const Text('Tap to set a location'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const WeatherSettingsScreen()),
+              ),
+            ),
+          );
+        }
 
         final scheme = Theme.of(context).colorScheme;
         final weather = _weather!;

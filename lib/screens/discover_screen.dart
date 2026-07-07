@@ -108,6 +108,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
       );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't load this plant's details. Try again.")),
+        );
+      }
     } finally {
       if (mounted) setState(() => _openingSpeciesId = null);
     }
@@ -202,6 +208,12 @@ class _SpeciesThumbnail extends StatefulWidget {
 
 class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
   String? _fallbackUrl;
+  bool _fallbackRequested = false;
+
+  // Perenual's listed thumbnail URL sometimes 404s/expires even when
+  // present - only trust it until it actually fails to load, then fall
+  // back to Wikimedia the same as when it was missing outright.
+  bool _perenualFailed = false;
 
   bool get _hasPerenualThumb =>
       widget.summary.thumbnailUrl != null && widget.summary.thumbnailUrl!.isNotEmpty;
@@ -213,14 +225,25 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
   }
 
   Future<void> _fetchFallback() async {
+    if (_fallbackRequested) return;
+    _fallbackRequested = true;
     final image = await WikimediaImageService().fetchImage(widget.summary.scientificName);
     if (!mounted) return;
     setState(() => _fallbackUrl = image?.url);
   }
 
+  void _onPerenualImageFailed() {
+    if (_perenualFailed) return;
+    _perenualFailed = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchFallback();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final url = _hasPerenualThumb ? widget.summary.thumbnailUrl : _fallbackUrl;
+    final usingPerenual = _hasPerenualThumb && !_perenualFailed;
+    final url = usingPerenual ? widget.summary.thumbnailUrl : _fallbackUrl;
     if (url == null) return const Icon(Icons.local_florist);
 
     return ClipRRect(
@@ -230,7 +253,10 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
         width: 44,
         height: 44,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(Icons.local_florist),
+        errorBuilder: (_, __, ___) {
+          if (usingPerenual) _onPerenualImageFailed();
+          return const Icon(Icons.local_florist);
+        },
       ),
     );
   }
