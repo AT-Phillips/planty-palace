@@ -6,6 +6,7 @@ import '../services/pest_disease_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
+import '../widgets/shimmer.dart';
 
 /// Search for common pests and diseases (spider mites, powdery mildew,
 /// root rot, etc.) - reference info independent of the user's own
@@ -85,11 +86,7 @@ class _PestDiseaseScreenState extends State<PestDiseaseScreen> {
               onChanged: _onChanged,
             ),
           ),
-          if (_searching)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: CircularProgressIndicator.adaptive(),
-            ),
+          if (_searching) const Expanded(child: SearchSkeletonList()),
           if (!_searching && _searched && _results.isEmpty && _error != null)
             Expanded(
               child: EmptyState(

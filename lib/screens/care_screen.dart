@@ -9,9 +9,9 @@ import '../utils/fertilizing_status.dart';
 import '../utils/pruning_status.dart';
 import '../utils/repotting_status.dart';
 import '../utils/watering_status.dart';
+import '../widgets/care_ring.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
-import '../widgets/plant_thumbnail.dart';
 import '../widgets/search_field.dart';
 import 'pest_disease_screen.dart';
 import 'plant_detail_screen.dart';
@@ -265,13 +265,13 @@ class CareScreenState extends State<CareScreen> {
     final hasPruningSchedule = plant.pruningIntervalDays != null;
     final selected = _selectedIds.contains(plant.id);
 
-    return Card(
+    final card = Card(
       color: selected ? scheme.primaryContainer.withValues(alpha: 0.4) : null,
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: _selectionMode
             ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(plant))
-            : PlantThumbnail(plant: plant),
+            : CareRing(plant: plant, heroTag: 'plant_${plant.id}'),
         title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -316,6 +316,38 @@ class CareScreenState extends State<CareScreen> {
         onTap: () => _selectionMode ? _toggleSelection(plant) : _navigateToDetail(plant),
         onLongPress: _selectionMode ? null : () => _startSelection(plant),
       ),
+    );
+
+    // Swipe right to mark watered - a quick, tactile alternative to the ⋯
+    // menu. Disabled in selection mode and for plants with no watering
+    // schedule. confirmDismiss performs the action and returns false so the
+    // card stays put rather than being removed.
+    if (_selectionMode || plant.wateringIntervalDays == null) return card;
+    return Dismissible(
+      key: ValueKey('care_${plant.id}'),
+      direction: DismissDirection.startToEnd,
+      confirmDismiss: (_) async {
+        await _markWatered(plant);
+        return false;
+      },
+      background: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: const Color(0xFF3FA34D),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        alignment: Alignment.centerLeft,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.water_drop, color: Colors.white),
+            SizedBox(width: 8),
+            Text('Watered', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+          ],
+        ),
+      ),
+      child: card,
     );
   }
 

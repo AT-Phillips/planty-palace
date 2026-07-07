@@ -316,6 +316,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       plant: _plant,
                       size: double.infinity,
                       borderRadius: BorderRadius.zero,
+                      heroTag: 'plant_${_plant.id}',
                     ),
                   ),
                 ),

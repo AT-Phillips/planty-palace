@@ -8,6 +8,7 @@ import '../services/wikimedia_image_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
+import '../widgets/shimmer.dart';
 import 'species_detail_screen.dart';
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
@@ -82,6 +83,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     try {
       final results = await _service.searchSpecies(query);
       if (!mounted) return;
+      // Dedupe by id so no two rows share a species Hero tag (and to drop
+      // any duplicate results Perenual occasionally returns).
+      final seen = <int>{};
+      results.retainWhere((r) => seen.add(r.id));
       setState(() {
         _results = results;
         _searching = false;
@@ -141,6 +146,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             fallbackImageUrl: fallbackImage?.url,
             fallbackImageAttribution: fallbackImage?.attribution,
             detailUnavailable: detailUnavailable,
+            heroTag: 'species_${summary.id}',
           ),
         ),
       );
@@ -163,10 +169,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               onChanged: _onChanged,
             ),
           ),
-          if (_searching) const Padding(
-            padding: EdgeInsets.all(24),
-            child: CircularProgressIndicator.adaptive(),
-          ),
+          if (_searching) const Expanded(child: SearchSkeletonList()),
           if (!_searching && _searched && _results.isEmpty && _error != null)
             Expanded(
               child: EmptyState(
@@ -213,6 +216,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                     leading: _SpeciesThumbnail(
                       key: ValueKey('recent_${entry.summary.id}'),
                       summary: entry.summary,
+                      heroTag: 'species_${entry.summary.id}',
                     ),
                     title: Text(
                       entry.summary.scientificName,
@@ -234,7 +238,11 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   final result = _results[index];
                   final isOpening = _openingSpeciesId == result.id;
                   return ListTile(
-                    leading: _SpeciesThumbnail(key: ValueKey(result.id), summary: result),
+                    leading: _SpeciesThumbnail(
+                      key: ValueKey(result.id),
+                      summary: result,
+                      heroTag: 'species_${result.id}',
+                    ),
                     title: Text(
                       result.scientificName,
                       style: const TextStyle(fontStyle: FontStyle.italic),
@@ -263,8 +271,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 /// detail screen's fallback), otherwise a generic icon.
 class _SpeciesThumbnail extends StatefulWidget {
   final PerenualSpeciesSummary summary;
+  final Object? heroTag;
 
-  const _SpeciesThumbnail({super.key, required this.summary});
+  const _SpeciesThumbnail({super.key, required this.summary, this.heroTag});
 
   @override
   State<_SpeciesThumbnail> createState() => _SpeciesThumbnailState();
@@ -310,7 +319,7 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
     final url = usingPerenual ? widget.summary.thumbnailUrl : _fallbackUrl;
     if (url == null) return const Icon(Icons.local_florist);
 
-    return ClipRRect(
+    Widget image = ClipRRect(
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
         url,
@@ -327,5 +336,10 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
         },
       ),
     );
+
+    if (widget.heroTag != null) {
+      image = Hero(tag: widget.heroTag!, child: image);
+    }
+    return image;
   }
 }

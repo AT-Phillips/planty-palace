@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/perenual_service.dart';
 import '../services/plant_repository.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/shimmer.dart';
 import 'add_edit_plant_screen.dart';
 
 /// Read-only reference view for a species from Perenual's catalog - shown
@@ -23,12 +24,17 @@ class SpeciesDetailScreen extends StatelessWidget {
   /// the species simply has no care info.
   final bool detailUnavailable;
 
+  /// Matches the search-result thumbnail's Hero tag so the photo animates
+  /// smoothly from the list into this screen.
+  final Object? heroTag;
+
   const SpeciesDetailScreen({
     super.key,
     required this.species,
     this.fallbackImageUrl,
     this.fallbackImageAttribution,
     this.detailUnavailable = false,
+    this.heroTag,
   });
 
   Future<void> _addToMyPlants(BuildContext context) async {
@@ -67,22 +73,27 @@ class SpeciesDetailScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         children: [
           if (displayImageUrl != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                displayImageUrl,
-                height: 220,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                cacheWidth: 1080,
-                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-                  if (wasSynchronouslyLoaded || frame != null) return child;
-                  return const SizedBox(
-                    height: 220,
-                    child: Center(child: CircularProgressIndicator.adaptive()),
-                  );
-                },
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            _HeroImage(
+              tag: heroTag,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(20),
+                child: Image.network(
+                  displayImageUrl,
+                  height: 220,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  cacheWidth: 1080,
+                  frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                    if (wasSynchronouslyLoaded || frame != null) return child;
+                    return const ShimmerLoading(
+                      child: SkeletonBox(
+                        height: 220,
+                        borderRadius: BorderRadius.all(Radius.circular(20)),
+                      ),
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
               ),
             ),
             if (usingFallbackImage && fallbackImageAttribution != null) ...[
@@ -153,5 +164,20 @@ class SpeciesDetailScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Wraps the detail photo in a [Hero] when a tag is provided (so it animates
+/// from the search-result thumbnail), or returns it unchanged otherwise.
+class _HeroImage extends StatelessWidget {
+  final Object? tag;
+  final Widget child;
+
+  const _HeroImage({required this.tag, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    if (tag == null) return child;
+    return Hero(tag: tag!, child: child);
   }
 }

@@ -18,11 +18,17 @@ class PlantThumbnail extends StatefulWidget {
   final double size;
   final BorderRadius borderRadius;
 
+  /// When set, the thumbnail is wrapped in a [Hero] with this tag so the
+  /// photo animates smoothly between a list and the plant's detail screen.
+  /// The source and destination must use the same tag.
+  final Object? heroTag;
+
   const PlantThumbnail({
     super.key,
     required this.plant,
     this.size = 50,
     this.borderRadius = const BorderRadius.all(Radius.circular(12)),
+    this.heroTag,
   });
 
   @override
@@ -56,7 +62,7 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final content = ClipRRect(
       borderRadius: widget.borderRadius,
       child: SizedBox(
         width: widget.size,
@@ -86,5 +92,10 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
         ),
       ),
     );
+
+    if (widget.heroTag != null) {
+      return Hero(tag: widget.heroTag!, child: content);
+    }
+    return content;
   }
 }
