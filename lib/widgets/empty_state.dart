@@ -23,12 +23,19 @@ class EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+    // Center within the available space, but fall back to scrolling if that
+    // space is shorter than the content (small screens, or when a segmented
+    // control/keyboard shrinks the area) instead of overflowing.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: constraints.maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
@@ -53,7 +60,9 @@ class EmptyState extends StatelessWidget {
               const SizedBox(height: 24),
               FilledButton(onPressed: onAction, child: Text(actionLabel!)),
             ],
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

@@ -9,11 +9,12 @@ import '../utils/fertilizing_status.dart';
 import '../utils/pruning_status.dart';
 import '../utils/repotting_status.dart';
 import '../utils/watering_status.dart';
+import '../widgets/account_button.dart';
 import '../widgets/care_ring.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/pest_disease_view.dart';
 import '../widgets/search_field.dart';
-import 'pest_disease_screen.dart';
 import 'plant_detail_screen.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
@@ -37,6 +38,9 @@ class CareScreenState extends State<CareScreen> {
   bool _overdueOnly = false;
   bool _selectionMode = false;
   Set<String> _selectedIds = {};
+
+  /// 0 = My Plants, 1 = Common Problems (pest/disease reference).
+  int _careSection = 0;
 
   @override
   void initState() {
@@ -380,52 +384,70 @@ class CareScreenState extends State<CareScreen> {
                 ),
               ],
             )
-          : FrostedAppBar(
-              title: 'Care',
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.bug_report_outlined),
-                  tooltip: 'Common Problems',
-                  onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const PestDiseaseScreen()),
+          : const FrostedAppBar(title: 'Care', actions: [AccountButton()]),
+      body: Column(
+        children: [
+          if (!_selectionMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(value: 0, label: Text('My Plants'), icon: Icon(Icons.eco_outlined)),
+                  ButtonSegment(
+                    value: 1,
+                    label: Text('Common Problems'),
+                    icon: Icon(Icons.bug_report_outlined),
                   ),
-                ),
-              ],
+                ],
+                selected: {_careSection},
+                showSelectedIcon: false,
+                onSelectionChanged: (s) => setState(() => _careSection = s.first),
+              ),
             ),
-      body: _plants.isEmpty
-          ? const EmptyState(
-              icon: Icons.water_drop_outlined,
-              title: 'Nothing to water yet',
-              message: 'Once you add plants with a watering schedule, '
-                  "they'll show up here when they need attention.",
-            )
-          : Column(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                  child: SearchField(
-                    controller: _searchController,
-                    hintText: 'Search all your plants',
-                  ),
+          Expanded(
+            child: _careSection == 1
+                ? const PestDiseaseView()
+                : _buildPlantsSection(filtered),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlantsSection(List<Plant> filtered) {
+    if (_plants.isEmpty) {
+      return const EmptyState(
+        icon: Icons.water_drop_outlined,
+        title: 'Nothing to water yet',
+        message: 'Once you add plants with a watering schedule, '
+            "they'll show up here when they need attention.",
+      );
+    }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+          child: SearchField(
+            controller: _searchController,
+            hintText: 'Search all your plants',
+          ),
+        ),
+        _buildFilterBar(),
+        Expanded(
+          child: filtered.isEmpty
+              ? EmptyState(
+                  icon: Icons.filter_alt_off_outlined,
+                  title: 'No matching plants',
+                  message: _overdueOnly
+                      ? 'Nothing is overdue right now.'
+                      : 'Try a different search.',
+                )
+              : ListView.builder(
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) => _buildCareCard(filtered[index]),
                 ),
-                _buildFilterBar(),
-                Expanded(
-                  child: filtered.isEmpty
-                      ? EmptyState(
-                          icon: Icons.filter_alt_off_outlined,
-                          title: 'No matching plants',
-                          message: _overdueOnly
-                              ? 'Nothing is overdue right now.'
-                              : 'Try a different search.',
-                        )
-                      : ListView.builder(
-                          itemCount: filtered.length,
-                          itemBuilder: (context, index) => _buildCareCard(filtered[index]),
-                        ),
-                ),
-              ],
-            ),
+        ),
+      ],
     );
   }
 }

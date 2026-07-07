@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/perenual_service.dart';
 import '../services/species_cache_service.dart';
 import '../services/wikimedia_image_service.dart';
+import '../widgets/account_button.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
@@ -158,7 +159,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Find'),
+      appBar: const FrostedAppBar(title: 'Find', actions: [AccountButton()]),
       body: Column(
         children: [
           Padding(

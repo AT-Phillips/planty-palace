@@ -3,22 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/pest_disease_service.dart';
-import '../widgets/empty_state.dart';
-import '../widgets/frosted_app_bar.dart';
-import '../widgets/search_field.dart';
-import '../widgets/shimmer.dart';
+import 'empty_state.dart';
+import 'search_field.dart';
+import 'shimmer.dart';
 
-/// Search for common pests and diseases (spider mites, powdery mildew,
-/// root rot, etc.) - reference info independent of the user's own
-/// collection, mirroring DiscoverScreen's search pattern.
-class PestDiseaseScreen extends StatefulWidget {
-  const PestDiseaseScreen({super.key});
+/// Search for common pests and diseases (spider mites, powdery mildew, root
+/// rot, etc.) with symptoms and treatment info. A bodyless view (no Scaffold)
+/// so it can sit inside the Care tab's "Common Problems" section.
+class PestDiseaseView extends StatefulWidget {
+  const PestDiseaseView({super.key});
 
   @override
-  State<PestDiseaseScreen> createState() => _PestDiseaseScreenState();
+  State<PestDiseaseView> createState() => _PestDiseaseViewState();
 }
 
-class _PestDiseaseScreenState extends State<PestDiseaseScreen> {
+class _PestDiseaseViewState extends State<PestDiseaseView> {
   final PestDiseaseService _service = PestDiseaseService();
   final TextEditingController _controller = TextEditingController();
   Timer? _debounce;
@@ -74,57 +73,51 @@ class _PestDiseaseScreenState extends State<PestDiseaseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: const FrostedAppBar(title: 'Common Problems'),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: SearchField(
-              controller: _controller,
-              hintText: 'Search pests or diseases...',
-              onChanged: _onChanged,
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: SearchField(
+            controller: _controller,
+            hintText: 'Search pests or diseases...',
+            onChanged: _onChanged,
+          ),
+        ),
+        if (_searching) const Expanded(child: SearchSkeletonList()),
+        if (!_searching && _searched && _results.isEmpty && _error != null)
+          Expanded(
+            child: EmptyState(
+              icon: Icons.error_outline,
+              title: 'Search unavailable',
+              message: _error!,
             ),
           ),
-          if (_searching) const Expanded(child: SearchSkeletonList()),
-          if (!_searching && _searched && _results.isEmpty && _error != null)
-            Expanded(
-              child: EmptyState(
-                icon: Icons.error_outline,
-                title: 'Search unavailable',
-                message: _error!,
-              ),
+        if (!_searching && _searched && _results.isEmpty && _error == null)
+          const Expanded(
+            child: EmptyState(
+              icon: Icons.search_off,
+              title: 'No matches found',
+              message: 'Try a different name, like "aphids" or "root rot".',
             ),
-          if (!_searching && _searched && _results.isEmpty && _error == null)
-            const Expanded(
-              child: EmptyState(
-                icon: Icons.search_off,
-                title: 'No matches found',
-                message: 'Try a different name, like "aphids" or "root rot".',
-              ),
+          ),
+        if (!_searching && _results.isEmpty && !_searched)
+          const Expanded(
+            child: EmptyState(
+              icon: Icons.bug_report_outlined,
+              title: 'Identify a problem',
+              message: 'Search common pests and diseases for symptoms and '
+                  'how to treat them.',
             ),
-          if (!_searching && _results.isEmpty && !_searched)
-            const Expanded(
-              child: EmptyState(
-                icon: Icons.bug_report_outlined,
-                title: 'Identify a problem',
-                message: 'Search common pests and diseases for symptoms and '
-                    'how to treat them.',
-              ),
+          ),
+        if (!_searching && _results.isNotEmpty)
+          Expanded(
+            child: ListView.builder(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              itemCount: _results.length,
+              itemBuilder: (context, index) => _PestDiseaseTile(info: _results[index]),
             ),
-          if (!_searching && _results.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                itemCount: _results.length,
-                itemBuilder: (context, index) {
-                  final result = _results[index];
-                  return _PestDiseaseTile(info: result);
-                },
-              ),
-            ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }

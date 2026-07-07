@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/garden.dart';
 import '../services/plant_repository.dart';
 import '../services/propagation_repository.dart';
+import '../utils/care_overdue.dart';
+import '../widgets/account_button.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/weather_card.dart';
@@ -10,7 +12,11 @@ import 'my_plants_screen.dart';
 import 'propagations_screen.dart';
 
 class SpacesScreen extends StatefulWidget {
-  const SpacesScreen({super.key});
+  /// Switches the shell to the Care tab - used by the "To-Do today" card,
+  /// since the tasks themselves live on Care.
+  final VoidCallback? onGoToCare;
+
+  const SpacesScreen({super.key, this.onGoToCare});
 
   @override
   State<SpacesScreen> createState() => SpacesScreenState();
@@ -22,12 +28,14 @@ class SpacesScreenState extends State<SpacesScreen> {
   List<Garden> _spaces = [];
   Map<String, int> _plantCounts = {};
   int _propagationCount = 0;
+  int _dueTodayCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadSpaces();
     _loadPropagationCount();
+    _loadDueTasks();
   }
 
   /// Reloads Spaces + counts - called by MainShell after a plant is added
@@ -36,6 +44,22 @@ class SpacesScreenState extends State<SpacesScreen> {
   void refresh() {
     _loadSpaces();
     _loadPropagationCount();
+    _loadDueTasks();
+  }
+
+  Future<void> _loadDueTasks() async {
+    try {
+      final plants = await _repository.getPlants();
+      // "Needs care today" = any schedule due today or overdue (due-in <= 0).
+      final count = plants.where((p) {
+        final due = mostUrgentDueIn(p);
+        return due != null && due <= 0;
+      }).length;
+      if (!mounted) return;
+      setState(() => _dueTodayCount = count);
+    } catch (e) {
+      debugPrint('Failed to load due tasks: $e');
+    }
   }
 
   Future<void> _loadSpaces() async {
@@ -243,6 +267,37 @@ class SpacesScreenState extends State<SpacesScreen> {
     );
   }
 
+  Widget _buildTodoCard() {
+    final scheme = Theme.of(context).colorScheme;
+    final has = _dueTodayCount > 0;
+    return Card(
+      color: has ? scheme.primaryContainer : null,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: CircleAvatar(
+          backgroundColor: has ? scheme.primary : scheme.surfaceContainerHighest,
+          foregroundColor: has ? scheme.onPrimary : scheme.onSurfaceVariant,
+          child: Icon(has ? Icons.checklist_rounded : Icons.task_alt),
+        ),
+        title: Text(
+          'To-Do Today',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: has ? scheme.onPrimaryContainer : null,
+          ),
+        ),
+        subtitle: Text(
+          has
+              ? '$_dueTodayCount ${_dueTodayCount == 1 ? 'plant needs' : 'plants need'} care'
+              : "You're all caught up",
+          style: TextStyle(color: has ? scheme.onPrimaryContainer : scheme.onSurfaceVariant),
+        ),
+        trailing: Icon(Icons.chevron_right, color: has ? scheme.onPrimaryContainer : null),
+        onTap: widget.onGoToCare,
+      ),
+    );
+  }
+
   Widget _buildPropagationsCard() {
     final scheme = Theme.of(context).colorScheme;
     return Card(
@@ -264,11 +319,12 @@ class SpacesScreenState extends State<SpacesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'My Spaces'),
+      appBar: const FrostedAppBar(title: 'My Spaces', actions: [AccountButton()]),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const WeatherCard(),
+          _buildTodoCard(),
           _buildSectionHeader('Collections'),
           _buildPropagationsCard(),
           if (_spaces.isNotEmpty)
