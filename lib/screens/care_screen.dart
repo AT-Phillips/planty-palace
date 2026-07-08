@@ -395,7 +395,7 @@ class CareScreenState extends State<CareScreen> {
                   ButtonSegment(value: 0, label: Text('My Plants'), icon: Icon(Icons.eco_outlined)),
                   ButtonSegment(
                     value: 1,
-                    label: Text('Common Problems'),
+                    label: Text('Diagnose'),
                     icon: Icon(Icons.bug_report_outlined),
                   ),
                 ],

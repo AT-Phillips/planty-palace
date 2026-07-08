@@ -8,8 +8,9 @@ import '../content/help_content.dart';
 import '../content/legal_content.dart';
 import '../screens/info_screen.dart';
 import '../screens/schedules_screen.dart';
-import '../screens/weather_settings_screen.dart';
 import '../services/theme_controller.dart';
+import '../services/weather_service.dart';
+import 'weather_detail_sheet.dart';
 
 /// All former Settings-tab content, extracted into a plain widget (no
 /// Scaffold/AppBar of its own) so it can be embedded inline at the bottom of
@@ -127,6 +128,7 @@ class SettingsSections extends StatelessWidget {
                               valueListenable: ThemeController.instance.backgroundPaletteIndex,
                               builder: (context, selectedIndex, _) {
                                 final scheme = Theme.of(context).colorScheme;
+                                final brightness = Theme.of(context).brightness;
                                 return Row(
                                   children: [
                                     for (var i = 0;
@@ -141,10 +143,14 @@ class SettingsSections extends StatelessWidget {
                                             width: 28,
                                             height: 28,
                                             decoration: BoxDecoration(
-                                              color: ThemeController.backgroundPalettes[i].swatch,
+                                              // Preview the tone for the current brightness, so
+                                              // the dot shows what you'll actually get.
+                                              color: ThemeController.backgroundPalettes[i]
+                                                  .swatchFor(brightness),
                                               shape: BoxShape.circle,
                                               // Always outline: several palettes are near-black
-                                              // and would vanish against a dark card otherwise.
+                                              // (or near-white) and would vanish against the card
+                                              // otherwise.
                                               border: Border.all(
                                                 color: i == selectedIndex
                                                     ? scheme.onSurface
@@ -181,10 +187,10 @@ class SettingsSections extends StatelessWidget {
                 leading: const Icon(Icons.wb_sunny_outlined),
                 title: const Text('Weather'),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const WeatherSettingsScreen()),
-                ),
+                onTap: () async {
+                  final weather = await WeatherService().fetchCurrentWeather();
+                  if (context.mounted) showWeatherDetailSheet(context, weather: weather);
+                },
               ),
               const Divider(height: 1),
               ListTile(

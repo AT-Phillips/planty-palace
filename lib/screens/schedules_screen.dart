@@ -4,8 +4,7 @@ import '../services/notification_preferences.dart';
 import '../widgets/frosted_app_bar.dart';
 
 /// Reminders/scheduling controls, split out from the former inline
-/// "Schedules" block in SettingsSections into their own screen - see
-/// LocationPickerScreen for the pattern this follows.
+/// "Schedules" block in SettingsSections into their own screen.
 class SchedulesScreen extends StatefulWidget {
   const SchedulesScreen({super.key});
 

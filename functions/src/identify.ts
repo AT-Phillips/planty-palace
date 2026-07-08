@@ -1,4 +1,5 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
 import { getFirestore, Firestore } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
 import { plantNetApiKey } from "./secrets";
@@ -71,6 +72,10 @@ export const identifyPlant = onCall(
       const uri = `https://my-api.plantnet.org/v2/identify/all?api-key=${plantNetApiKey.value()}`;
       const response = await fetch(uri, { method: "POST", body: form });
       if (!response.ok) {
+        // Surface PlantNet's actual error body (e.g. an invalid-key message)
+        // - never the URI, which contains the key itself.
+        const body = await response.text().catch(() => "");
+        logger.error("identifyPlant failed", { status: response.status, body });
         throw new HttpsError("unavailable", `PlantNet returned ${response.status}`);
       }
 

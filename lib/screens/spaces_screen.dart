@@ -121,6 +121,16 @@ class SpacesScreenState extends State<SpacesScreen> {
     if (mounted) _loadSpaces();
   }
 
+  Future<void> _navigateToAllPlants() async {
+    // MyPlantsScreen with a null garden = the all-plants view (every plant
+    // across all spaces, filterable by space).
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const MyPlantsScreen()),
+    );
+    if (mounted) refresh();
+  }
+
   Future<void> _navigateToPropagations() async {
     await Navigator.push(
       context,
@@ -244,23 +254,32 @@ class SpacesScreenState extends State<SpacesScreen> {
 
     if (confirmed != true || !mounted) return;
 
+    // Optimistically hide, then commit after a fixed window - decoupled from
+    // the snackbar's close future (which could leave the snackbar stuck and
+    // the delete never committing). Undo restores immediately.
     setState(() => _spaces.removeWhere((s) => s.id == space.id));
 
-    final controller = ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
+    var undone = false;
+    messenger.showSnackBar(
       SnackBar(
         content: Text('${space.name} deleted'),
-        action: SnackBarAction(label: 'Undo', onPressed: () {}),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            undone = true;
+            if (mounted) _loadSpaces();
+          },
+        ),
       ),
     );
 
-    final reason = await controller.closed;
-    if (!mounted) return;
-    if (reason == SnackBarClosedReason.action) {
-      _loadSpaces();
-      return;
-    }
+    await Future.delayed(const Duration(seconds: 4, milliseconds: 250));
+    if (undone) return;
 
     await _repository.deleteGarden(space.id!);
+    if (mounted) _loadSpaces();
   }
 
   int get _totalPlants => _plantCounts.values.fold(0, (sum, count) => sum + count);
@@ -305,7 +324,6 @@ class SpacesScreenState extends State<SpacesScreen> {
       subtitle: has
           ? '${_dueToday.length} ${_dueToday.length == 1 ? 'plant needs' : 'plants need'} care'
           : "You're all caught up",
-      initiallyExpanded: has,
       children: [
         if (!has)
           const ListTile(
@@ -372,7 +390,6 @@ class SpacesScreenState extends State<SpacesScreen> {
           ? '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
               '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}'
           : ' ',
-      initiallyExpanded: true,
       children: [
         for (final space in _spaces) _buildSpaceRow(space),
         if (_spacesLoaded && _spaces.isEmpty)
@@ -470,6 +487,39 @@ class SpacesScreenState extends State<SpacesScreen> {
     );
   }
 
+  /// A prominent, always-visible entry point to every plant the user owns -
+  /// pinned above the dropdown sections so all their flora is one tap away,
+  /// rather than buried inside the Spaces dropdown.
+  Widget _allPlantsCard() {
+    final scheme = Theme.of(context).colorScheme;
+    final subtitle = _spacesLoaded
+        ? '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} across '
+            '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}'
+        : ' ';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Card(
+        color: scheme.primaryContainer,
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          leading: CircleAvatar(
+            backgroundColor: scheme.primary,
+            foregroundColor: scheme.onPrimary,
+            child: const Icon(Icons.local_florist_outlined),
+          ),
+          title: Text(
+            'All Plants',
+            style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onPrimaryContainer),
+          ),
+          subtitle: Text(subtitle, style: TextStyle(color: scheme.onPrimaryContainer)),
+          trailing: Icon(Icons.chevron_right, color: scheme.onPrimaryContainer),
+          onTap: _navigateToAllPlants,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -480,6 +530,7 @@ class SpacesScreenState extends State<SpacesScreen> {
           padding: const EdgeInsets.only(top: 4, bottom: 24),
           children: [
             const WeatherCard(),
+            _allPlantsCard(),
             _todoSection(),
             _projectsSection(),
             _spacesSection(),

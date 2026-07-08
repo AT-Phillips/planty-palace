@@ -7,10 +7,6 @@ import 'package:google_fonts/google_fonts.dart';
 class BackgroundPalette {
   final String name;
 
-  /// A representative swatch shown in the Settings picker (the dark
-  /// background, which is where these palettes differ most visibly).
-  final Color swatch;
-
   // Dark theme: deliberately large, unambiguous contrast steps between
   // background (darkest) < card < input fill (lightest), because Material 3's
   // auto-generated dark tiers land too close together to read as layers.
@@ -18,17 +14,26 @@ class BackgroundPalette {
   final Color darkCard;
   final Color darkInputFill;
 
-  // Light theme: a subtle off-white so the light theme isn't stark/clinical.
+  // Light theme: a distinctly tinted (but still light) surface, with cards a
+  // near-white lift above it. These are perceptibly different per palette so
+  // switching actually re-tints the app in light mode - not four near-white
+  // off-whites that all look the same.
   final Color lightBackground;
+  final Color lightCard;
 
   const BackgroundPalette({
     required this.name,
-    required this.swatch,
     required this.darkBackground,
     required this.darkCard,
     required this.darkInputFill,
     required this.lightBackground,
+    required this.lightCard,
   });
+
+  /// The swatch to preview in the Settings picker for the given brightness -
+  /// so the dot shows what the user will actually get.
+  Color swatchFor(Brightness brightness) =>
+      brightness == Brightness.dark ? darkBackground : lightBackground;
 }
 
 class AppTheme {
@@ -36,14 +41,14 @@ class AppTheme {
   static const double radius = 20.0;
 
   /// The current default - the original hand-tuned green-tinted dark theme
-  /// and warm off-white light background.
+  /// with a soft sage light surface.
   static const BackgroundPalette forestPalette = BackgroundPalette(
     name: 'Forest',
-    swatch: Color(0xFF0B120E),
     darkBackground: Color(0xFF0B120E),
     darkCard: Color(0xFF1C2A22),
     darkInputFill: Color(0xFF2A3931),
-    lightBackground: Color(0xFFF6F7F2),
+    lightBackground: Color(0xFFEAF0E9),
+    lightCard: Color(0xFFF7FAF6),
   );
 
   /// All selectable background palettes, in picker order. `forestPalette` is
@@ -52,27 +57,27 @@ class AppTheme {
     forestPalette,
     BackgroundPalette(
       name: 'Midnight',
-      swatch: Color(0xFF0B1220),
       darkBackground: Color(0xFF0B1220),
       darkCard: Color(0xFF1B2537),
       darkInputFill: Color(0xFF29354B),
-      lightBackground: Color(0xFFF1F4FA),
+      lightBackground: Color(0xFFE3EAF5),
+      lightCard: Color(0xFFF3F6FC),
     ),
     BackgroundPalette(
       name: 'Slate',
-      swatch: Color(0xFF12151A),
       darkBackground: Color(0xFF12151A),
       darkCard: Color(0xFF232830),
       darkInputFill: Color(0xFF333A44),
-      lightBackground: Color(0xFFF3F4F6),
+      lightBackground: Color(0xFFE6E8EC),
+      lightCard: Color(0xFFF5F6F8),
     ),
     BackgroundPalette(
       name: 'Charcoal',
-      swatch: Color(0xFF0E0F11),
       darkBackground: Color(0xFF0E0F11),
       darkCard: Color(0xFF1E2023),
       darkInputFill: Color(0xFF2C2F33),
-      lightBackground: Color(0xFFF5F5F4),
+      lightBackground: Color(0xFFECE9E5),
+      lightCard: Color(0xFFF9F6F2),
     ),
   ];
 
@@ -105,8 +110,7 @@ class AppTheme {
         ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
         : GoogleFonts.interTextTheme();
 
-    final cardColor =
-        brightness == Brightness.dark ? palette.darkCard : colorScheme.surfaceContainerHigh;
+    final cardColor = brightness == Brightness.dark ? palette.darkCard : palette.lightCard;
 
     return ThemeData(
       useMaterial3: true,

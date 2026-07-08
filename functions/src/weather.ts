@@ -34,7 +34,11 @@ async function fetchWeatherLive(lat: number, lon: number, apiKey: string): Promi
   const uri = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${apiKey}&units=metric`;
   const response = await fetch(uri);
   if (!response.ok) {
-    throw new Error(`OpenWeatherMap returned ${response.status}`);
+    // Surface OWM's actual error body (e.g. "Invalid API key" vs a
+    // subscription/quota block message) - never the URI, which contains the
+    // key itself.
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenWeatherMap returned ${response.status}: ${body}`);
   }
   return parseWeather((await response.json()) as Record<string, unknown>);
 }
@@ -100,7 +104,8 @@ async function fetchGeocodingOnce(query: string, apiKey: string): Promise<Geocod
   const uri = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=5&appid=${apiKey}`;
   const response = await fetch(uri);
   if (!response.ok) {
-    throw new Error(`OpenWeatherMap geocoding returned ${response.status}`);
+    const body = await response.text().catch(() => "");
+    throw new Error(`OpenWeatherMap geocoding returned ${response.status}: ${body}`);
   }
   return parseGeocodingResults(await response.json());
 }

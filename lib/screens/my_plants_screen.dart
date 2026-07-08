@@ -13,11 +13,14 @@ import '../widgets/search_field.dart';
 import 'add_edit_plant_screen.dart';
 import 'plant_detail_screen.dart';
 
-/// Shows the plants inside a single [Garden].
+/// Shows the plants inside a single [Garden] - or, when [garden] is null,
+/// every plant across all spaces (the "All Plants" view), with an extra
+/// filter-by-space control. The single-garden and all-plants modes share all
+/// of the search/sort/filter/delete logic.
 class MyPlantsScreen extends StatefulWidget {
-  final Garden garden;
+  final Garden? garden;
 
-  const MyPlantsScreen({super.key, required this.garden});
+  const MyPlantsScreen({super.key, this.garden});
 
   @override
   State<MyPlantsScreen> createState() => _MyPlantsScreenState();
@@ -27,14 +30,19 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   final PlantRepository _repository = PlantRepository();
   final TextEditingController _searchController = TextEditingController();
   List<Plant> _plants = [];
+  List<Garden> _gardens = []; // for the space filter in all-plants mode
   String _query = '';
   PlantSortOption _sortOption = PlantSortOption.name;
   bool _overdueOnly = false;
+  String? _spaceFilterId; // null = all spaces (all-plants mode only)
+
+  bool get _isAllMode => widget.garden == null;
 
   @override
   void initState() {
     super.initState();
     _loadPlants();
+    if (_isAllMode) _loadGardens();
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim().toLowerCase());
     });
@@ -54,6 +62,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
         return false;
       }
       if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
+      if (_spaceFilterId != null && p.gardenId != _spaceFilterId) return false;
       return true;
     }).toList();
     sortPlants(list, _sortOption);
@@ -62,7 +71,9 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
 
   Future<void> _loadPlants() async {
     try {
-      final plants = await _repository.getPlantsByGarden(widget.garden.id!);
+      final plants = _isAllMode
+          ? await _repository.getPlants()
+          : await _repository.getPlantsByGarden(widget.garden!.id!);
       if (!mounted) return;
       setState(() => _plants = plants);
     } catch (e) {
@@ -70,12 +81,22 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     }
   }
 
+  Future<void> _loadGardens() async {
+    try {
+      final gardens = await _repository.getGardens();
+      if (!mounted) return;
+      setState(() => _gardens = gardens);
+    } catch (e) {
+      debugPrint('Failed to load gardens: $e');
+    }
+  }
+
   Future<void> _navigateToAddPlant() async {
+    final gardenId = widget.garden?.id ?? await _repository.getOrCreateDefaultGardenId();
+    if (!mounted) return;
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditPlantScreen(gardenId: widget.garden.id!),
-      ),
+      MaterialPageRoute(builder: (_) => AddEditPlantScreen(gardenId: gardenId)),
     );
     if (result != null && mounted) {
       _loadPlants();
@@ -101,24 +122,33 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   }
 
   Future<void> _deletePlant(Plant plant) async {
+    // Optimistically hide, then commit after a fixed window - decoupled from
+    // the snackbar's close future (which could leave the snackbar stuck and
+    // the delete never committing). Undo restores immediately.
     setState(() => _plants.removeWhere((p) => p.id == plant.id));
 
-    final controller = ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
+    var undone = false;
+    messenger.showSnackBar(
       SnackBar(
         content: Text('${plant.name} deleted'),
-        action: SnackBarAction(label: 'Undo', onPressed: () {}),
+        duration: const Duration(seconds: 4),
+        action: SnackBarAction(
+          label: 'Undo',
+          onPressed: () {
+            undone = true;
+            if (mounted) _loadPlants();
+          },
+        ),
       ),
     );
 
-    final reason = await controller.closed;
-    if (!mounted) return;
-    if (reason == SnackBarClosedReason.action) {
-      _loadPlants();
-      return;
-    }
+    await Future.delayed(const Duration(seconds: 4, milliseconds: 250));
+    if (undone) return;
 
     await _repository.deletePlant(plant.id!);
     await NotificationService().cancelReminder(plant.id!);
+    if (mounted) _loadPlants();
   }
 
   String _sortLabel(PlantSortOption option) {
@@ -132,6 +162,35 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     }
   }
 
+  Widget _buildSpaceFilter() {
+    final scheme = Theme.of(context).colorScheme;
+    final label = _spaceFilterId == null
+        ? 'All spaces'
+        : _gardens
+            .firstWhere((g) => g.id == _spaceFilterId, orElse: () => Garden(name: 'Space'))
+            .name;
+    return PopupMenuButton<String?>(
+      initialValue: _spaceFilterId,
+      onSelected: (id) => setState(() => _spaceFilterId = id),
+      itemBuilder: (context) => [
+        const PopupMenuItem<String?>(value: null, child: Text('All spaces')),
+        for (final g in _gardens) PopupMenuItem<String?>(value: g.id, child: Text(g.name)),
+      ],
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.home_outlined, size: 18, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 4),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 110),
+            child: Text(label, overflow: TextOverflow.ellipsis),
+          ),
+          const Icon(Icons.arrow_drop_down, size: 18),
+        ],
+      ),
+    );
+  }
+
   Widget _buildFilterBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -143,6 +202,10 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             onSelected: (value) => setState(() => _overdueOnly = value),
           ),
           const Spacer(),
+          if (_isAllMode) ...[
+            _buildSpaceFilter(),
+            const SizedBox(width: 12),
+          ],
           PopupMenuButton<PlantSortOption>(
             initialValue: _sortOption,
             onSelected: (option) => setState(() => _sortOption = option),
@@ -205,14 +268,15 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   @override
   Widget build(BuildContext context) {
     final filtered = _filteredPlants;
+    final title = widget.garden?.name ?? 'All Plants';
 
     return Scaffold(
-      appBar: FrostedAppBar(title: widget.garden.name),
+      appBar: FrostedAppBar(title: title),
       body: _plants.isEmpty
           ? EmptyState(
               icon: Icons.local_florist_outlined,
-              title: 'No plants in ${widget.garden.name} yet',
-              message: 'Tap the + button to identify and add your first plant here.',
+              title: _isAllMode ? 'No plants yet' : 'No plants in $title yet',
+              message: 'Tap the + button to identify and add your first plant.',
               actionLabel: 'Add a Plant',
               onAction: _navigateToAddPlant,
             )
@@ -222,7 +286,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                   child: SearchField(
                     controller: _searchController,
-                    hintText: 'Search this Space',
+                    hintText: _isAllMode ? 'Search all plants' : 'Search this Space',
                   ),
                 ),
                 _buildFilterBar(),
@@ -233,7 +297,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
                           title: 'No matching plants',
                           message: _overdueOnly
                               ? 'Nothing is overdue right now.'
-                              : 'Try a different search.',
+                              : 'Try a different search or filter.',
                         )
                       : ListView.builder(
                           itemCount: filtered.length,
