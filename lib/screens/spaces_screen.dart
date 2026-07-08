@@ -1,18 +1,24 @@
 import 'package:flutter/material.dart';
 
 import '../models/garden.dart';
+import '../models/plant.dart';
+import '../models/wishlist_item.dart';
+import '../services/perenual_service.dart';
 import '../services/plant_repository.dart';
 import '../services/propagation_repository.dart';
+import '../services/wishlist_repository.dart';
 import '../utils/care_overdue.dart';
 import '../widgets/account_button.dart';
-import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/plant_thumbnail.dart';
 import '../widgets/weather_card.dart';
 import 'my_plants_screen.dart';
+import 'plant_detail_screen.dart';
 import 'propagations_screen.dart';
+import 'species_detail_screen.dart';
 
 class SpacesScreen extends StatefulWidget {
-  /// Switches the shell to the Care tab - used by the "To-Do today" card,
+  /// Switches the shell to the Care tab - used by the "To-Do today" section,
   /// since the tasks themselves live on Care.
   final VoidCallback? onGoToCare;
 
@@ -27,36 +33,42 @@ class SpacesScreenState extends State<SpacesScreen> {
 
   List<Garden> _spaces = [];
   Map<String, int> _plantCounts = {};
+  List<Plant> _dueToday = [];
+  List<WishlistItem> _wishlist = [];
   int _propagationCount = 0;
-  int _dueTodayCount = 0;
+
+  // Flash guard: don't render "empty" copy until the first spaces load has
+  // completed, so switching to this tab never flickers "no spaces yet".
+  bool _spacesLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _loadSpaces();
-    _loadPropagationCount();
-    _loadDueTasks();
+    refresh();
   }
 
-  /// Reloads Spaces + counts - called by MainShell after a plant is added
-  /// via the global camera button, since IndexedStack keeps this tab's
-  /// state alive rather than rebuilding it on return.
+  /// Reloads everything - called by MainShell after a plant is added via the
+  /// global camera button, since IndexedStack keeps this tab's state alive
+  /// rather than rebuilding it on return.
   void refresh() {
     _loadSpaces();
     _loadPropagationCount();
     _loadDueTasks();
+    _loadWishlist();
   }
 
   Future<void> _loadDueTasks() async {
     try {
       final plants = await _repository.getPlants();
-      // "Needs care today" = any schedule due today or overdue (due-in <= 0).
-      final count = plants.where((p) {
-        final due = mostUrgentDueIn(p);
-        return due != null && due <= 0;
-      }).length;
+      // "Needs care today" = any schedule due today or overdue (due-in <= 0),
+      // most urgent first.
+      final due = plants.where((p) {
+        final d = mostUrgentDueIn(p);
+        return d != null && d <= 0;
+      }).toList()
+        ..sort((a, b) => (mostUrgentDueIn(a) ?? 0).compareTo(mostUrgentDueIn(b) ?? 0));
       if (!mounted) return;
-      setState(() => _dueTodayCount = count);
+      setState(() => _dueToday = due);
     } catch (e) {
       debugPrint('Failed to load due tasks: $e');
     }
@@ -73,9 +85,11 @@ class SpacesScreenState extends State<SpacesScreen> {
       setState(() {
         _spaces = spaces;
         _plantCounts = counts;
+        _spacesLoaded = true;
       });
     } catch (e) {
       debugPrint('Failed to load Spaces: $e');
+      if (mounted) setState(() => _spacesLoaded = true);
     }
   }
 
@@ -86,6 +100,16 @@ class SpacesScreenState extends State<SpacesScreen> {
       setState(() => _propagationCount = count);
     } catch (e) {
       debugPrint('Failed to load propagation count: $e');
+    }
+  }
+
+  Future<void> _loadWishlist() async {
+    try {
+      final items = await WishlistRepository().getWishlist();
+      if (!mounted) return;
+      setState(() => _wishlist = items);
+    } catch (e) {
+      debugPrint('Failed to load wishlist: $e');
     }
   }
 
@@ -103,6 +127,34 @@ class SpacesScreenState extends State<SpacesScreen> {
       MaterialPageRoute(builder: (_) => const PropagationsScreen()),
     );
     if (mounted) _loadPropagationCount();
+  }
+
+  Future<void> _navigateToPlant(Plant plant) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: plant)),
+    );
+    if (mounted) refresh();
+  }
+
+  Future<void> _navigateToWishlistItem(WishlistItem item) async {
+    // Reconstruct a minimal species detail from the saved fields - enough to
+    // show the photo, names, and an "Add to My Plants" action.
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SpeciesDetailScreen(
+          species: PerenualSpeciesDetail(
+            scientificName: item.scientificName,
+            commonName: item.commonName,
+            imageUrl: item.imageUrl,
+            wateringIntervalDays: null,
+            careInstructions: '',
+          ),
+        ),
+      ),
+    );
+    if (mounted) _loadWishlist();
   }
 
   Future<void> _createSpace() async {
@@ -211,150 +263,229 @@ class SpacesScreenState extends State<SpacesScreen> {
     await _repository.deleteGarden(space.id!);
   }
 
-  Widget _buildSpaceCard(Garden space) {
+  int get _totalPlants => _plantCounts.values.fold(0, (sum, count) => sum + count);
+
+  // --- Section builders -----------------------------------------------------
+
+  /// A collapsible hub section styled as a rounded card, consistent with the
+  /// rest of the app.
+  Widget _section({
+    required IconData icon,
+    required Color iconBg,
+    required Color iconFg,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+    bool initiallyExpanded = false,
+  }) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ExpansionTile(
+        initiallyExpanded: initiallyExpanded,
+        shape: const Border(),
+        collapsedShape: const Border(),
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.only(bottom: 8),
+        leading: CircleAvatar(backgroundColor: iconBg, foregroundColor: iconFg, child: Icon(icon)),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: Text(subtitle),
+        children: children,
+      ),
+    );
+  }
+
+  Widget _todoSection() {
+    final scheme = Theme.of(context).colorScheme;
+    final has = _dueToday.isNotEmpty;
+    return _section(
+      icon: has ? Icons.checklist_rounded : Icons.task_alt,
+      iconBg: has ? scheme.primary : scheme.surfaceContainerHighest,
+      iconFg: has ? scheme.onPrimary : scheme.onSurfaceVariant,
+      title: 'To-Do Today',
+      subtitle: has
+          ? '${_dueToday.length} ${_dueToday.length == 1 ? 'plant needs' : 'plants need'} care'
+          : "You're all caught up",
+      initiallyExpanded: has,
+      children: [
+        if (!has)
+          const ListTile(
+            dense: true,
+            leading: Icon(Icons.check_circle_outline),
+            title: Text('Nothing needs care today'),
+          )
+        else ...[
+          for (final plant in _dueToday)
+            ListTile(
+              leading: PlantThumbnail(
+                plant: plant,
+                size: 40,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+              subtitle: Text(_dueLabel(plant), style: TextStyle(color: scheme.error)),
+              onTap: () => _navigateToPlant(plant),
+            ),
+          ListTile(
+            leading: const Icon(Icons.arrow_forward),
+            title: const Text('View all in Care'),
+            onTap: widget.onGoToCare,
+          ),
+        ],
+      ],
+    );
+  }
+
+  String _dueLabel(Plant plant) {
+    final due = mostUrgentDueIn(plant) ?? 0;
+    if (due < 0) return 'Overdue by ${-due} ${-due == 1 ? 'day' : 'days'}';
+    return 'Due today';
+  }
+
+  Widget _projectsSection() {
+    final scheme = Theme.of(context).colorScheme;
+    return _section(
+      icon: Icons.category_outlined,
+      iconBg: scheme.secondaryContainer,
+      iconFg: scheme.onSecondaryContainer,
+      title: 'Projects',
+      subtitle: '$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}',
+      children: [
+        ListTile(
+          leading: const Icon(Icons.eco_outlined),
+          title: const Text('Propagations'),
+          subtitle: Text('$_propagationCount in progress'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: _navigateToPropagations,
+        ),
+      ],
+    );
+  }
+
+  Widget _spacesSection() {
+    final scheme = Theme.of(context).colorScheme;
+    return _section(
+      icon: Icons.home_outlined,
+      iconBg: scheme.primaryContainer,
+      iconFg: scheme.onPrimaryContainer,
+      title: 'Spaces',
+      subtitle: _spacesLoaded
+          ? '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
+              '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}'
+          : ' ',
+      initiallyExpanded: true,
+      children: [
+        for (final space in _spaces) _buildSpaceRow(space),
+        if (_spacesLoaded && _spaces.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              'Create a Space for each area of your home — Living Room, Backyard, '
+              'Office — to organize your plants.',
+            ),
+          ),
+        ListTile(
+          leading: const Icon(Icons.add),
+          title: const Text('New Space'),
+          onTap: _createSpace,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSpaceRow(Garden space) {
     final scheme = Theme.of(context).colorScheme;
     final count = _plantCounts[space.id] ?? 0;
     final isDefault = space.name == PlantRepository.defaultGardenName;
 
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: scheme.primaryContainer,
-          foregroundColor: scheme.onPrimaryContainer,
-          child: const Icon(Icons.home_outlined),
-        ),
-        title: Text(space.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('$count plant${count == 1 ? '' : 's'}'),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
-          onSelected: (action) {
-            if (action == 'edit') _editSpace(space);
-            if (action == 'delete') _deleteSpace(space);
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(value: 'edit', child: Text('Rename')),
-            if (!isDefault) const PopupMenuItem(value: 'delete', child: Text('Delete')),
-          ],
-        ),
-        onTap: () => _navigateToSpace(space),
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.surfaceContainerHighest,
+        foregroundColor: scheme.onSurfaceVariant,
+        child: const Icon(Icons.home_outlined),
       ),
-    );
-  }
-
-  int get _totalPlants => _plantCounts.values.fold(0, (sum, count) => sum + count);
-
-  Widget _buildSectionHeader(String title, {String? trailing}) {
-    final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 6),
-      child: Row(
-        children: [
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 15,
-              letterSpacing: 0.2,
-              color: scheme.onSurface,
-            ),
-          ),
-          const Spacer(),
-          if (trailing != null)
-            Text(trailing, style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13)),
+      title: Text(space.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+      subtitle: Text('$count plant${count == 1 ? '' : 's'}'),
+      trailing: PopupMenuButton<String>(
+        icon: const Icon(Icons.more_vert),
+        onSelected: (action) {
+          if (action == 'edit') _editSpace(space);
+          if (action == 'delete') _deleteSpace(space);
+        },
+        itemBuilder: (context) => [
+          const PopupMenuItem(value: 'edit', child: Text('Rename')),
+          if (!isDefault) const PopupMenuItem(value: 'delete', child: Text('Delete')),
         ],
       ),
+      onTap: () => _navigateToSpace(space),
     );
   }
 
-  Widget _buildTodoCard() {
+  Widget _wishlistSection() {
     final scheme = Theme.of(context).colorScheme;
-    final has = _dueTodayCount > 0;
-    return Card(
-      color: has ? scheme.primaryContainer : null,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: has ? scheme.primary : scheme.surfaceContainerHighest,
-          foregroundColor: has ? scheme.onPrimary : scheme.onSurfaceVariant,
-          child: Icon(has ? Icons.checklist_rounded : Icons.task_alt),
-        ),
-        title: Text(
-          'To-Do Today',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            color: has ? scheme.onPrimaryContainer : null,
-          ),
-        ),
-        subtitle: Text(
-          has
-              ? '$_dueTodayCount ${_dueTodayCount == 1 ? 'plant needs' : 'plants need'} care'
-              : "You're all caught up",
-          style: TextStyle(color: has ? scheme.onPrimaryContainer : scheme.onSurfaceVariant),
-        ),
-        trailing: Icon(Icons.chevron_right, color: has ? scheme.onPrimaryContainer : null),
-        onTap: widget.onGoToCare,
-      ),
+    return _section(
+      icon: Icons.favorite_border,
+      iconBg: scheme.tertiaryContainer,
+      iconFg: scheme.onTertiaryContainer,
+      title: 'Wishlist',
+      subtitle: _wishlist.isEmpty
+          ? 'Plants you want'
+          : '${_wishlist.length} saved',
+      children: [
+        if (_wishlist.isEmpty)
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              'Save plants you want from a species page (tap the ♥) and they\'ll '
+              'show up here for later.',
+            ),
+          )
+        else
+          for (final item in _wishlist) _buildWishlistRow(item),
+      ],
     );
   }
 
-  Widget _buildPropagationsCard() {
+  Widget _buildWishlistRow(WishlistItem item) {
     final scheme = Theme.of(context).colorScheme;
-    return Card(
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: CircleAvatar(
-          backgroundColor: scheme.secondaryContainer,
-          foregroundColor: scheme.onSecondaryContainer,
-          child: const Icon(Icons.eco_outlined),
-        ),
-        title: const Text('Propagations', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text('$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _navigateToPropagations,
+    final hasImage = item.imageUrl != null && item.imageUrl!.isNotEmpty;
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundColor: scheme.surfaceContainerHighest,
+        foregroundColor: scheme.onSurfaceVariant,
+        backgroundImage: hasImage ? NetworkImage(item.imageUrl!) : null,
+        child: hasImage ? null : const Icon(Icons.local_florist_outlined),
       ),
+      title: Text(
+        item.commonName ?? item.scientificName,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Text(
+        item.scientificName,
+        style: const TextStyle(fontStyle: FontStyle.italic),
+        overflow: TextOverflow.ellipsis,
+      ),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () => _navigateToWishlistItem(item),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'My Spaces', actions: [AccountButton()]),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const WeatherCard(),
-          _buildTodoCard(),
-          _buildSectionHeader('Collections'),
-          _buildPropagationsCard(),
-          if (_spaces.isNotEmpty)
-            _buildSectionHeader(
-              'Your Spaces',
-              trailing: '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'}',
-            ),
-          Expanded(
-            child: _spaces.isEmpty
-                ? EmptyState(
-                    icon: Icons.home_outlined,
-                    title: 'No Spaces yet',
-                    message: 'Create a Space for each area of your home — '
-                        'Living Room, Backyard, Office — to organize your plants.',
-                    actionLabel: 'Create a Space',
-                    onAction: _createSpace,
-                  )
-                : ListView.builder(
-                    // Bottom padding clears the floating action button so the
-                    // last space card isn't tucked behind it.
-                    padding: const EdgeInsets.only(bottom: 88),
-                    itemCount: _spaces.length,
-                    itemBuilder: (context, index) => _buildSpaceCard(_spaces[index]),
-                  ),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createSpace,
-        child: const Icon(Icons.add),
+      appBar: const FrostedAppBar(title: 'Spaces', actions: [AccountButton()]),
+      body: RefreshIndicator.adaptive(
+        onRefresh: () async => refresh(),
+        child: ListView(
+          padding: const EdgeInsets.only(top: 4, bottom: 24),
+          children: [
+            const WeatherCard(),
+            _todoSection(),
+            _projectsSection(),
+            _spacesSection(),
+            _wishlistSection(),
+          ],
+        ),
       ),
     );
   }

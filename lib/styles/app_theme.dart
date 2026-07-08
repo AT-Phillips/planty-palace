@@ -1,49 +1,112 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// A selectable app background "flavour" - the surface/card/input tones the
+/// whole app sits on, chosen independently of the accent (seed) color. The
+/// accent still drives primary/secondary; these just re-tint the backdrop.
+class BackgroundPalette {
+  final String name;
+
+  /// A representative swatch shown in the Settings picker (the dark
+  /// background, which is where these palettes differ most visibly).
+  final Color swatch;
+
+  // Dark theme: deliberately large, unambiguous contrast steps between
+  // background (darkest) < card < input fill (lightest), because Material 3's
+  // auto-generated dark tiers land too close together to read as layers.
+  final Color darkBackground;
+  final Color darkCard;
+  final Color darkInputFill;
+
+  // Light theme: a subtle off-white so the light theme isn't stark/clinical.
+  final Color lightBackground;
+
+  const BackgroundPalette({
+    required this.name,
+    required this.swatch,
+    required this.darkBackground,
+    required this.darkCard,
+    required this.darkInputFill,
+    required this.lightBackground,
+  });
+}
+
 class AppTheme {
   static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
   static const double radius = 20.0;
 
-  static ThemeData lightTheme({Color seedColor = defaultSeedColor}) =>
-      _themeFor(Brightness.light, seedColor);
-  static ThemeData darkTheme({Color seedColor = defaultSeedColor}) =>
-      _themeFor(Brightness.dark, seedColor);
+  /// The current default - the original hand-tuned green-tinted dark theme
+  /// and warm off-white light background.
+  static const BackgroundPalette forestPalette = BackgroundPalette(
+    name: 'Forest',
+    swatch: Color(0xFF0B120E),
+    darkBackground: Color(0xFF0B120E),
+    darkCard: Color(0xFF1C2A22),
+    darkInputFill: Color(0xFF2A3931),
+    lightBackground: Color(0xFFF6F7F2),
+  );
 
-  // Material 3's auto-generated dark tonal palette keeps surface and its
-  // "container" tiers too close together to read as distinct layers (a
-  // ~9% white blend tried previously turned out to land almost exactly on
-  // the original tone - not actually much of a fix). These are explicit,
-  // fixed values with deliberately large, unambiguous contrast steps:
-  // background (darkest) < card < input fill (lightest).
-  static const _darkBackground = Color(0xFF0B120E);
-  static const _darkCard = Color(0xFF1C2A22);
-  static const _darkInputFill = Color(0xFF2A3931);
+  /// All selectable background palettes, in picker order. `forestPalette` is
+  /// index 0 (the default).
+  static const List<BackgroundPalette> backgroundPalettes = [
+    forestPalette,
+    BackgroundPalette(
+      name: 'Midnight',
+      swatch: Color(0xFF0B1220),
+      darkBackground: Color(0xFF0B1220),
+      darkCard: Color(0xFF1B2537),
+      darkInputFill: Color(0xFF29354B),
+      lightBackground: Color(0xFFF1F4FA),
+    ),
+    BackgroundPalette(
+      name: 'Slate',
+      swatch: Color(0xFF12151A),
+      darkBackground: Color(0xFF12151A),
+      darkCard: Color(0xFF232830),
+      darkInputFill: Color(0xFF333A44),
+      lightBackground: Color(0xFFF3F4F6),
+    ),
+    BackgroundPalette(
+      name: 'Charcoal',
+      swatch: Color(0xFF0E0F11),
+      darkBackground: Color(0xFF0E0F11),
+      darkCard: Color(0xFF1E2023),
+      darkInputFill: Color(0xFF2C2F33),
+      lightBackground: Color(0xFFF5F5F4),
+    ),
+  ];
 
-  // Material 3's light seed-generated surface lands essentially at pure
-  // white, which reads as stark/clinical for a plant-care app. A subtle
-  // warm off-white keeps the light theme soft without darkening it enough
-  // to look muddy.
-  static const _lightBackground = Color(0xFFF6F7F2);
+  static ThemeData lightTheme({
+    Color seedColor = defaultSeedColor,
+    BackgroundPalette palette = forestPalette,
+  }) =>
+      _themeFor(Brightness.light, seedColor, palette);
 
-  static ThemeData _themeFor(Brightness brightness, Color seedColor) {
+  static ThemeData darkTheme({
+    Color seedColor = defaultSeedColor,
+    BackgroundPalette palette = forestPalette,
+  }) =>
+      _themeFor(Brightness.dark, seedColor, palette);
+
+  static ThemeData _themeFor(Brightness brightness, Color seedColor, BackgroundPalette palette) {
     var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
     );
     if (brightness == Brightness.dark) {
       colorScheme = colorScheme.copyWith(
-        surface: _darkBackground,
-        surfaceContainerHighest: _darkInputFill,
+        surface: palette.darkBackground,
+        surfaceContainerHighest: palette.darkInputFill,
       );
     } else {
-      colorScheme = colorScheme.copyWith(surface: _lightBackground);
+      colorScheme = colorScheme.copyWith(surface: palette.lightBackground);
     }
     final baseTextTheme = brightness == Brightness.dark
         ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
         : GoogleFonts.interTextTheme();
 
-    final cardColor = brightness == Brightness.dark ? _darkCard : colorScheme.surfaceContainerHigh;
+    final cardColor =
+        brightness == Brightness.dark ? palette.darkCard : colorScheme.surfaceContainerHigh;
 
     return ThemeData(
       useMaterial3: true,

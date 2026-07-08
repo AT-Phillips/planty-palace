@@ -4,6 +4,7 @@ import '../services/perenual_service.dart';
 import '../services/plant_repository.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/shimmer.dart';
+import '../widgets/wishlist_button.dart';
 import 'add_edit_plant_screen.dart';
 
 /// Read-only reference view for a species from Perenual's catalog - shown
@@ -68,7 +69,16 @@ class SpeciesDetailScreen extends StatelessWidget {
     final usingFallbackImage = speciesImageUrl == null && fallbackImageUrl != null;
 
     return Scaffold(
-      appBar: FrostedAppBar(title: species.commonName ?? species.scientificName),
+      appBar: FrostedAppBar(
+        title: species.commonName ?? species.scientificName,
+        actions: [
+          WishlistButton(
+            scientificName: species.scientificName,
+            commonName: species.commonName,
+            imageUrl: displayImageUrl,
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

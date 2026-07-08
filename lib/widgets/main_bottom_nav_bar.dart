@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Custom bottom navigation: Spaces, Care, a visually prominent central
-/// Camera quick-action, and Find. The camera button never changes
+/// Camera quick-action, Find, and Guides. Two tabs sit on each side of the
+/// camera so it stays centered. The camera button never changes
 /// [selectedIndex] — it's an action, not a tab. Account isn't here; it's
 /// reached via the profile avatar in each screen's top-right.
 class MainBottomNavBar extends StatelessWidget {
@@ -55,6 +56,12 @@ class MainBottomNavBar extends StatelessWidget {
               label: 'Find',
               selected: selectedIndex == 2,
               onTap: () => onTap(2),
+            ),
+            _NavItem(
+              icon: Icons.menu_book_outlined,
+              label: 'Guides',
+              selected: selectedIndex == 3,
+              onTap: () => onTap(3),
             ),
           ],
         ),

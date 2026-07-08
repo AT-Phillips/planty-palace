@@ -19,6 +19,8 @@ void main() {
     await tester.tap(find.text('Skip'));
     await tester.pumpAndSettle();
 
-    expect(find.text('My Spaces'), findsOneWidget);
+    // The Spaces hub's app-bar title (also a "Spaces" bottom-nav label exists,
+    // so allow more than one match).
+    expect(find.text('Spaces'), findsWidgets);
   });
 }

@@ -91,16 +91,22 @@ class ThicketApp extends StatelessWidget {
         return ValueListenableBuilder<int>(
           valueListenable: ThemeController.instance.accentColorIndex,
           builder: (context, accentIndex, _) {
-            final seedColor = ThemeController.accentColors[accentIndex];
-            return MaterialApp(
-              title: 'Thicket',
-              theme: AppTheme.lightTheme(seedColor: seedColor),
-              darkTheme: AppTheme.darkTheme(seedColor: seedColor),
-              themeMode: mode,
-              scrollBehavior: AppScrollBehavior(),
-              home: OnboardingPreferences.instance.completed.value
-                  ? const MainShell()
-                  : const OnboardingScreen(),
+            return ValueListenableBuilder<int>(
+              valueListenable: ThemeController.instance.backgroundPaletteIndex,
+              builder: (context, backgroundIndex, _) {
+                final seedColor = ThemeController.accentColors[accentIndex];
+                final palette = ThemeController.backgroundPalettes[backgroundIndex];
+                return MaterialApp(
+                  title: 'Thicket',
+                  theme: AppTheme.lightTheme(seedColor: seedColor, palette: palette),
+                  darkTheme: AppTheme.darkTheme(seedColor: seedColor, palette: palette),
+                  themeMode: mode,
+                  scrollBehavior: AppScrollBehavior(),
+                  home: OnboardingPreferences.instance.completed.value
+                      ? const MainShell()
+                      : const OnboardingScreen(),
+                );
+              },
             );
           },
         );

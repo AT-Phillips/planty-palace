@@ -5,15 +5,17 @@ import '../widgets/main_bottom_nav_bar.dart';
 import 'add_edit_plant_screen.dart';
 import 'care_screen.dart';
 import 'discover_screen.dart';
+import 'guides_screen.dart';
 import 'spaces_screen.dart';
 
-/// Hosts the app's 3 persistent tabs (Spaces, Care, Find) plus the camera
-/// quick-action. Account isn't a tab - it's reached via the profile avatar
-/// in the top-right of each screen (see AccountButton). Uses an IndexedStack
-/// so each tab's state (scroll position, the persistent weather card,
-/// in-flight loads) is preserved across switches instead of flashing. A
-/// plant added via the global camera button is reflected by explicitly
-/// refreshing the Spaces and Care tabs afterward.
+/// Hosts the app's 4 persistent tabs (Spaces, Care, Find, Guides) plus the
+/// central camera quick-action. Account isn't a tab - it's reached via the
+/// profile avatar in the top-right of each screen (see AccountButton). Uses
+/// an IndexedStack so each tab's state (scroll position, the persistent
+/// weather card, in-flight loads) is preserved across switches instead of
+/// flashing. A plant added via the global camera button is reflected by
+/// explicitly refreshing the Spaces and Care tabs afterward (Guides is
+/// static reference content, so it needs no refresh).
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
 
@@ -31,6 +33,7 @@ class _MainShellState extends State<MainShell> {
     SpacesScreen(key: _spacesKey, onGoToCare: () => setState(() => _selectedIndex = 1)),
     CareScreen(key: _careKey),
     const DiscoverScreen(),
+    const GuidesScreen(),
   ];
 
   Future<void> _openCamera() async {

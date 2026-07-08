@@ -118,6 +118,49 @@ class SettingsSections extends StatelessWidget {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            const Text('Background'),
+                            const Spacer(),
+                            ValueListenableBuilder<int>(
+                              valueListenable: ThemeController.instance.backgroundPaletteIndex,
+                              builder: (context, selectedIndex, _) {
+                                final scheme = Theme.of(context).colorScheme;
+                                return Row(
+                                  children: [
+                                    for (var i = 0;
+                                        i < ThemeController.backgroundPalettes.length;
+                                        i++)
+                                      Padding(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: GestureDetector(
+                                          onTap: () =>
+                                              ThemeController.instance.setBackgroundPalette(i),
+                                          child: Container(
+                                            width: 28,
+                                            height: 28,
+                                            decoration: BoxDecoration(
+                                              color: ThemeController.backgroundPalettes[i].swatch,
+                                              shape: BoxShape.circle,
+                                              // Always outline: several palettes are near-black
+                                              // and would vanish against a dark card otherwise.
+                                              border: Border.all(
+                                                color: i == selectedIndex
+                                                    ? scheme.onSurface
+                                                    : scheme.outlineVariant,
+                                                width: i == selectedIndex ? 2 : 1,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
                       ],
                     ),
                   );

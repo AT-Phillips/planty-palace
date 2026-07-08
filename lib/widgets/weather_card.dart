@@ -1,37 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../screens/weather_settings_screen.dart';
 import '../services/unit_preferences.dart';
 import '../services/weather_preferences.dart';
 import '../services/weather_service.dart';
+import 'weather_detail_sheet.dart';
 
-IconData _iconFor(String owmIconCode) {
-  if (owmIconCode.length < 2) return Icons.cloud_outlined;
-  final code = owmIconCode.substring(0, 2);
-  final isNight = owmIconCode.endsWith('n');
-  switch (code) {
-    case '01':
-      return isNight ? Icons.nightlight_outlined : Icons.wb_sunny_outlined;
-    case '02':
-    case '03':
-    case '04':
-      return Icons.cloud_outlined;
-    case '09':
-    case '10':
-      return Icons.water_drop_outlined;
-    case '11':
-      return Icons.thunderstorm_outlined;
-    case '13':
-      return Icons.ac_unit_outlined;
-    case '50':
-      return Icons.blur_on;
-    default:
-      return Icons.cloud_outlined;
-  }
-}
-
-/// Shows current local weather (for plant-care context) at the top of My
-/// Spaces. Hides itself entirely if disabled in Settings or if fetching
+/// Shows current local weather (for plant-care context) at the top of the
+/// Spaces hub. Tapping it opens a bottom-sheet with more detail and location
+/// controls. Hides itself entirely if disabled in Settings or if fetching
 /// weather fails for any reason (no permission, no signal, etc).
 class WeatherCard extends StatefulWidget {
   const WeatherCard({super.key});
@@ -68,6 +44,13 @@ class _WeatherCardState extends State<WeatherCard> {
     });
   }
 
+  /// Opens the weather detail sheet, then reloads - the location or units may
+  /// have been changed from inside the sheet.
+  Future<void> _openSheet() async {
+    await showWeatherDetailSheet(context, weather: _weather);
+    if (mounted) _load();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<bool>(
@@ -83,10 +66,7 @@ class _WeatherCardState extends State<WeatherCard> {
               leading: Icon(Icons.location_off_outlined, color: scheme.onSurfaceVariant),
               title: const Text('Weather unavailable'),
               subtitle: const Text('Tap to set a location'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const WeatherSettingsScreen()),
-              ),
+              onTap: _openSheet,
             ),
           );
         }
@@ -102,28 +82,33 @@ class _WeatherCardState extends State<WeatherCard> {
 
             return Card(
               margin: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Row(
-                  children: [
-                    Icon(_iconFor(weather.iconCode), color: scheme.primary, size: 32),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${temp.round()}$unit',
-                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                          ),
-                          Text(
-                            weather.condition,
-                            style: TextStyle(color: scheme.onSurfaceVariant),
-                          ),
-                        ],
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: _openSheet,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    children: [
+                      Icon(weatherIconData(weather.iconCode), color: scheme.primary, size: 32),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${temp.round()}$unit',
+                              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              weather.condition,
+                              style: TextStyle(color: scheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                      Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+                    ],
+                  ),
                 ),
               ),
             );
