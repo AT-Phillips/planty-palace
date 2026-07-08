@@ -10,6 +10,7 @@ import '../models/plant_photo.dart';
 // import '../services/home_widget_service.dart'; // widget disabled for now
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../styles/app_theme.dart';
 import '../utils/fertilizing_status.dart';
 import '../utils/permanent_image.dart';
 import '../utils/pruning_status.dart';
@@ -343,6 +344,43 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     ];
   }
 
+  /// Days-ago label for a nullable ISO timestamp, matching the compact
+  /// style used elsewhere (e.g. the Journal feed) - null if unparseable.
+  String? _daysAgoLabel(String? iso) {
+    if (iso == null) return null;
+    final date = DateTime.tryParse(iso);
+    if (date == null) return null;
+    final days = DateTime.now().difference(date).inDays;
+    if (days <= 0) return 'Today';
+    return '${days}d ago';
+  }
+
+  /// Compact "About this plant" stat row - Water interval, last watered,
+  /// species family, and toxicity, each only shown when the underlying
+  /// field actually has data (never a fabricated placeholder). Returns an
+  /// empty widget if none of the four have anything to show.
+  Widget _buildStatRow(ColorScheme scheme) {
+    final lastWatered = _daysAgoLabel(_plant.lastWatered);
+    final hasToxicityInfo = _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
+    final isToxic = _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
+
+    final stats = <Widget>[
+      if (_plant.wateringIntervalDays != null)
+        _StatItem(label: 'Water', value: 'Every ${_plant.wateringIntervalDays}d'),
+      if (lastWatered != null) _StatItem(label: 'Last', value: lastWatered),
+      if (_plant.speciesFamily != null) _StatItem(label: 'Family', value: _plant.speciesFamily!),
+      if (hasToxicityInfo)
+        _StatItem(
+          label: 'Pets',
+          value: isToxic ? 'Toxic' : 'Safe',
+          color: isToxic ? scheme.error : null,
+        ),
+    ];
+    if (stats.isEmpty) return const SizedBox.shrink();
+
+    return Row(children: [for (final stat in stats) Expanded(child: stat)]);
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -362,22 +400,26 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator.adaptive())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.zero,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: SizedBox(
-                    height: 240,
-                    width: double.infinity,
-                    child: PlantThumbnail(
-                      plant: _plant,
-                      size: double.infinity,
-                      borderRadius: BorderRadius.zero,
-                      heroTag: 'plant_${_plant.id}',
-                    ),
+                // Full-bleed hero - no inset padding, edge-to-edge.
+                SizedBox(
+                  height: 280,
+                  width: double.infinity,
+                  child: PlantThumbnail(
+                    plant: _plant,
+                    size: double.infinity,
+                    borderRadius: BorderRadius.zero,
+                    heroTag: 'plant_${_plant.id}',
                   ),
                 ),
-                const SizedBox(height: 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                Text(_plant.name, style: AppTheme.plantNameStyle(context, size: 24)),
+                const SizedBox(height: 2),
                 Text(
                   _plant.species,
                   style: TextStyle(
@@ -385,24 +427,22 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                     color: scheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        wateringStatusText(_plant),
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: overdue ? scheme.error : scheme.onSurface,
-                        ),
-                      ),
+                const SizedBox(height: 16),
+                _buildStatRow(scheme),
+                const SizedBox(height: 18),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: _markWatered,
+                    icon: const Icon(Icons.water_drop),
+                    label: Text(overdue ? wateringStatusText(_plant) : 'Mark as Watered'),
+                    style: FilledButton.styleFrom(
+                      shape: const StadiumBorder(),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: overdue ? scheme.error : null,
+                      foregroundColor: overdue ? scheme.onError : null,
                     ),
-                    TextButton.icon(
-                      onPressed: _markWatered,
-                      icon: const Icon(Icons.water_drop_outlined, size: 18),
-                      label: const Text('Watered'),
-                    ),
-                  ],
+                  ),
                 ),
                 if (_plant.fertilizingIntervalDays != null)
                   Row(
@@ -584,8 +624,49 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         ),
                       ),
                     ),
+                    ],
+                  ),
+                ),
               ],
             ),
+    );
+  }
+}
+
+/// One cell of the plant-detail stat row - a small label over a value,
+/// evenly distributed across the row by the caller's [Expanded].
+class _StatItem extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? color;
+
+  const _StatItem({required this.label, required this.value, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Text(
+          label.toUpperCase(),
+          style: TextStyle(
+            fontSize: 9.5,
+            letterSpacing: 0.6,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: FontWeight.w700,
+            color: color ?? scheme.onSurface,
+          ),
+        ),
+      ],
     );
   }
 }

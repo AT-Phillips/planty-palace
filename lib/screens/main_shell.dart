@@ -49,13 +49,24 @@ class _MainShellState extends State<MainShell> {
     _careKey.currentState?.refresh();
   }
 
+  void _onTabTap(int index) {
+    setState(() => _selectedIndex = index);
+    // Spaces can go stale from actions taken on other tabs that don't know
+    // to call back into it directly (e.g. saving a species to the wishlist
+    // from Discover) - IndexedStack keeps it mounted rather than rebuilding
+    // it, so nothing else would trigger a reload. Refreshing on every switch
+    // to this tab is simpler and more robust than instrumenting every call
+    // site that might affect it.
+    if (index == 0) _spacesKey.currentState?.refresh();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(index: _selectedIndex, children: _tabs),
       bottomNavigationBar: MainBottomNavBar(
         selectedIndex: _selectedIndex,
-        onTap: (index) => setState(() => _selectedIndex = index),
+        onTap: _onTabTap,
         onCameraTap: _openCamera,
       ),
     );

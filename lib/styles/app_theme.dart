@@ -40,6 +40,19 @@ class AppTheme {
   static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
   static const double radius = 20.0;
 
+  /// The serif heading style used for plant/species name headings (not app
+  /// bar titles, which pick up the same Lora serif automatically via
+  /// [ThemeData.appBarTheme] - this is for name headings living inside
+  /// regular screen content, e.g. a plant card title or the detail screen's
+  /// hero name).
+  static TextStyle plantNameStyle(BuildContext context, {double size = 20}) {
+    return GoogleFonts.lora(
+      fontSize: size,
+      fontWeight: FontWeight.w500,
+      color: Theme.of(context).colorScheme.onSurface,
+    );
+  }
+
   /// The current default - the original hand-tuned green-tinted dark theme
   /// with a soft sage light surface.
   static const BackgroundPalette forestPalette = BackgroundPalette(
@@ -123,7 +136,15 @@ class AppTheme {
         foregroundColor: colorScheme.onSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
+        // Serif display type for every screen title - the one editorial
+        // touch that's shared infrastructure (FrostedAppBar), so every
+        // screen picks it up without a per-screen change.
+        titleTextStyle: GoogleFonts.lora(
+          fontSize: 21,
+          fontWeight: FontWeight.w500,
+          color: colorScheme.onSurface,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
@@ -192,19 +213,20 @@ class AppTheme {
         ),
       ),
       // Soften the default near-square popup menus (e.g. the Spaces/Care
-      // "more" menus) into rounded, card-toned surfaces consistent with the
-      // rest of the app.
+      // "more" menus) into rounded, accent-tinted surfaces that stand out
+      // from the tile they came from, rather than blending into it.
       popupMenuTheme: PopupMenuThemeData(
-        color: cardColor,
+        color: colorScheme.primaryContainer,
         elevation: 3,
         surfaceTintColor: Colors.transparent,
+        textStyle: TextStyle(color: colorScheme.onPrimaryContainer),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
         ),
       ),
       menuTheme: MenuThemeData(
         style: MenuStyle(
-          backgroundColor: WidgetStatePropertyAll(cardColor),
+          backgroundColor: WidgetStatePropertyAll(colorScheme.primaryContainer),
           surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

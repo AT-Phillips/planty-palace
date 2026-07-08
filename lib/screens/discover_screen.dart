@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 
@@ -12,6 +13,34 @@ import '../widgets/search_field.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'species_detail_screen.dart';
+
+// Real taxonomic/common group words, not attribute filters (e.g. not "Low
+// light" or "Pet-safe") - Perenual's search is a plain text match against
+// species names, so a query has to actually be a name-ish term to return
+// anything.
+const _categoryChips = ['Succulent', 'Fern', 'Cactus', 'Orchid', 'Palm', 'Ivy'];
+
+// A curated, well-covered starting set - not real usage/trending data (this
+// app doesn't track that), so framed honestly as "Popular houseplants".
+const _popularSpeciesNames = [
+  'Monstera deliciosa',
+  'Epipremnum aureum',
+  'Sansevieria trifasciata',
+  'Ficus lyrata',
+  'Zamioculcas zamiifolia',
+  'Pilea peperomioides',
+];
+
+const _plantFacts = [
+  "Monstera deliciosa's iconic leaf holes let light reach its lower leaves in a dense rainforest canopy.",
+  'Pothos is one of the few houseplants that tolerates low light for long stretches, though it grows fastest in bright, indirect light.',
+  'Snake plants release oxygen at night as well as during the day, unlike most plants.',
+  "A ZZ plant's thick rhizomes store water, letting it comfortably go weeks between waterings.",
+  'Air plants absorb water and nutrients through their leaves rather than through roots.',
+  'Most houseplant root rot comes from overwatering, not underwatering - soggy soil suffocates roots of oxygen.',
+  'Rotating a plant a quarter turn every week or two helps it grow evenly instead of leaning toward the light.',
+  'Many succulents evolved thick, water-storing leaves as a drought adaptation, not because they dislike water entirely.',
+];
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
 /// lookup independent of the user's own collection (no photo/camera
@@ -38,16 +67,43 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   int? _openingSpeciesId;
 
   List<RecentSpecies> _recent = [];
+  List<PerenualSpeciesSummary> _popular = [];
+  late final String _fact = _plantFacts[Random().nextInt(_plantFacts.length)];
 
   @override
   void initState() {
     super.initState();
     _loadRecent();
+    _loadPopular();
   }
 
   Future<void> _loadRecent() async {
     final recent = await SpeciesCacheService.instance.getRecent();
     if (mounted) setState(() => _recent = recent);
+  }
+
+  /// Resolves the curated "Popular houseplants" names to real Perenual
+  /// results (for a thumbnail + working tap-through) - one cached search per
+  /// name, run in parallel. A name that fails to resolve is just omitted
+  /// rather than shown broken.
+  Future<void> _loadPopular() async {
+    final results = await Future.wait(
+      _popularSpeciesNames.map((name) async {
+        try {
+          final matches = await _service.searchSpecies(name);
+          return matches.isEmpty ? null : matches.first;
+        } catch (_) {
+          return null;
+        }
+      }),
+    );
+    if (!mounted) return;
+    setState(() => _popular = results.whereType<PerenualSpeciesSummary>().toList());
+  }
+
+  void _searchCategory(String label) {
+    _controller.text = label;
+    _search(label);
   }
 
   @override
@@ -157,6 +213,100 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  /// What Find shows before any search or view history exists - previously
+  /// just a centered icon+message with a lot of unused space. Replaced with
+  /// something genuinely browsable: a plant fact, real category shortcuts,
+  /// and a curated (not usage-tracked - this app has no such data) starting
+  /// set of well-known species.
+  Widget _buildExplore(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+
+    return ListView(
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      children: [
+        Card(
+          color: scheme.primaryContainer,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.auto_awesome, size: 20, color: scheme.onPrimaryContainer),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _fact,
+                    style: TextStyle(color: scheme.onPrimaryContainer, height: 1.4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Text('Browse a category', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final label in _categoryChips)
+              ActionChip(label: Text(label), onPressed: () => _searchCategory(label)),
+          ],
+        ),
+        if (_popular.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Popular houseplants', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 132,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _popular.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final species = _popular[index];
+                return SizedBox(
+                  width: 96,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _openSpecies(species),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 96,
+                            height: 96,
+                            child: _SpeciesThumbnail(
+                              key: ValueKey('popular_${species.id}'),
+                              summary: species,
+                              heroTag: 'species_${species.id}',
+                              size: 96,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          species.commonName ?? species.scientificName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -194,14 +344,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
           if (!_searching && _results.isEmpty && !_searched && _recent.isEmpty)
-            const Expanded(
-              child: EmptyState(
-                icon: Icons.travel_explore_outlined,
-                title: 'Discover any plant',
-                message: 'Search thousands of species for care info and facts - '
-                    'whether or not it\'s already in your collection.',
-              ),
-            ),
+            Expanded(child: _buildExplore(context)),
           if (!_searching && _results.isEmpty && !_searched && _recent.isNotEmpty)
             Expanded(
               child: ListView.builder(
@@ -279,8 +422,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
 class _SpeciesThumbnail extends StatefulWidget {
   final PerenualSpeciesSummary summary;
   final Object? heroTag;
+  final double size;
 
-  const _SpeciesThumbnail({super.key, required this.summary, this.heroTag});
+  const _SpeciesThumbnail({
+    super.key,
+    required this.summary,
+    this.heroTag,
+    this.size = 44,
+  });
 
   @override
   State<_SpeciesThumbnail> createState() => _SpeciesThumbnailState();
@@ -330,13 +479,13 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
       borderRadius: BorderRadius.circular(8),
       child: Image.network(
         url,
-        width: 44,
-        height: 44,
+        width: widget.size,
+        height: widget.size,
         fit: BoxFit.cover,
-        // Decode at roughly the on-screen size (44 logical px at up to ~3x
-        // density) instead of full resolution - much faster to load and
-        // lighter on memory for a list of thumbnails.
-        cacheWidth: 132,
+        // Decode at roughly the on-screen size (at up to ~3x density)
+        // instead of full resolution - much faster to load and lighter on
+        // memory for a list of thumbnails.
+        cacheWidth: (widget.size * 3).round(),
         errorBuilder: (_, __, ___) {
           if (usingPerenual) _onPerenualImageFailed();
           return const Icon(Icons.local_florist);

@@ -4,8 +4,9 @@ import '../models/garden.dart';
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../styles/app_theme.dart';
 import '../utils/care_overdue.dart';
-import '../utils/watering_status.dart';
+import '../utils/watering_status.dart' show isOverdue;
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
@@ -226,6 +227,10 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     );
   }
 
+  /// Photo-forward: a wide photo across the top of the card, name + species
+  /// below it, and a small drop badge as the only at-a-glance status signal
+  /// - detailed watering/fertilizing/repotting/pruning text lives on Care,
+  /// the dedicated action screen, so this stays a clean browsing card.
   Widget _buildPlantCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
     final overdue = isOverdue(plant);
@@ -245,21 +250,57 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
         child: Icon(Icons.delete, color: scheme.onErrorContainer),
       ),
       child: Card(
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: PlantThumbnail(plant: plant),
-          title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: Text(
-            '${plant.species}\n${wateringStatusText(plant)}',
-            style: overdue ? TextStyle(color: scheme.error) : null,
-          ),
-          isThreeLine: true,
-          trailing: IconButton(
-            icon: const Icon(Icons.water_drop),
-            tooltip: 'Mark as watered',
-            onPressed: () => _markWatered(plant),
-          ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
           onTap: () => _navigateToDetail(plant),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              PlantThumbnail(
+                plant: plant,
+                width: double.infinity,
+                height: 108,
+                borderRadius: BorderRadius.zero,
+                heroTag: 'plant_${plant.id}',
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 10, 10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(plant.name, style: AppTheme.plantNameStyle(context, size: 16)),
+                          Text(
+                            plant.species,
+                            style: TextStyle(
+                              fontStyle: FontStyle.italic,
+                              fontSize: 12,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => _markWatered(plant),
+                      tooltip: 'Mark as watered',
+                      icon: Icon(
+                        Icons.water_drop,
+                        color: overdue ? scheme.error : scheme.outlineVariant,
+                      ),
+                      style: IconButton.styleFrom(
+                        backgroundColor: overdue ? scheme.errorContainer : null,
+                        shape: const CircleBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -16,6 +16,13 @@ import '../services/photo_storage_service.dart';
 class PlantThumbnail extends StatefulWidget {
   final Plant plant;
   final double size;
+
+  /// Override [size] independently per axis - e.g. a wide, short
+  /// photo-forward card image. Both default to [size], so every existing
+  /// square usage is unaffected.
+  final double? width;
+  final double? height;
+
   final BorderRadius borderRadius;
 
   /// When set, the thumbnail is wrapped in a [Hero] with this tag so the
@@ -27,6 +34,8 @@ class PlantThumbnail extends StatefulWidget {
     super.key,
     required this.plant,
     this.size = 50,
+    this.width,
+    this.height,
     this.borderRadius = const BorderRadius.all(Radius.circular(12)),
     this.heroTag,
   });
@@ -65,8 +74,8 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
     final content = ClipRRect(
       borderRadius: widget.borderRadius,
       child: SizedBox(
-        width: widget.size,
-        height: widget.size,
+        width: widget.width ?? widget.size,
+        height: widget.height ?? widget.size,
         child: FutureBuilder<File?>(
           future: _resolvedFile,
           builder: (context, snapshot) {

@@ -127,6 +127,33 @@ class CareScreenState extends State<CareScreen> {
     _load();
   }
 
+  Future<void> _deletePlant(Plant plant) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Plant?'),
+        content: Text('This permanently deletes "${plant.name}", including its photos, '
+            'journal, and care history.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+
+    await _repository.deletePlant(plant.id!);
+    await NotificationService().cancelReminder(plant.id!);
+    if (!mounted) return;
+    _load();
+  }
+
   Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
@@ -150,6 +177,9 @@ class CareScreenState extends State<CareScreen> {
         break;
       case 'prune':
         await _markPruned(plant);
+        break;
+      case 'delete':
+        await _deletePlant(plant);
         break;
     }
   }
@@ -316,6 +346,11 @@ class CareScreenState extends State<CareScreen> {
                     const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
                   if (hasPruningSchedule)
                     const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Text('Delete Plant', style: TextStyle(color: scheme.error)),
+                  ),
                 ],
               ),
         onTap: () => _selectionMode ? _toggleSelection(plant) : _navigateToDetail(plant),

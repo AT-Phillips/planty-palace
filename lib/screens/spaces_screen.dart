@@ -424,10 +424,11 @@ class SpacesScreenState extends State<SpacesScreen> {
       iconBg: scheme.primaryContainer,
       iconFg: scheme.onPrimaryContainer,
       title: 'Spaces',
-      subtitle: _spacesLoaded
-          ? '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
-              '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}'
-          : ' ',
+      // Shown immediately (starts at 0/0, like Projects/Wishlist) rather than
+      // gated on _spacesLoaded - that guard is only for the empty-state
+      // prompt below, not this count line, so it doesn't flash in late.
+      subtitle: '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
+          '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}',
       children: [
         for (final space in _spaces) _buildSpaceRow(space),
         if (_spacesLoaded && _spaces.isEmpty)
