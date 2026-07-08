@@ -15,6 +15,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/pest_disease_view.dart';
 import '../widgets/search_field.dart';
+import '../widgets/weather_appbar_chip.dart';
 import 'plant_detail_screen.dart';
 
 /// Shows every plant across every Space, sorted so whatever needs
@@ -384,7 +385,12 @@ class CareScreenState extends State<CareScreen> {
                 ),
               ],
             )
-          : const FrostedAppBar(title: 'Care', actions: [AccountButton()]),
+          : const FrostedAppBar(
+              title: 'Care',
+              leading: WeatherAppBarChip(),
+              leadingWidth: 76,
+              actions: [AccountButton()],
+            ),
       body: Column(
         children: [
           if (!_selectionMode)

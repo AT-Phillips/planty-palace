@@ -54,6 +54,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   int? fertilizingIntervalDays;
   int? repottingIntervalDays;
   int? pruningIntervalDays;
+
+  // Species reference facts from Perenual, carried through to the saved
+  // Plant - see PerenualService.lookupCareInfo. Null until (if) a lookup
+  // resolves with data; never overwritten with placeholder text.
+  String? speciesDescription;
+  String? speciesOrigin;
+  String? speciesFamily;
+  String? speciesImageUrl;
+  bool? poisonousToHumans;
+  bool? poisonousToPets;
   final TextEditingController nicknameController = TextEditingController();
   final TextEditingController careInstructionsController = TextEditingController();
 
@@ -70,6 +80,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       repottingIntervalDays = plant.repottingIntervalDays;
       pruningIntervalDays = plant.pruningIntervalDays;
       careInstructionsController.text = plant.careInstructions;
+      speciesDescription = plant.speciesDescription;
+      speciesOrigin = plant.speciesOrigin;
+      speciesFamily = plant.speciesFamily;
+      speciesImageUrl = plant.speciesImageUrl;
+      poisonousToHumans = plant.poisonousToHumans;
+      poisonousToPets = plant.poisonousToPets;
       if (plant.imagePath.isNotEmpty) {
         _identifierService.imageFile = File(plant.imagePath);
       }
@@ -117,6 +133,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         if (!wateringManuallySet && info.wateringIntervalDays != null) {
           wateringIntervalDays = info.wateringIntervalDays!;
         }
+        speciesDescription = info.description;
+        speciesOrigin = info.origin;
+        speciesFamily = info.family;
+        speciesImageUrl = info.imageUrl;
+        poisonousToHumans = info.poisonousToHumans;
+        poisonousToPets = info.poisonousToPets;
       }
     });
   }
@@ -217,6 +239,12 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         lastPruned: widget.plant?.lastPruned ??
             (pruningIntervalDays != null ? DateTime.now().toIso8601String() : null),
         pruningIntervalDays: pruningIntervalDays,
+        speciesDescription: speciesDescription,
+        speciesOrigin: speciesOrigin,
+        speciesFamily: speciesFamily,
+        speciesImageUrl: speciesImageUrl,
+        poisonousToHumans: poisonousToHumans,
+        poisonousToPets: poisonousToPets,
       );
 
       Plant savedPlant;

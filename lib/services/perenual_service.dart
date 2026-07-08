@@ -4,7 +4,26 @@ class PerenualCareInfo {
   final int? wateringIntervalDays;
   final String careInstructions;
 
-  PerenualCareInfo({required this.wateringIntervalDays, required this.careInstructions});
+  // The rest of what Perenual returned for this species, carried through so
+  // AddEditPlantScreen can store it on the Plant itself rather than
+  // discarding it - see PerenualSpeciesDetail for field provenance.
+  final String? description;
+  final String? origin;
+  final String? family;
+  final String? imageUrl;
+  final bool? poisonousToHumans;
+  final bool? poisonousToPets;
+
+  PerenualCareInfo({
+    required this.wateringIntervalDays,
+    required this.careInstructions,
+    this.description,
+    this.origin,
+    this.family,
+    this.imageUrl,
+    this.poisonousToHumans,
+    this.poisonousToPets,
+  });
 }
 
 class PerenualSpeciesSummary {
@@ -97,6 +116,12 @@ class PerenualService {
       return PerenualCareInfo(
         wateringIntervalDays: detail.wateringIntervalDays,
         careInstructions: detail.careInstructions,
+        description: detail.description,
+        origin: detail.origin,
+        family: detail.family,
+        imageUrl: detail.imageUrl,
+        poisonousToHumans: detail.poisonousToHumans,
+        poisonousToPets: detail.poisonousToPets,
       );
     } catch (_) {
       return null;

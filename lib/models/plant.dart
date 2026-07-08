@@ -16,6 +16,18 @@ class Plant {
   final String? lastPruned;
   final int? pruningIntervalDays;
 
+  // Reference facts about the species, sourced from Perenual at add-time
+  // (see PerenualSpeciesDetail) and stored on the plant itself so they don't
+  // need a repeat API call and survive even if that species later becomes
+  // unavailable. Nullable throughout - never fabricated, only ever what
+  // Perenual actually returned for this species.
+  final String? speciesDescription;
+  final String? speciesOrigin;
+  final String? speciesFamily;
+  final String? speciesImageUrl;
+  final bool? poisonousToHumans;
+  final bool? poisonousToPets;
+
   Plant({
     this.id,
     required this.name,
@@ -33,6 +45,12 @@ class Plant {
     this.repottingIntervalDays,
     this.lastPruned,
     this.pruningIntervalDays,
+    this.speciesDescription,
+    this.speciesOrigin,
+    this.speciesFamily,
+    this.speciesImageUrl,
+    this.poisonousToHumans,
+    this.poisonousToPets,
   });
 
   Map<String, dynamic> toMap() {
@@ -52,6 +70,12 @@ class Plant {
       'repottingIntervalDays': repottingIntervalDays,
       'lastPruned': lastPruned,
       'pruningIntervalDays': pruningIntervalDays,
+      'speciesDescription': speciesDescription,
+      'speciesOrigin': speciesOrigin,
+      'speciesFamily': speciesFamily,
+      'speciesImageUrl': speciesImageUrl,
+      'poisonousToHumans': poisonousToHumans,
+      'poisonousToPets': poisonousToPets,
     };
   }
 
@@ -76,6 +100,12 @@ class Plant {
       repottingIntervalDays: map['repottingIntervalDays'],
       lastPruned: map['lastPruned'],
       pruningIntervalDays: map['pruningIntervalDays'],
+      speciesDescription: map['speciesDescription'],
+      speciesOrigin: map['speciesOrigin'],
+      speciesFamily: map['speciesFamily'],
+      speciesImageUrl: map['speciesImageUrl'],
+      poisonousToHumans: map['poisonousToHumans'],
+      poisonousToPets: map['poisonousToPets'],
     );
   }
 
@@ -96,6 +126,12 @@ class Plant {
     int? repottingIntervalDays,
     String? lastPruned,
     int? pruningIntervalDays,
+    String? speciesDescription,
+    String? speciesOrigin,
+    String? speciesFamily,
+    String? speciesImageUrl,
+    bool? poisonousToHumans,
+    bool? poisonousToPets,
   }) {
     return Plant(
       id: id ?? this.id,
@@ -114,6 +150,12 @@ class Plant {
       repottingIntervalDays: repottingIntervalDays ?? this.repottingIntervalDays,
       lastPruned: lastPruned ?? this.lastPruned,
       pruningIntervalDays: pruningIntervalDays ?? this.pruningIntervalDays,
+      speciesDescription: speciesDescription ?? this.speciesDescription,
+      speciesOrigin: speciesOrigin ?? this.speciesOrigin,
+      speciesFamily: speciesFamily ?? this.speciesFamily,
+      speciesImageUrl: speciesImageUrl ?? this.speciesImageUrl,
+      poisonousToHumans: poisonousToHumans ?? this.poisonousToHumans,
+      poisonousToPets: poisonousToPets ?? this.poisonousToPets,
     );
   }
 }

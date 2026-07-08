@@ -286,6 +286,63 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     }
   }
 
+  /// Species reference facts sourced from Perenual at add-time (see
+  /// PerenualService.lookupCareInfo / AddEditPlantScreen) - distinct from
+  /// the user's own "Care Info" notes above. Nullable-safe throughout: only
+  /// ever shows a fact Perenual actually returned for this species, and the
+  /// whole section is omitted if none of them are present (e.g. plants
+  /// added before this existed, or species Perenual has no data for).
+  List<Widget> _buildSpeciesFactsSection(ColorScheme scheme) {
+    final hasToxicityInfo = _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
+    final isToxic = _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
+    final hasAnyFact = _plant.speciesDescription != null ||
+        _plant.speciesFamily != null ||
+        _plant.speciesOrigin != null ||
+        hasToxicityInfo;
+
+    if (!hasAnyFact) return const [];
+
+    return [
+      const SizedBox(height: 20),
+      Text('About This Species', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+      const SizedBox(height: 8),
+      if (_plant.speciesDescription != null) ...[
+        Text(_plant.speciesDescription!),
+        const SizedBox(height: 8),
+      ],
+      if (_plant.speciesFamily != null)
+        Text('Family: ${_plant.speciesFamily}', style: TextStyle(color: scheme.onSurfaceVariant)),
+      if (_plant.speciesOrigin != null)
+        Text('Origin: ${_plant.speciesOrigin}', style: TextStyle(color: scheme.onSurfaceVariant)),
+      if (hasToxicityInfo) ...[
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Icon(
+              isToxic ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+              size: 18,
+              color: isToxic ? scheme.error : scheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                isToxic
+                    ? 'May be toxic${_plant.poisonousToPets == true ? ' to pets' : ''}'
+                        '${_plant.poisonousToHumans == true && _plant.poisonousToPets == true ? ' and' : ''}'
+                        '${_plant.poisonousToHumans == true ? ' humans' : ''} if ingested'
+                    : 'Not known to be toxic to humans or pets',
+                style: TextStyle(
+                  color: isToxic ? scheme.error : scheme.onSurfaceVariant,
+                  fontWeight: isToxic ? FontWeight.w600 : FontWeight.normal,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -410,6 +467,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                   const SizedBox(height: 8),
                   Text(_plant.careInstructions),
                 ],
+                ..._buildSpeciesFactsSection(scheme),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,

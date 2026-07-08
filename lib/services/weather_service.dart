@@ -1,4 +1,5 @@
 import 'package:cloud_functions/cloud_functions.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'location_preferences.dart';
@@ -82,5 +83,42 @@ class WeatherService {
     } catch (_) {
       return null;
     }
+  }
+}
+
+/// A single shared current-weather cache + in-flight fetch, so every
+/// consumer (the app-bar chip on each of the 4 persistent tabs, the detail
+/// sheet) reads one shared result instead of firing its own fetch - matters
+/// because MainShell keeps all 4 tabs mounted simultaneously via
+/// IndexedStack, so per-widget fetching would mean 4 concurrent network
+/// calls on every app open.
+class WeatherStore {
+  WeatherStore._();
+  static final WeatherStore instance = WeatherStore._();
+
+  final WeatherService _service = WeatherService();
+  final ValueNotifier<WeatherInfo?> weather = ValueNotifier(null);
+  final ValueNotifier<bool> loading = ValueNotifier(true);
+
+  bool _loaded = false;
+  Future<void>? _inFlight;
+
+  /// Fetches once and caches; a widget calling this while a fetch is already
+  /// in flight (e.g. all 4 tab chips mounting together) awaits the same
+  /// future instead of starting a new one.
+  Future<void> ensureLoaded() {
+    if (_loaded) return Future.value();
+    return _inFlight ??= _fetch();
+  }
+
+  Future<void> refresh() => _inFlight = _fetch();
+
+  Future<void> _fetch() async {
+    loading.value = true;
+    final result = await _service.fetchCurrentWeather();
+    weather.value = result;
+    loading.value = false;
+    _loaded = true;
+    _inFlight = null;
   }
 }

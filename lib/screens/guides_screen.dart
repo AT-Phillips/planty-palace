@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../content/guides_content.dart';
 import '../widgets/account_button.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/weather_appbar_chip.dart';
 import 'info_screen.dart';
 
 /// "Guides" tab: a small library of curated, offline plant-care how-tos. Each
@@ -16,7 +17,12 @@ class GuidesScreen extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Guides', actions: [AccountButton()]),
+      appBar: const FrostedAppBar(
+        title: 'Guides',
+        leading: WeatherAppBarChip(),
+        leadingWidth: 76,
+        actions: [AccountButton()],
+      ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [

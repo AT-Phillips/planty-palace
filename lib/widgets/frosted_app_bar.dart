@@ -11,8 +11,15 @@ class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final List<Widget>? actions;
   final Widget? leading;
+  final double? leadingWidth;
 
-  const FrostedAppBar({super.key, required this.title, this.actions, this.leading});
+  const FrostedAppBar({
+    super.key,
+    required this.title,
+    this.actions,
+    this.leading,
+    this.leadingWidth,
+  });
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -28,6 +35,7 @@ class FrostedAppBar extends StatelessWidget implements PreferredSizeWidget {
           title: Text(title),
           actions: actions,
           leading: leading,
+          leadingWidth: leadingWidth,
           backgroundColor: scheme.surface.withValues(alpha: 0.7),
           surfaceTintColor: Colors.transparent,
           elevation: 0,

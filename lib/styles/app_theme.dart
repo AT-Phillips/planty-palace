@@ -47,8 +47,8 @@ class AppTheme {
     darkBackground: Color(0xFF0B120E),
     darkCard: Color(0xFF1C2A22),
     darkInputFill: Color(0xFF2A3931),
-    lightBackground: Color(0xFFEAF0E9),
-    lightCard: Color(0xFFF7FAF6),
+    lightBackground: Color(0xFFC7D4C2),
+    lightCard: Color(0xFFF3F7F0),
   );
 
   /// All selectable background palettes, in picker order. `forestPalette` is
@@ -60,24 +60,24 @@ class AppTheme {
       darkBackground: Color(0xFF0B1220),
       darkCard: Color(0xFF1B2537),
       darkInputFill: Color(0xFF29354B),
-      lightBackground: Color(0xFFE3EAF5),
-      lightCard: Color(0xFFF3F6FC),
+      lightBackground: Color(0xFFC3D2E8),
+      lightCard: Color(0xFFF1F5FB),
     ),
     BackgroundPalette(
       name: 'Slate',
       darkBackground: Color(0xFF12151A),
       darkCard: Color(0xFF232830),
       darkInputFill: Color(0xFF333A44),
-      lightBackground: Color(0xFFE6E8EC),
-      lightCard: Color(0xFFF5F6F8),
+      lightBackground: Color(0xFFCBCFD6),
+      lightCard: Color(0xFFF3F4F6),
     ),
     BackgroundPalette(
       name: 'Charcoal',
       darkBackground: Color(0xFF0E0F11),
       darkCard: Color(0xFF1E2023),
       darkInputFill: Color(0xFF2C2F33),
-      lightBackground: Color(0xFFECE9E5),
-      lightCard: Color(0xFFF9F6F2),
+      lightBackground: Color(0xFFD9D2C5),
+      lightCard: Color(0xFFF8F5EF),
     ),
   ];
 
@@ -123,7 +123,7 @@ class AppTheme {
         foregroundColor: colorScheme.onSurface,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
-        centerTitle: false,
+        centerTitle: true,
       ),
       cardTheme: CardThemeData(
         elevation: 0,

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1F4A36"/>
+      <stop offset="100%" stop-color="#2E6B4F"/>
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" fill="url(#bg)"/>
+  <!-- Thicket Cluster mark, recentered from the original card-context
+       viewBox (whose natural bounding box sat lower, for a label beneath
+       it) so it sits centered in a standalone icon square. -->
+  <g transform="translate(0,-19.55)">
+    <g transform="translate(38,74) rotate(-24) scale(0.85)" fill="#FAF7EC" opacity="0.55">
+      <path d="M0,-27 C13,-16 13,14 0,27 C-13,14 -13,-16 0,-27 Z"/>
+    </g>
+    <g transform="translate(62,74) rotate(24) scale(0.85)" fill="#FAF7EC" opacity="0.55">
+      <path d="M0,-27 C13,-16 13,14 0,27 C-13,14 -13,-16 0,-27 Z"/>
+    </g>
+    <g transform="translate(50,68) scale(1.05)" fill="#FAF7EC">
+      <path d="M0,-27 C13,-16 13,14 0,27 C-13,14 -13,-16 0,-27 Z"/>
+    </g>
+  </g>
+</svg>

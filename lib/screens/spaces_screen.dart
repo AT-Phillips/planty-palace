@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/garden.dart';
 import '../models/plant.dart';
 import '../models/wishlist_item.dart';
+import '../services/notification_service.dart';
 import '../services/perenual_service.dart';
 import '../services/plant_repository.dart';
 import '../services/propagation_repository.dart';
@@ -11,7 +12,7 @@ import '../utils/care_overdue.dart';
 import '../widgets/account_button.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
-import '../widgets/weather_card.dart';
+import '../widgets/weather_appbar_chip.dart';
 import 'my_plants_screen.dart';
 import 'plant_detail_screen.dart';
 import 'propagations_screen.dart';
@@ -121,15 +122,6 @@ class SpacesScreenState extends State<SpacesScreen> {
     if (mounted) _loadSpaces();
   }
 
-  Future<void> _navigateToAllPlants() async {
-    // MyPlantsScreen with a null garden = the all-plants view (every plant
-    // across all spaces, filterable by space).
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const MyPlantsScreen()),
-    );
-    if (mounted) refresh();
-  }
 
   Future<void> _navigateToPropagations() async {
     await Navigator.push(
@@ -313,50 +305,96 @@ class SpacesScreenState extends State<SpacesScreen> {
     );
   }
 
-  Widget _todoSection() {
-    final scheme = Theme.of(context).colorScheme;
-    final has = _dueToday.isNotEmpty;
-    return _section(
-      icon: has ? Icons.checklist_rounded : Icons.task_alt,
-      iconBg: has ? scheme.primary : scheme.surfaceContainerHighest,
-      iconFg: has ? scheme.onPrimary : scheme.onSurfaceVariant,
-      title: 'To-Do Today',
-      subtitle: has
-          ? '${_dueToday.length} ${_dueToday.length == 1 ? 'plant needs' : 'plants need'} care'
-          : "You're all caught up",
-      children: [
-        if (!has)
-          const ListTile(
-            dense: true,
-            leading: Icon(Icons.check_circle_outline),
-            title: Text('Nothing needs care today'),
-          )
-        else ...[
-          for (final plant in _dueToday)
-            ListTile(
-              leading: PlantThumbnail(
-                plant: plant,
-                size: 40,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-              subtitle: Text(_dueLabel(plant), style: TextStyle(color: scheme.error)),
-              onTap: () => _navigateToPlant(plant),
-            ),
-          ListTile(
-            leading: const Icon(Icons.arrow_forward),
-            title: const Text('View all in Care'),
-            onTap: widget.onGoToCare,
-          ),
-        ],
-      ],
-    );
+  Future<void> _markWatered(Plant plant) async {
+    await _repository.markWatered(plant.id!);
+    final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
+    await NotificationService().scheduleWateringReminder(updated);
+    _loadDueTasks();
   }
 
   String _dueLabel(Plant plant) {
     final due = mostUrgentDueIn(plant) ?? 0;
     if (due < 0) return 'Overdue by ${-due} ${-due == 1 ? 'day' : 'days'}';
     return 'Due today';
+  }
+
+  /// Deliberately NOT one more collapsible `_section` alongside
+  /// Projects/Spaces/Wishlist - this is the single most important thing on
+  /// the screen, so it stays always-expanded, in its own elevated card, with
+  /// a strong error-toned treatment when something actually needs attention.
+  Widget _todoCard() {
+    final scheme = Theme.of(context).colorScheme;
+    final has = _dueToday.isNotEmpty;
+
+    return Card(
+      color: has ? scheme.errorContainer : scheme.surfaceContainerHigh,
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  has ? Icons.priority_high_rounded : Icons.check_circle_outline,
+                  color: has ? scheme.onErrorContainer : scheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    has
+                        ? '${_dueToday.length} ${_dueToday.length == 1 ? 'plant needs' : 'plants need'} care today'
+                        : "You're all caught up",
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                      color: has ? scheme.onErrorContainer : scheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            if (!has)
+              Padding(
+                padding: const EdgeInsets.only(top: 4, bottom: 8),
+                child: Text(
+                  'Nothing needs care today.',
+                  style: TextStyle(color: scheme.onSurfaceVariant),
+                ),
+              )
+            else ...[
+              const SizedBox(height: 4),
+              for (final plant in _dueToday)
+                Card(
+                  color: scheme.surface,
+                  margin: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListTile(
+                    leading: PlantThumbnail(
+                      plant: plant,
+                      size: 40,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text(_dueLabel(plant), style: TextStyle(color: scheme.error)),
+                    trailing: IconButton.filledTonal(
+                      icon: const Icon(Icons.water_drop),
+                      tooltip: 'Water now',
+                      onPressed: () => _markWatered(plant),
+                    ),
+                    onTap: () => _navigateToPlant(plant),
+                  ),
+                ),
+              TextButton(
+                onPressed: widget.onGoToCare,
+                child: const Text('View all in Care'),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _projectsSection() {
@@ -487,51 +525,21 @@ class SpacesScreenState extends State<SpacesScreen> {
     );
   }
 
-  /// A prominent, always-visible entry point to every plant the user owns -
-  /// pinned above the dropdown sections so all their flora is one tap away,
-  /// rather than buried inside the Spaces dropdown.
-  Widget _allPlantsCard() {
-    final scheme = Theme.of(context).colorScheme;
-    final subtitle = _spacesLoaded
-        ? '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} across '
-            '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}'
-        : ' ';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Card(
-        color: scheme.primaryContainer,
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          leading: CircleAvatar(
-            backgroundColor: scheme.primary,
-            foregroundColor: scheme.onPrimary,
-            child: const Icon(Icons.local_florist_outlined),
-          ),
-          title: Text(
-            'All Plants',
-            style: TextStyle(fontWeight: FontWeight.w700, color: scheme.onPrimaryContainer),
-          ),
-          subtitle: Text(subtitle, style: TextStyle(color: scheme.onPrimaryContainer)),
-          trailing: Icon(Icons.chevron_right, color: scheme.onPrimaryContainer),
-          onTap: _navigateToAllPlants,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Spaces', actions: [AccountButton()]),
+      appBar: FrostedAppBar(
+        title: 'Spaces',
+        leading: const WeatherAppBarChip(),
+        leadingWidth: 76,
+        actions: const [AccountButton()],
+      ),
       body: RefreshIndicator.adaptive(
         onRefresh: () async => refresh(),
         child: ListView(
           padding: const EdgeInsets.only(top: 4, bottom: 24),
           children: [
-            const WeatherCard(),
-            _allPlantsCard(),
-            _todoSection(),
+            _todoCard(),
             _projectsSection(),
             _spacesSection(),
             _wishlistSection(),

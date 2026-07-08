@@ -10,6 +10,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
 import '../widgets/shimmer.dart';
+import '../widgets/weather_appbar_chip.dart';
 import 'species_detail_screen.dart';
 
 /// Live, as-you-type search across Perenual's species catalog - a reference
@@ -159,7 +160,12 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: const FrostedAppBar(title: 'Find', actions: [AccountButton()]),
+      appBar: const FrostedAppBar(
+        title: 'Find',
+        leading: WeatherAppBarChip(),
+        leadingWidth: 76,
+        actions: [AccountButton()],
+      ),
       body: Column(
         children: [
           Padding(
