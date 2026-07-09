@@ -40,6 +40,15 @@ class AppTheme {
   static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
   static const double radius = 20.0;
 
+  /// Overdue-care urgency - deliberately distinct from both
+  /// [ColorScheme.error] (destructive actions, form validation) and the
+  /// amber toxicity-warning color, so all three read as separate signals
+  /// instead of competing for the same "pay attention" red.
+  static Color urgentColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFE38166)
+          : const Color(0xFFB5482E);
+
   /// The serif heading style used for plant/species name headings (not app
   /// bar titles, which pick up the same Lora serif automatically via
   /// [ThemeData.appBarTheme] - this is for name headings living inside

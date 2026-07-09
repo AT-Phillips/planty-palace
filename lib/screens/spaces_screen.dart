@@ -8,6 +8,7 @@ import '../services/perenual_service.dart';
 import '../services/plant_repository.dart';
 import '../services/propagation_repository.dart';
 import '../services/wishlist_repository.dart';
+import '../styles/app_theme.dart';
 import '../utils/care_overdue.dart';
 import '../widgets/account_button.dart';
 import '../widgets/frosted_app_bar.dart';
@@ -281,9 +282,6 @@ class SpacesScreenState extends State<SpacesScreen> {
   /// A collapsible hub section styled as a rounded card, consistent with the
   /// rest of the app.
   Widget _section({
-    required IconData icon,
-    required Color iconBg,
-    required Color iconFg,
     required String title,
     required String subtitle,
     required List<Widget> children,
@@ -297,7 +295,6 @@ class SpacesScreenState extends State<SpacesScreen> {
         collapsedShape: const Border(),
         tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         childrenPadding: const EdgeInsets.only(bottom: 8),
-        leading: CircleAvatar(backgroundColor: iconBg, foregroundColor: iconFg, child: Icon(icon)),
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         subtitle: Text(subtitle),
         children: children,
@@ -325,9 +322,10 @@ class SpacesScreenState extends State<SpacesScreen> {
   Widget _todoCard() {
     final scheme = Theme.of(context).colorScheme;
     final has = _dueToday.isNotEmpty;
+    final urgent = AppTheme.urgentColor(context);
 
     return Card(
-      color: has ? scheme.errorContainer : scheme.surfaceContainerHigh,
+      color: has ? urgent.withValues(alpha: 0.15) : scheme.surfaceContainerHigh,
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Padding(
@@ -335,23 +333,33 @@ class SpacesScreenState extends State<SpacesScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (has)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${_dueToday.length} ${_dueToday.length == 1 ? 'PLANT NEEDS' : 'PLANTS NEED'} CARE',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                    color: urgent,
+                  ),
+                ),
+              ),
             Row(
               children: [
                 Icon(
                   has ? Icons.priority_high_rounded : Icons.check_circle_outline,
-                  color: has ? scheme.onErrorContainer : scheme.onSurfaceVariant,
+                  color: has ? urgent : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     has
-                        ? '${_dueToday.length} ${_dueToday.length == 1 ? 'plant needs' : 'plants need'} care today'
+                        ? '${_dueToday.length == 1 ? _dueToday.first.name : '${_dueToday.length} plants'} '
+                            '${_dueToday.length == 1 ? 'is' : 'are'} overdue'
                         : "You're all caught up",
-                    style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
-                      color: has ? scheme.onErrorContainer : scheme.onSurface,
-                    ),
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
                   ),
                 ),
               ],
@@ -377,11 +385,15 @@ class SpacesScreenState extends State<SpacesScreen> {
                       borderRadius: BorderRadius.circular(20),
                     ),
                     title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(_dueLabel(plant), style: TextStyle(color: scheme.error)),
-                    trailing: IconButton.filledTonal(
-                      icon: const Icon(Icons.water_drop),
-                      tooltip: 'Water now',
+                    subtitle: Text(_dueLabel(plant), style: TextStyle(color: urgent)),
+                    trailing: IconButton(
                       onPressed: () => _markWatered(plant),
+                      tooltip: 'Water now',
+                      icon: Icon(Icons.water_drop, color: urgent),
+                      style: IconButton.styleFrom(
+                        backgroundColor: urgent.withValues(alpha: 0.15),
+                        shape: const CircleBorder(),
+                      ),
                     ),
                     onTap: () => _navigateToPlant(plant),
                   ),
@@ -398,11 +410,7 @@ class SpacesScreenState extends State<SpacesScreen> {
   }
 
   Widget _projectsSection() {
-    final scheme = Theme.of(context).colorScheme;
     return _section(
-      icon: Icons.category_outlined,
-      iconBg: scheme.secondaryContainer,
-      iconFg: scheme.onSecondaryContainer,
       title: 'Projects',
       subtitle: '$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}',
       children: [
@@ -418,11 +426,7 @@ class SpacesScreenState extends State<SpacesScreen> {
   }
 
   Widget _spacesSection() {
-    final scheme = Theme.of(context).colorScheme;
     return _section(
-      icon: Icons.home_outlined,
-      iconBg: scheme.primaryContainer,
-      iconFg: scheme.onPrimaryContainer,
       title: 'Spaces',
       // Shown immediately (starts at 0/0, like Projects/Wishlist) rather than
       // gated on _spacesLoaded - that guard is only for the empty-state
@@ -454,10 +458,13 @@ class SpacesScreenState extends State<SpacesScreen> {
     final isDefault = space.name == PlantRepository.defaultGardenName;
 
     return ListTile(
-      leading: CircleAvatar(
-        backgroundColor: scheme.surfaceContainerHighest,
-        foregroundColor: scheme.onSurfaceVariant,
-        child: const Icon(Icons.home_outlined),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHighest,
+          borderRadius: BorderRadius.circular(10),
+        ),
       ),
       title: Text(space.name, style: const TextStyle(fontWeight: FontWeight.w600)),
       subtitle: Text('$count plant${count == 1 ? '' : 's'}'),
@@ -477,11 +484,7 @@ class SpacesScreenState extends State<SpacesScreen> {
   }
 
   Widget _wishlistSection() {
-    final scheme = Theme.of(context).colorScheme;
     return _section(
-      icon: Icons.favorite_border,
-      iconBg: scheme.tertiaryContainer,
-      iconFg: scheme.onTertiaryContainer,
       title: 'Wishlist',
       subtitle: _wishlist.isEmpty
           ? 'Plants you want'
@@ -531,9 +534,7 @@ class SpacesScreenState extends State<SpacesScreen> {
     return Scaffold(
       appBar: FrostedAppBar(
         title: 'Spaces',
-        leading: const WeatherAppBarChip(),
-        leadingWidth: 76,
-        actions: const [AccountButton()],
+        actions: const [WeatherAppBarChip(), AccountButton()],
       ),
       body: RefreshIndicator.adaptive(
         onRefresh: () async => refresh(),

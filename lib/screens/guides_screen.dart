@@ -19,9 +19,7 @@ class GuidesScreen extends StatelessWidget {
     return Scaffold(
       appBar: const FrostedAppBar(
         title: 'Guides',
-        leading: WeatherAppBarChip(),
-        leadingWidth: 76,
-        actions: [AccountButton()],
+        actions: [WeatherAppBarChip(), AccountButton()],
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),

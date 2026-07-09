@@ -4,6 +4,7 @@ import '../models/plant.dart';
 // import '../services/home_widget_service.dart'; // widget disabled for now
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
+import '../styles/app_theme.dart';
 import '../utils/care_overdue.dart';
 import '../utils/fertilizing_status.dart';
 import '../utils/pruning_status.dart';
@@ -17,6 +18,27 @@ import '../widgets/pest_disease_view.dart';
 import '../widgets/search_field.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'plant_detail_screen.dart';
+
+/// The single most urgent care line for a plant - whichever of
+/// watering/fertilizing/repotting/pruning is soonest due, matching the
+/// ordering [PlantSortOption.urgency] already sorts by. Returns null if the
+/// plant has no schedules at all.
+({String text, bool overdue})? _primaryCareStatus(Plant plant) {
+  final candidates = <(int, String, bool)>[
+    if (daysUntilDue(plant) != null)
+      (daysUntilDue(plant)!, wateringStatusText(plant), isOverdue(plant)),
+    if (daysUntilFertilizeDue(plant) != null)
+      (daysUntilFertilizeDue(plant)!, fertilizingStatusText(plant), isFertilizingOverdue(plant)),
+    if (daysUntilRepotDue(plant) != null)
+      (daysUntilRepotDue(plant)!, repottingStatusText(plant), isRepottingOverdue(plant)),
+    if (daysUntilPruneDue(plant) != null)
+      (daysUntilPruneDue(plant)!, pruningStatusText(plant), isPruningOverdue(plant)),
+  ];
+  if (candidates.isEmpty) return null;
+  candidates.sort((a, b) => a.$1.compareTo(b.$1));
+  final (_, text, overdue) = candidates.first;
+  return (text: text, overdue: overdue);
+}
 
 /// Shows every plant across every Space, sorted so whatever needs
 /// attention soonest surfaces first. Also doubles as the "browse all my
@@ -33,7 +55,6 @@ class CareScreenState extends State<CareScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   List<Plant> _plants = [];
-  Map<String, String> _spaceNames = {};
   String _query = '';
   PlantSortOption _sortOption = PlantSortOption.urgency;
   bool _overdueOnly = false;
@@ -79,15 +100,9 @@ class CareScreenState extends State<CareScreen> {
 
   Future<void> _load() async {
     try {
-      final spaces = await _repository.getGardens();
       final plants = await _repository.getPlants();
-
-      final spaceNames = {for (final s in spaces) s.id!: s.name};
       if (!mounted) return;
-      setState(() {
-        _spaceNames = spaceNames;
-        _plants = plants;
-      });
+      setState(() => _plants = plants);
     } catch (e) {
       debugPrint('Failed to load Care data: $e');
     }
@@ -102,58 +117,6 @@ class CareScreenState extends State<CareScreen> {
     _load();
   }
 
-  Future<void> _markFertilized(Plant plant) async {
-    await _repository.markFertilized(plant.id!);
-    final updated = plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
-    await NotificationService().scheduleFertilizingReminder(updated);
-    // HomeWidgetService().refresh(); // widget disabled for now
-    if (!mounted) return;
-    _load();
-  }
-
-  Future<void> _markRepotted(Plant plant) async {
-    await _repository.markRepotted(plant.id!);
-    final updated = plant.copyWith(lastRepotted: DateTime.now().toIso8601String());
-    await NotificationService().scheduleRepottingReminder(updated);
-    if (!mounted) return;
-    _load();
-  }
-
-  Future<void> _markPruned(Plant plant) async {
-    await _repository.markPruned(plant.id!);
-    final updated = plant.copyWith(lastPruned: DateTime.now().toIso8601String());
-    await NotificationService().schedulePruningReminder(updated);
-    if (!mounted) return;
-    _load();
-  }
-
-  Future<void> _deletePlant(Plant plant) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Plant?'),
-        content: Text('This permanently deletes "${plant.name}", including its photos, '
-            'journal, and care history.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
-    await _repository.deletePlant(plant.id!);
-    await NotificationService().cancelReminder(plant.id!);
-    if (!mounted) return;
-    _load();
-  }
-
   Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
@@ -161,26 +124,6 @@ class CareScreenState extends State<CareScreen> {
     );
     if (result == true && mounted) {
       _load();
-    }
-  }
-
-  Future<void> _handleCareAction(String action, Plant plant) async {
-    switch (action) {
-      case 'water':
-        await _markWatered(plant);
-        break;
-      case 'fertilize':
-        await _markFertilized(plant);
-        break;
-      case 'repot':
-        await _markRepotted(plant);
-        break;
-      case 'prune':
-        await _markPruned(plant);
-        break;
-      case 'delete':
-        await _deletePlant(plant);
-        break;
     }
   }
 
@@ -290,71 +233,59 @@ class CareScreenState extends State<CareScreen> {
 
   Widget _buildCareCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
-    final spaceName = _spaceNames[plant.gardenId] ?? '';
-    final overdue = isOverdue(plant);
-    final fertilizingOverdue = isFertilizingOverdue(plant);
-    final repottingOverdue = isRepottingOverdue(plant);
-    final pruningOverdue = isPruningOverdue(plant);
-    final hasFertilizingSchedule = plant.fertilizingIntervalDays != null;
-    final hasRepottingSchedule = plant.repottingIntervalDays != null;
-    final hasPruningSchedule = plant.pruningIntervalDays != null;
     final selected = _selectedIds.contains(plant.id);
+    final status = _primaryCareStatus(plant);
+    final overdue = status?.overdue ?? false;
+    final canWater = plant.wateringIntervalDays != null;
 
     final card = Card(
       color: selected ? scheme.primaryContainer.withValues(alpha: 0.4) : null,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: _selectionMode
-            ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(plant))
-            : CareRing(plant: plant, heroTag: 'plant_${plant.id}'),
-        title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(spaceName),
-            Text(
-              wateringStatusText(plant),
-              style: overdue ? TextStyle(color: scheme.error) : null,
-            ),
-            if (hasFertilizingSchedule)
-              Text(
-                fertilizingStatusText(plant),
-                style: fertilizingOverdue ? TextStyle(color: scheme.error) : null,
-              ),
-            if (hasRepottingSchedule)
-              Text(
-                repottingStatusText(plant),
-                style: repottingOverdue ? TextStyle(color: scheme.error) : null,
-              ),
-            if (hasPruningSchedule)
-              Text(
-                pruningStatusText(plant),
-                style: pruningOverdue ? TextStyle(color: scheme.error) : null,
-              ),
-          ],
-        ),
-        trailing: _selectionMode
-            ? null
-            : PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (action) => _handleCareAction(action, plant),
-                itemBuilder: (context) => [
-                  const PopupMenuItem(value: 'water', child: Text('Mark Watered')),
-                  if (hasFertilizingSchedule)
-                    const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
-                  if (hasRepottingSchedule)
-                    const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
-                  if (hasPruningSchedule)
-                    const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
-                  const PopupMenuDivider(),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Text('Delete Plant', style: TextStyle(color: scheme.error)),
-                  ),
-                ],
-              ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(AppTheme.radius),
         onTap: () => _selectionMode ? _toggleSelection(plant) : _navigateToDetail(plant),
         onLongPress: _selectionMode ? null : () => _startSelection(plant),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              _selectionMode
+                  ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(plant))
+                  : CareRing(plant: plant, heroTag: 'plant_${plant.id}'),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      status?.text ?? 'No care schedule set',
+                      style: overdue
+                          ? TextStyle(
+                              color: AppTheme.urgentColor(context),
+                              fontWeight: FontWeight.w600,
+                            )
+                          : TextStyle(color: scheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              if (!_selectionMode && canWater)
+                IconButton(
+                  onPressed: () => _markWatered(plant),
+                  tooltip: 'Mark as watered',
+                  icon: Icon(
+                    Icons.water_drop,
+                    color: overdue ? AppTheme.urgentColor(context) : scheme.outlineVariant,
+                  ),
+                  style: IconButton.styleFrom(
+                    backgroundColor:
+                        overdue ? AppTheme.urgentColor(context).withValues(alpha: 0.15) : null,
+                    shape: const CircleBorder(),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
 
@@ -422,9 +353,7 @@ class CareScreenState extends State<CareScreen> {
             )
           : const FrostedAppBar(
               title: 'Care',
-              leading: WeatherAppBarChip(),
-              leadingWidth: 76,
-              actions: [AccountButton()],
+              actions: [WeatherAppBarChip(), AccountButton()],
             ),
       body: Column(
         children: [

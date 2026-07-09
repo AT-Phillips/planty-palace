@@ -213,11 +213,13 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
-  /// What Find shows before any search or view history exists - previously
-  /// just a centered icon+message with a lot of unused space. Replaced with
-  /// something genuinely browsable: a plant fact, real category shortcuts,
-  /// and a curated (not usage-tracked - this app has no such data) starting
-  /// set of well-known species.
+  /// What Find shows before any search is active - previously just a
+  /// centered icon+message with a lot of unused space. Now genuinely
+  /// browsable: recently viewed species (if any), a plant fact, real
+  /// category shortcuts, and a curated (not usage-tracked - this app has no
+  /// such data) starting set of well-known species. All shown together
+  /// rather than recent-viewed replacing the rest, since viewing one plant
+  /// shouldn't erase the browsing entry points.
   Widget _buildExplore(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
@@ -225,6 +227,54 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
+        if (_recent.isNotEmpty) ...[
+          Text('Recently viewed', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 132,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _recent.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, index) {
+                final entry = _recent[index];
+                return SizedBox(
+                  width: 96,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _openSpecies(entry.summary),
+                    child: Column(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: SizedBox(
+                            width: 96,
+                            height: 96,
+                            child: _SpeciesThumbnail(
+                              key: ValueKey('recent_${entry.summary.id}'),
+                              summary: entry.summary,
+                              heroTag: 'species_${entry.summary.id}',
+                              size: 96,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          entry.summary.commonName ?? entry.summary.scientificName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+        ],
         Card(
           color: scheme.primaryContainer,
           child: Padding(
@@ -312,9 +362,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     return Scaffold(
       appBar: const FrostedAppBar(
         title: 'Find',
-        leading: WeatherAppBarChip(),
-        leadingWidth: 76,
-        actions: [AccountButton()],
+        actions: [WeatherAppBarChip(), AccountButton()],
       ),
       body: Column(
         children: [
@@ -343,42 +391,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                 message: 'Try a different name or spelling.',
               ),
             ),
-          if (!_searching && _results.isEmpty && !_searched && _recent.isEmpty)
+          if (!_searching && _results.isEmpty && !_searched)
             Expanded(child: _buildExplore(context)),
-          if (!_searching && _results.isEmpty && !_searched && _recent.isNotEmpty)
-            Expanded(
-              child: ListView.builder(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                padding: const EdgeInsets.only(top: 8),
-                itemCount: _recent.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                      child: Text(
-                        'Recently viewed',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                    );
-                  }
-                  final entry = _recent[index - 1];
-                  return ListTile(
-                    leading: _SpeciesThumbnail(
-                      key: ValueKey('recent_${entry.summary.id}'),
-                      summary: entry.summary,
-                      heroTag: 'species_${entry.summary.id}',
-                    ),
-                    title: Text(
-                      entry.summary.scientificName,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                    subtitle:
-                        entry.summary.commonName != null ? Text(entry.summary.commonName!) : null,
-                    onTap: () => _openSpecies(entry.summary),
-                  );
-                },
-              ),
-            ),
           if (!_searching && _results.isNotEmpty)
             Expanded(
               child: ListView.builder(
