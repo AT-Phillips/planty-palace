@@ -1,12 +1,20 @@
-import 'package:flutter/material.dart';
 import 'dart:io';
+
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 
 import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/perenual_service.dart';
 import '../services/plant_identifier_service.dart';
 import '../services/plant_repository.dart';
+import '../styles/app_theme.dart';
+import '../utils/care_kind.dart';
+import '../utils/haptics.dart';
 import '../utils/permanent_image.dart';
+import '../widgets/app_bottom_sheet.dart';
+import '../widgets/frosted_app_bar.dart';
+import '../widgets/inset_group.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
 const _fertilizingIntervalOptions = [14, 30, 60, 90];
@@ -50,6 +58,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   bool careInstructionsManuallySet = false;
   List<PlantSuggestion> suggestions = [];
   String? selectedName;
+  String? selectedCommonName;
   int wateringIntervalDays = 7;
   int? fertilizingIntervalDays;
   int? repottingIntervalDays;
@@ -170,6 +179,36 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     });
   }
 
+  /// Single tap-target for the photo: an action sheet to take, choose, or
+  /// remove the plant photo (replacing the two always-on tonal buttons).
+  Future<void> _changePhoto() async {
+    final hasPhoto = _identifierService.imageFile != null;
+    final action = await showAppActionSheet<String>(
+      context,
+      title: 'Plant photo',
+      message: 'Used to identify the plant and as its cover photo.',
+      actions: [
+        const AppSheetAction(icon: Icons.camera_alt_outlined, label: 'Take Photo', value: 'camera'),
+        const AppSheetAction(
+            icon: Icons.photo_library_outlined, label: 'Choose from Library', value: 'gallery'),
+        if (hasPhoto)
+          const AppSheetAction(
+              icon: Icons.delete_outline, label: 'Remove Photo', value: 'remove', destructive: true),
+      ],
+    );
+    switch (action) {
+      case 'camera':
+        await _handleCamera();
+        break;
+      case 'gallery':
+        await _handleGallery();
+        break;
+      case 'remove':
+        await _handleRemovePhoto();
+        break;
+    }
+  }
+
   void _setOrgan(String organ) {
     setState(() {
       _identifierService.organ = organ;
@@ -179,6 +218,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   }
 
   Future<void> _identifyPlant() async {
+    Haptics.selection();
     setState(() {
       isLoading = true;
       selectedName = null;
@@ -199,14 +239,18 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   }
 
   void _selectSuggestion(PlantSuggestion suggestion) {
-    setState(() => selectedName = suggestion.scientificName);
+    Haptics.selection();
+    setState(() {
+      selectedName = suggestion.scientificName;
+      selectedCommonName = suggestion.commonName;
+    });
     _lookupCareInfo(suggestion.scientificName);
   }
 
   Future<void> _savePlant() async {
     if (selectedName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a plant')),
+        const SnackBar(content: Text('Add a photo and identify your plant first')),
       );
       return;
     }
@@ -274,6 +318,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       }
 
       if (!mounted) return;
+      Haptics.medium();
       Navigator.pop(context, savedPlant);
     } catch (e) {
       if (!mounted) return;
@@ -285,123 +330,257 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     }
   }
 
-  Widget _sectionHeader(IconData icon, String label) {
-    final scheme = Theme.of(context).colorScheme;
-    return Row(
-      children: [
-        Icon(icon, size: 18, color: scheme.primary),
-        const SizedBox(width: 8),
-        Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-      ],
+  /// Human interval label for a schedule row / picker (e.g. "Every 7 days",
+  /// "Every 3 months", "Yearly", or "Off" when unscheduled).
+  String _intervalLabel(int? days) {
+    if (days == null) return 'Off';
+    if (days == 365) return 'Yearly';
+    if (days == 730) return 'Every 2 years';
+    if (days >= 60 && days % 30 == 0) return 'Every ${days ~/ 30} months';
+    return 'Every $days day${days == 1 ? '' : 's'}';
+  }
+
+  /// A wheel picker for a schedule interval. Returns a single-element record
+  /// holding the chosen value on "Done" (which may be null = "Off" when
+  /// [allowNone]), or null if the sheet was dismissed without confirming - so
+  /// a legitimate null selection is distinguishable from a cancel.
+  Future<(int?,)?> _pickIntervalSheet({
+    required String title,
+    required List<int> options,
+    required int? current,
+    required bool allowNone,
+  }) {
+    final items = <int?>[if (allowNone) null, ...options];
+    var startIndex = items.indexOf(current);
+    if (startIndex < 0) startIndex = 0;
+    var tempIndex = startIndex;
+
+    return showAppSheet<(int?,)>(
+      context,
+      builder: (context) {
+        final scheme = Theme.of(context).colorScheme;
+        return SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
+                child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              ),
+              SizedBox(
+                height: 190,
+                child: CupertinoPicker(
+                  scrollController: FixedExtentScrollController(initialItem: startIndex),
+                  itemExtent: 38,
+                  onSelectedItemChanged: (i) {
+                    Haptics.selection();
+                    tempIndex = i;
+                  },
+                  children: [
+                    for (final it in items)
+                      Center(
+                        child: Text(
+                          _intervalLabel(it),
+                          style: TextStyle(fontSize: 18, color: scheme.onSurface),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: FilledButton(
+                    onPressed: () => Navigator.of(context).pop((items[tempIndex],)),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppTheme.fernColor(context),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: const Text('Done'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildPhotoSection() {
+  // ---- section builders ----
+
+  Widget _photoHeader() {
     final scheme = Theme.of(context).colorScheme;
     final file = _identifierService.imageFile;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Stack(
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: GestureDetector(
+        onTap: _changePhoto,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 190,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: file != null
-                      ? Image.file(
-                          file,
-                          height: 220,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          height: 220,
-                          width: double.infinity,
-                          color: scheme.surfaceContainerHighest,
-                          child: Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.local_florist_outlined,
-                                    size: 40, color: scheme.onSurfaceVariant),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'No photo yet',
-                                  style: TextStyle(color: scheme.onSurfaceVariant),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                ),
+                if (file != null)
+                  Image.file(file, fit: BoxFit.cover)
+                else
+                  Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_a_photo_outlined, size: 34, color: scheme.onSurfaceVariant),
+                        const SizedBox(height: 8),
+                        Text('Add a photo', style: TextStyle(color: scheme.onSurfaceVariant)),
+                      ],
+                    ),
+                  ),
                 if (file != null)
                   Positioned(
-                    top: 8,
-                    right: 8,
-                    child: Material(
-                      color: Colors.black.withValues(alpha: 0.55),
-                      shape: const CircleBorder(),
-                      child: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.white, size: 20),
-                        tooltip: 'Remove photo',
-                        onPressed: _handleRemovePhoto,
+                    left: 12,
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.autorenew, size: 14, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text('Change photo',
+                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
                       ),
                     ),
                   ),
               ],
             ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Camera'),
-                    onPressed: _handleCamera,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery'),
-                    onPressed: _handleGallery,
-                  ),
-                ),
-              ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// The identified-species confirmation card, shown once a suggestion is
+  /// selected (or when editing/prefilling an existing plant).
+  Widget _identifiedCard() {
+    final scheme = Theme.of(context).colorScheme;
+    final fern = AppTheme.fernColor(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: fern.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 30,
+              height: 30,
+              decoration: BoxDecoration(color: fern, shape: BoxShape.circle),
+              child: const Icon(Icons.check, size: 18, color: Colors.white),
             ),
-            const SizedBox(height: 20),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                "What's in the photo?",
-                style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
-              ),
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              width: double.infinity,
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(
-                    value: 'leaf',
-                    label: Text('Leaf'),
-                    icon: Icon(Icons.eco_outlined),
-                  ),
-                  ButtonSegment(
-                    value: 'flower',
-                    label: Text('Flower'),
-                    icon: Icon(Icons.local_florist_outlined),
-                  ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(selectedName!, style: AppTheme.plantNameStyle(context, size: 16)),
+                  if (selectedCommonName != null)
+                    Text(
+                      selectedCommonName!,
+                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                    ),
                 ],
-                selected: {_identifierService.organ},
-                onSelectionChanged: (selection) => _setOrgan(selection.first),
               ),
             ),
+            if (isFetchingCareInfo)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+              ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// The identify flow: organ toggle + Identify button + suggestion list.
+  /// Only shown when there's a photo to identify and nothing selected yet.
+  Widget _identifySection() {
+    final scheme = Theme.of(context).colorScheme;
+    final file = _identifierService.imageFile;
+    if (file == null || selectedName != null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(left: 6, bottom: 8),
+            child: Text(
+              "WHAT'S IN THE PHOTO?",
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'leaf', label: Text('Leaf'), icon: Icon(Icons.eco_outlined)),
+              ButtonSegment(
+                  value: 'flower', label: Text('Flower'), icon: Icon(Icons.local_florist_outlined)),
+            ],
+            selected: {_identifierService.organ},
+            onSelectionChanged: (selection) => _setOrgan(selection.first),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: isLoading ? null : _identifyPlant,
+            icon: isLoading
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                  )
+                : const Icon(Icons.travel_explore),
+            label: Text(isLoading ? 'Identifying...' : 'Identify Plant'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppTheme.fernColor(context),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+          ),
+          if (suggestions.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(
+              'Select the closest match',
+              style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+            ),
+            const SizedBox(height: 8),
+            ...suggestions.map(_buildSuggestionRow),
+          ],
+        ],
       ),
     );
   }
@@ -411,9 +590,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     final percent = (score * 100).round();
     final Color color;
     if (score >= 0.5) {
-      color = Colors.green;
+      color = AppTheme.fernColor(context);
     } else if (score >= 0.2) {
-      color = Colors.orange;
+      color = AppTheme.careSoon(context);
     } else {
       color = scheme.onSurfaceVariant;
     }
@@ -431,37 +610,28 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     );
   }
 
-  Widget _buildSuggestionCard(PlantSuggestion suggestion) {
+  Widget _buildSuggestionRow(PlantSuggestion suggestion) {
     final scheme = Theme.of(context).colorScheme;
-    final isSelected = selectedName == suggestion.scientificName;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: isSelected ? scheme.primaryContainer : scheme.surfaceContainerHighest,
+        color: scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
           onTap: () => _selectSuggestion(suggestion),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             child: Row(
               children: [
-                Icon(
-                  isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? scheme.primary : scheme.outline,
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         suggestion.scientificName,
-                        style: const TextStyle(
-                          fontStyle: FontStyle.italic,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
                       ),
                       if (suggestion.commonName != null)
                         Text(
@@ -481,267 +651,152 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     );
   }
 
-  Widget _buildIdentifySection() {
-    final file = _identifierService.imageFile;
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.search, 'Identify'),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: file == null ? null : _identifyPlant,
-              icon: isLoading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.travel_explore),
-              label: Text(isLoading ? 'Identifying...' : 'Identify Plant'),
-            ),
-            if (suggestions.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              Text(
-                'Select the closest match:',
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(height: 8),
-              ...suggestions.map(_buildSuggestionCard),
-            ],
-          ],
-        ),
-      ),
+  Widget _scheduleRow(
+    CareKind kind,
+    int? current,
+    List<int> options, {
+    required bool allowNone,
+    required ValueChanged<int?> onPicked,
+  }) {
+    return InsetRow(
+      icon: kind.icon,
+      title: kind.label,
+      value: _intervalLabel(current),
+      onTap: () async {
+        Haptics.selection();
+        final result = await _pickIntervalSheet(
+          title: '${kind.label} every',
+          options: options,
+          current: current,
+          allowNone: allowNone,
+        );
+        if (result != null) onPicked(result.$1);
+      },
     );
   }
 
-  Widget _buildWateringSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.water_drop_outlined, 'Watering'),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int>(
-              value: wateringIntervalDays,
-              decoration: const InputDecoration(labelText: 'Water every'),
-              items: _wateringIntervalOptions
-                  .map((days) => DropdownMenuItem(
-                        value: days,
-                        child: Text('$days days'),
-                      ))
-                  .toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    wateringIntervalDays = value;
-                    wateringManuallySet = true;
-                  });
-                }
-              },
-            ),
-          ],
+  Widget _scheduleGroup() {
+    return InsetGroup(
+      header: 'Schedule',
+      dividerIndent: 56,
+      children: [
+        _scheduleRow(
+          CareKind.water,
+          wateringIntervalDays,
+          _wateringIntervalOptions,
+          allowNone: false,
+          onPicked: (v) => setState(() {
+            wateringIntervalDays = v!;
+            wateringManuallySet = true;
+          }),
         ),
-      ),
+        _scheduleRow(
+          CareKind.feed,
+          fertilizingIntervalDays,
+          _fertilizingIntervalOptions,
+          allowNone: true,
+          onPicked: (v) => setState(() => fertilizingIntervalDays = v),
+        ),
+        _scheduleRow(
+          CareKind.repot,
+          repottingIntervalDays,
+          _repottingIntervalOptions,
+          allowNone: true,
+          onPicked: (v) => setState(() => repottingIntervalDays = v),
+        ),
+        _scheduleRow(
+          CareKind.prune,
+          pruningIntervalDays,
+          _pruningIntervalOptions,
+          allowNone: true,
+          onPicked: (v) => setState(() => pruningIntervalDays = v),
+        ),
+      ],
     );
   }
 
-  Widget _buildFertilizingSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.eco_outlined, 'Fertilizing'),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              value: fertilizingIntervalDays,
-              decoration: const InputDecoration(labelText: 'Fertilize every'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('No schedule')),
-                ..._fertilizingIntervalOptions.map(
-                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() => fertilizingIntervalDays = value);
-              },
+  Widget _careNotesGroup() {
+    return InsetGroup(
+      header: 'Care notes',
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          child: TextField(
+            controller: careInstructionsController,
+            maxLines: null,
+            minLines: 3,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              isCollapsed: true,
+              hintText: 'Add your own care notes, or wait for a suggestion...',
             ),
-          ],
+          ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildRepottingSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.yard_outlined, 'Repotting'),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              value: repottingIntervalDays,
-              decoration: const InputDecoration(labelText: 'Repot every'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('No schedule')),
-                ..._repottingIntervalOptions.map(
-                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() => repottingIntervalDays = value);
-              },
+  Widget _detailsGroup() {
+    return InsetGroup(
+      header: 'Details',
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          child: TextField(
+            controller: nicknameController,
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              icon: Icon(Icons.badge_outlined, size: 20),
+              hintText: 'Nickname (optional)',
             ),
-          ],
+          ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildPruningSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.content_cut, 'Pruning'),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<int?>(
-              value: pruningIntervalDays,
-              decoration: const InputDecoration(labelText: 'Prune every'),
-              items: [
-                const DropdownMenuItem(value: null, child: Text('No schedule')),
-                ..._pruningIntervalOptions.map(
-                  (days) => DropdownMenuItem(value: days, child: Text('$days days')),
-                ),
-              ],
-              onChanged: (value) {
-                setState(() => pruningIntervalDays = value);
-              },
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCareInfoSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                _sectionHeader(Icons.spa_outlined, 'Care Info'),
-                if (isFetchingCareInfo) ...[
-                  const SizedBox(width: 12),
-                  const SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                  ),
-                ],
-              ],
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: careInstructionsController,
-              maxLines: null,
-              minLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'Add your own care notes, or wait for a suggestion...',
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDetailsSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _sectionHeader(Icons.label_outline, 'Details'),
-            const SizedBox(height: 12),
-            TextField(
-              controller: nicknameController,
-              decoration: const InputDecoration(
-                labelText: 'Nickname (optional)',
-              ),
-            ),
-          ],
-        ),
-      ),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      appBar: AppBar(title: Text(widget.plant == null ? 'Add Plant' : 'Edit Plant')),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        children: [
-          _buildPhotoSection(),
-          const SizedBox(height: 12),
-          _buildIdentifySection(),
-          const SizedBox(height: 12),
-          _buildWateringSection(),
-          const SizedBox(height: 12),
-          _buildFertilizingSection(),
-          const SizedBox(height: 12),
-          _buildRepottingSection(),
-          const SizedBox(height: 12),
-          _buildPruningSection(),
-          const SizedBox(height: 12),
-          _buildCareInfoSection(),
-          const SizedBox(height: 12),
-          _buildDetailsSection(),
+      appBar: FrostedAppBar(
+        title: widget.plant == null ? 'New Plant' : 'Edit Plant',
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: isSaving
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                      ),
+                    ),
+                  )
+                : TextButton(
+                    onPressed: _savePlant,
+                    child: Text(
+                      'Save',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        color: AppTheme.fernColor(context),
+                      ),
+                    ),
+                  ),
+          ),
         ],
       ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            border: Border(top: BorderSide(color: scheme.outlineVariant)),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: isSaving ? null : _savePlant,
-              icon: isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Save Plant'),
-            ),
-          ),
-        ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
+        children: [
+          _photoHeader(),
+          if (selectedName != null) _identifiedCard() else _identifySection(),
+          _scheduleGroup(),
+          _careNotesGroup(),
+          _detailsGroup(),
+        ],
       ),
     );
   }

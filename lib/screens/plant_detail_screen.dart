@@ -11,11 +11,12 @@ import '../models/plant_photo.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../styles/app_theme.dart';
-import '../utils/fertilizing_status.dart';
+import '../utils/care_kind.dart';
+import '../utils/haptics.dart';
 import '../utils/permanent_image.dart';
-import '../utils/pruning_status.dart';
-import '../utils/repotting_status.dart';
-import '../utils/watering_status.dart';
+import '../widgets/app_bottom_sheet.dart';
+import '../widgets/care_action_sheet.dart';
+import '../widgets/care_ring_tile.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
@@ -126,6 +127,53 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     _load();
   }
 
+  /// Dispatches to the right mark-* method for a [CareKind] and shows a brief
+  /// confirmation. The underlying methods already persist, reschedule the
+  /// reminder, and refresh state.
+  Future<void> _logCareForKind(CareKind kind) async {
+    switch (kind) {
+      case CareKind.water:
+        await _markWatered();
+        break;
+      case CareKind.feed:
+        await _markFertilized();
+        break;
+      case CareKind.repot:
+        await _markRepotted();
+        break;
+      case CareKind.prune:
+        await _markPruned();
+        break;
+    }
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..clearSnackBars()
+      ..showSnackBar(SnackBar(
+        content: Text('${_plant.name} ${kind.pastTense.toLowerCase()}'),
+        duration: const Duration(seconds: 2),
+      ));
+  }
+
+  /// Opens the slide-to-confirm care sheet for [kind]; logs the action or
+  /// jumps to the schedule editor based on the user's choice.
+  Future<void> _openCareSheet(CareKind kind) async {
+    final result = await showCareActionSheet(context, plant: _plant, kind: kind);
+    if (!mounted || result == null) return;
+    if (result == CareSheetResult.editSchedule) {
+      await _editPlant();
+    } else {
+      await _logCareForKind(kind);
+    }
+  }
+
+  /// The prominent one-tap watering action - a fast path for the most
+  /// frequent care task, with a haptic + snackbar so it never reads as a
+  /// silent tap (the deliberate slide-to-confirm path lives in the sheet).
+  Future<void> _quickWater() async {
+    Haptics.medium();
+    await _logCareForKind(CareKind.water);
+  }
+
   Future<void> _addJournalEntry() async {
     final controller = TextEditingController();
     final text = await showDialog<String>(
@@ -214,57 +262,36 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     });
   }
 
-  void _showAddPhotoOptions() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.camera_alt_outlined),
-              title: const Text('Camera'),
-              onTap: () {
-                Navigator.pop(context);
-                _addTimelinePhoto(ImageSource.camera);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.photo_library_outlined),
-              title: const Text('Gallery'),
-              onTap: () {
-                Navigator.pop(context);
-                _addTimelinePhoto(ImageSource.gallery);
-              },
-            ),
-          ],
-        ),
-      ),
+  Future<void> _showAddPhotoOptions() async {
+    final source = await showAppActionSheet<ImageSource>(
+      context,
+      title: 'Add a growth photo',
+      actions: const [
+        AppSheetAction(icon: Icons.camera_alt_outlined, label: 'Camera', value: ImageSource.camera),
+        AppSheetAction(icon: Icons.photo_library_outlined, label: 'Gallery', value: ImageSource.gallery),
+      ],
     );
+    if (source != null) await _addTimelinePhoto(source);
   }
 
   Future<void> _openPhotoOptions(PlantPhoto photo) async {
     final isCover = photo.photoUrl == _plant.photoUrl;
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!isCover)
-              ListTile(
-                leading: const Icon(Icons.check_circle_outline),
-                title: const Text('Set as cover photo'),
-                onTap: () => Navigator.pop(context, 'cover'),
-              ),
-            ListTile(
-              leading: const Icon(Icons.delete_outline),
-              title: const Text('Delete photo'),
-              onTap: () => Navigator.pop(context, 'delete'),
-            ),
-          ],
+    final action = await showAppActionSheet<String>(
+      context,
+      actions: [
+        if (!isCover)
+          const AppSheetAction(
+            icon: Icons.check_circle_outline,
+            label: 'Set as cover photo',
+            value: 'cover',
+          ),
+        const AppSheetAction(
+          icon: Icons.delete_outline,
+          label: 'Delete photo',
+          value: 'delete',
+          destructive: true,
         ),
-      ),
+      ],
     );
 
     if (action == 'cover') {
@@ -355,6 +382,52 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     return '${days}d ago';
   }
 
+  static const _monthAbbr = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// A compact, friendly local timestamp like "Jul 10 · 2:03 PM" - replaces
+  /// the raw `DateTime.toString()` the care history and journal used to show.
+  String _friendlyDateTime(String iso) {
+    final d = DateTime.tryParse(iso)?.toLocal();
+    if (d == null) return '';
+    final hour12 = d.hour % 12 == 0 ? 12 : d.hour % 12;
+    final minute = d.minute.toString().padLeft(2, '0');
+    final ampm = d.hour < 12 ? 'AM' : 'PM';
+    return '${_monthAbbr[d.month - 1]} ${d.day} · $hour12:$minute $ampm';
+  }
+
+  /// The plant's scheduled care kinds, in a stable display order.
+  List<CareKind> get _scheduledKinds =>
+      CareKind.values.where((k) => k.isScheduled(_plant)).toList();
+
+  /// A 2-column grid of care ring tiles, one per scheduled kind.
+  Widget _careGrid() {
+    final kinds = _scheduledKinds;
+    final rows = <Widget>[];
+    for (var i = 0; i < kinds.length; i += 2) {
+      final left = kinds[i];
+      final right = i + 1 < kinds.length ? kinds[i + 1] : null;
+      rows.add(Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: CareRingTile(kind: left, plant: _plant, onTap: () => _openCareSheet(left)),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: right == null
+                ? const SizedBox()
+                : CareRingTile(kind: right, plant: _plant, onTap: () => _openCareSheet(right)),
+          ),
+        ],
+      ));
+      if (i + 2 < kinds.length) rows.add(const SizedBox(height: 10));
+    }
+    return Column(children: rows);
+  }
+
   /// Compact "About this plant" stat row - Water interval, last watered,
   /// species family, and toxicity, each only shown when the underlying
   /// field actually has data (never a fabricated placeholder). Returns an
@@ -384,10 +457,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    final overdue = isOverdue(_plant);
-    final fertilizingOverdue = isFertilizingOverdue(_plant);
-    final repottingOverdue = isRepottingOverdue(_plant);
-    final pruningOverdue = isPruningOverdue(_plant);
+    final waterOverdue = CareKind.water.overdue(_plant);
 
     return Scaffold(
       appBar: FrostedAppBar(
@@ -429,78 +499,30 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                 ),
                 const SizedBox(height: 16),
                 _buildStatRow(scheme),
-                const SizedBox(height: 18),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton.icon(
-                    onPressed: _markWatered,
-                    icon: const Icon(Icons.water_drop),
-                    label: Text(overdue ? wateringStatusText(_plant) : 'Mark as Watered'),
-                    style: FilledButton.styleFrom(
-                      shape: const StadiumBorder(),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      backgroundColor: overdue ? scheme.error : null,
-                      foregroundColor: overdue ? scheme.onError : null,
+                if (_scheduledKinds.isNotEmpty) ...[
+                  const SizedBox(height: 20),
+                  Text('Care', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                  const SizedBox(height: 10),
+                  _careGrid(),
+                  if (_plant.wateringIntervalDays != null) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: _quickWater,
+                        icon: const Icon(Icons.water_drop),
+                        label: Text(waterOverdue ? 'Water now' : 'Mark as watered'),
+                        style: FilledButton.styleFrom(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          backgroundColor:
+                              waterOverdue ? AppTheme.careOverdue(context) : AppTheme.fernColor(context),
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-                if (_plant.fertilizingIntervalDays != null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          fertilizingStatusText(_plant),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: fertilizingOverdue ? scheme.error : scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _markFertilized,
-                        icon: const Icon(Icons.eco_outlined, size: 18),
-                        label: const Text('Fertilized'),
-                      ),
-                    ],
-                  ),
-                if (_plant.repottingIntervalDays != null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          repottingStatusText(_plant),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: repottingOverdue ? scheme.error : scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _markRepotted,
-                        icon: const Icon(Icons.yard_outlined, size: 18),
-                        label: const Text('Repotted'),
-                      ),
-                    ],
-                  ),
-                if (_plant.pruningIntervalDays != null)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          pruningStatusText(_plant),
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: pruningOverdue ? scheme.error : scheme.onSurface,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _markPruned,
-                        icon: const Icon(Icons.content_cut, size: 18),
-                        label: const Text('Pruned'),
-                      ),
-                    ],
-                  ),
+                  ],
+                ],
                 if (_plant.careInstructions.isNotEmpty) ...[
                   const SizedBox(height: 20),
                   Text('Care Info', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
@@ -576,10 +598,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         children: [
                           Icon(_careIconFor(entry.type), size: 16, color: scheme.onSurfaceVariant),
                           const SizedBox(width: 8),
-                          Text(
-                            '${_careLabelFor(entry.type)} — '
-                            '${DateTime.parse(entry.timestamp).toLocal().toString().split('.').first}',
-                          ),
+                          Text('${_careLabelFor(entry.type)} · ${_friendlyDateTime(entry.timestamp)}'),
                         ],
                       ),
                     ),
@@ -615,7 +634,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              DateTime.parse(entry.createdAt).toLocal().toString().split('.').first,
+                              _friendlyDateTime(entry.createdAt),
                               style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
                             ),
                             const SizedBox(height: 2),

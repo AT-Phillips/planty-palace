@@ -40,14 +40,39 @@ class AppTheme {
   static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
   static const double radius = 20.0;
 
+  /// The brighter "live / interactive" accent - a fresh fern green used for
+  /// primary actions, active states, and healthy-care signals. Distinct from
+  /// the deeper brand [defaultSeedColor] sage (which still drives the overall
+  /// [ColorScheme]); this is the punchier green reserved for things the user
+  /// acts on. Dark mode lifts it so it stays luminous on a dark ground.
+  static Color fernColor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFF45C486)
+          : const Color(0xFF1F9D63);
+
   /// Overdue-care urgency - deliberately distinct from both
   /// [ColorScheme.error] (destructive actions, form validation) and the
   /// amber toxicity-warning color, so all three read as separate signals
-  /// instead of competing for the same "pay attention" red.
+  /// instead of competing for the same "pay attention" red. This is the one
+  /// coral used everywhere overdue care is signaled (Care rows, the Spaces
+  /// to-do banner, plant-detail care rings).
   static Color urgentColor(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFFE38166)
-          : const Color(0xFFB5482E);
+          ? const Color(0xFFE8825F)
+          : const Color(0xFFDB5F38);
+
+  /// Care-urgency ring/badge colors, keyed to how soon a schedule is due:
+  /// healthy (plenty of time) -> [fernColor], approaching -> amber,
+  /// overdue -> [urgentColor]. Centralized so the Care list, plant-detail
+  /// care rings, and any status badge all read from one source.
+  static Color careHealthy(BuildContext context) => fernColor(context);
+
+  static Color careSoon(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? const Color(0xFFD6AC5A)
+          : const Color(0xFFC9962B);
+
+  static Color careOverdue(BuildContext context) => urgentColor(context);
 
   /// The serif heading style used for plant/species name headings (not app
   /// bar titles, which pick up the same Lora serif automatically via
