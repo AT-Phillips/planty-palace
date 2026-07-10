@@ -37,7 +37,9 @@ class BackgroundPalette {
 }
 
 class AppTheme {
-  static const Color defaultSeedColor = Color(0xFF2E6B4F); // deep, considered sage green
+  static const Color defaultSeedColor = Color(
+    0xFF2E6B4F,
+  ); // deep, considered sage green
   static const double radius = 20.0;
 
   /// The brighter "live / interactive" accent - a fresh fern green used for
@@ -131,16 +133,18 @@ class AppTheme {
   static ThemeData lightTheme({
     Color seedColor = defaultSeedColor,
     BackgroundPalette palette = forestPalette,
-  }) =>
-      _themeFor(Brightness.light, seedColor, palette);
+  }) => _themeFor(Brightness.light, seedColor, palette);
 
   static ThemeData darkTheme({
     Color seedColor = defaultSeedColor,
     BackgroundPalette palette = forestPalette,
-  }) =>
-      _themeFor(Brightness.dark, seedColor, palette);
+  }) => _themeFor(Brightness.dark, seedColor, palette);
 
-  static ThemeData _themeFor(Brightness brightness, Color seedColor, BackgroundPalette palette) {
+  static ThemeData _themeFor(
+    Brightness brightness,
+    Color seedColor,
+    BackgroundPalette palette,
+  ) {
     var colorScheme = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
@@ -153,11 +157,15 @@ class AppTheme {
     } else {
       colorScheme = colorScheme.copyWith(surface: palette.lightBackground);
     }
-    final baseTextTheme = brightness == Brightness.dark
-        ? GoogleFonts.interTextTheme(ThemeData(brightness: Brightness.dark).textTheme)
-        : GoogleFonts.interTextTheme();
+    final baseTextTheme =
+        brightness == Brightness.dark
+            ? GoogleFonts.interTextTheme(
+              ThemeData(brightness: Brightness.dark).textTheme,
+            )
+            : GoogleFonts.interTextTheme();
 
-    final cardColor = brightness == Brightness.dark ? palette.darkCard : palette.lightCard;
+    final cardColor =
+        brightness == Brightness.dark ? palette.darkCard : palette.lightCard;
 
     return ThemeData(
       useMaterial3: true,
@@ -221,7 +229,9 @@ class AppTheme {
         selectedColor: colorScheme.primary,
         labelStyle: TextStyle(color: colorScheme.onSurface),
         secondaryLabelStyle: TextStyle(color: colorScheme.onPrimary),
-        shape: StadiumBorder(side: BorderSide(color: colorScheme.outlineVariant)),
+        shape: StadiumBorder(
+          side: BorderSide(color: colorScheme.outlineVariant),
+        ),
       ),
       segmentedButtonTheme: SegmentedButtonThemeData(
         style: SegmentedButton.styleFrom(
@@ -238,7 +248,10 @@ class AppTheme {
         ),
         filled: true,
         fillColor: colorScheme.surfaceContainerHighest,
-        contentPadding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: 12,
+          horizontal: 16,
+        ),
       ),
       dialogTheme: DialogThemeData(
         backgroundColor: cardColor,
@@ -254,9 +267,7 @@ class AppTheme {
         elevation: 3,
         surfaceTintColor: Colors.transparent,
         textStyle: TextStyle(color: colorScheme.onPrimaryContainer),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       ),
       menuTheme: MenuThemeData(
         style: MenuStyle(

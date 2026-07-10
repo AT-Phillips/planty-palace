@@ -94,7 +94,8 @@ class _CareActionSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             TextButton(
-              onPressed: () => Navigator.of(context).pop(CareSheetResult.editSchedule),
+              onPressed:
+                  () => Navigator.of(context).pop(CareSheetResult.editSchedule),
               child: const Text('Edit schedule'),
             ),
           ],

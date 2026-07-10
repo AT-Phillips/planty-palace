@@ -42,7 +42,10 @@ class _PropagationThumbnailState extends State<PropagationThumbnail> {
     if (photoUrl == null || photoUrl.isEmpty) return null;
 
     try {
-      return await PhotoStorageService().ensureLocalCopy(widget.propagation.id!, photoUrl);
+      return await PhotoStorageService().ensureLocalCopy(
+        widget.propagation.id!,
+        photoUrl,
+      );
     } catch (_) {
       return null;
     }

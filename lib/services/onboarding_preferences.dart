@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Holds and persists whether the user has completed the first-run
 /// onboarding flow. Mirrors [ThemeController]'s pattern.
 class OnboardingPreferences {
-  static final OnboardingPreferences instance = OnboardingPreferences._internal();
+  static final OnboardingPreferences instance =
+      OnboardingPreferences._internal();
   OnboardingPreferences._internal();
 
   static const _prefsKey = 'onboardingCompleted';

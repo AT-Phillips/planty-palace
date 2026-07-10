@@ -67,25 +67,33 @@ class PlantIdentifierService {
 
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
-      throw Exception('No signed-in user - sign-in must complete before identifying a plant.');
+      throw Exception(
+        'No signed-in user - sign-in must complete before identifying a plant.',
+      );
     }
 
-    final tempPath = 'identify_temp/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final tempPath =
+        'identify_temp/$uid/${DateTime.now().millisecondsSinceEpoch}.jpg';
     final ref = FirebaseStorage.instance.ref(tempPath);
     await ref.putFile(file);
 
     try {
-      final result = await FirebaseFunctions.instance.httpsCallable('identifyPlant').call({
-        'imagePath': tempPath,
-        'organ': organ,
-      });
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('identifyPlant')
+          .call({'imagePath': tempPath, 'organ': organ});
       final data = result.data as List;
       return data
-          .map((entry) => PlantSuggestion.fromMap(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) =>
+                PlantSuggestion.fromMap(Map<String, dynamic>.from(entry)),
+          )
           .toList();
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'resource-exhausted') {
-        throw Exception(e.message ?? 'Daily identification limit reached. Try again tomorrow.');
+        throw Exception(
+          e.message ??
+              'Daily identification limit reached. Try again tomorrow.',
+        );
       }
       throw Exception(e.message ?? 'Failed to identify plant.');
     }

@@ -105,7 +105,8 @@ class _PestDiseaseViewState extends State<PestDiseaseView> {
             child: EmptyState(
               icon: Icons.bug_report_outlined,
               title: 'Identify a problem',
-              message: 'Search common pests and diseases for symptoms and '
+              message:
+                  'Search common pests and diseases for symptoms and '
                   'how to treat them.',
             ),
           ),
@@ -114,7 +115,8 @@ class _PestDiseaseViewState extends State<PestDiseaseView> {
             child: ListView.builder(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               itemCount: _results.length,
-              itemBuilder: (context, index) => _PestDiseaseTile(info: _results[index]),
+              itemBuilder:
+                  (context, index) => _PestDiseaseTile(info: _results[index]),
             ),
           ),
       ],
@@ -134,22 +136,28 @@ class _PestDiseaseTile extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: ExpansionTile(
-        leading: info.imageUrl != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  info.imageUrl!,
-                  width: 44,
-                  height: 44,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.bug_report_outlined),
-                ),
-              )
-            : const Icon(Icons.bug_report_outlined),
+        leading:
+            info.imageUrl != null
+                ? ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    info.imageUrl!,
+                    width: 44,
+                    height: 44,
+                    fit: BoxFit.cover,
+                    errorBuilder:
+                        (_, __, ___) => const Icon(Icons.bug_report_outlined),
+                  ),
+                )
+                : const Icon(Icons.bug_report_outlined),
         title: Text(info.commonName),
-        subtitle: info.scientificName != null
-            ? Text(info.scientificName!, style: const TextStyle(fontStyle: FontStyle.italic))
-            : null,
+        subtitle:
+            info.scientificName != null
+                ? Text(
+                  info.scientificName!,
+                  style: const TextStyle(fontStyle: FontStyle.italic),
+                )
+                : null,
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -161,7 +169,13 @@ class _PestDiseaseTile extends StatelessWidget {
                   const SizedBox(height: 12),
                 ],
                 if (info.solution != null) ...[
-                  Text('Solution', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+                  Text(
+                    'Solution',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: scheme.primary,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(info.solution!),
                   const SizedBox(height: 12),

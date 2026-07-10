@@ -6,12 +6,16 @@ String wateringStatusText(Plant plant) {
   if (plant.lastWatered == null || plant.wateringIntervalDays == null) {
     return 'No watering schedule set';
   }
-  final dueDate = DateTime.parse(plant.lastWatered!)
-      .add(Duration(days: plant.wateringIntervalDays!));
+  final dueDate = DateTime.parse(
+    plant.lastWatered!,
+  ).add(Duration(days: plant.wateringIntervalDays!));
   final today = DateTime.now();
-  final daysLeft = DateTime(dueDate.year, dueDate.month, dueDate.day)
-      .difference(DateTime(today.year, today.month, today.day))
-      .inDays;
+  final daysLeft =
+      DateTime(
+        dueDate.year,
+        dueDate.month,
+        dueDate.day,
+      ).difference(DateTime(today.year, today.month, today.day)).inDays;
 
   if (daysLeft > 0) return 'Water in $daysLeft day${daysLeft == 1 ? '' : 's'}';
   if (daysLeft == 0) return 'Water today';
@@ -27,10 +31,13 @@ int? daysUntilDue(Plant plant) {
   if (plant.lastWatered == null || plant.wateringIntervalDays == null) {
     return null;
   }
-  final dueDate = DateTime.parse(plant.lastWatered!)
-      .add(Duration(days: plant.wateringIntervalDays!));
+  final dueDate = DateTime.parse(
+    plant.lastWatered!,
+  ).add(Duration(days: plant.wateringIntervalDays!));
   final today = DateTime.now();
-  return DateTime(dueDate.year, dueDate.month, dueDate.day)
-      .difference(DateTime(today.year, today.month, today.day))
-      .inDays;
+  return DateTime(
+    dueDate.year,
+    dueDate.month,
+    dueDate.day,
+  ).difference(DateTime(today.year, today.month, today.day)).inDays;
 }

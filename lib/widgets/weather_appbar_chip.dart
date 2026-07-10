@@ -26,7 +26,10 @@ class _WeatherAppBarChipState extends State<WeatherAppBarChip> {
   }
 
   Future<void> _openSheet() async {
-    await showWeatherDetailSheet(context, weather: WeatherStore.instance.weather.value);
+    await showWeatherDetailSheet(
+      context,
+      weather: WeatherStore.instance.weather.value,
+    );
     if (mounted) WeatherStore.instance.refresh();
   }
 
@@ -54,32 +57,38 @@ class _WeatherAppBarChipState extends State<WeatherAppBarChip> {
                         onTap: _openSheet,
                         borderRadius: BorderRadius.circular(20),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          child: weather == null
-                              ? Icon(
-                                  loading ? Icons.cloud_outlined : Icons.location_off_outlined,
-                                  size: 20,
-                                  color: scheme.onSurfaceVariant,
-                                )
-                              : Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      weatherIconData(weather.iconCode),
-                                      size: 20,
-                                      color: scheme.primary,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${(useMetric ? weather.tempCelsius : weather.tempFahrenheit).round()}°',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 15,
-                                        color: scheme.onSurface,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          child:
+                              weather == null
+                                  ? Icon(
+                                    loading
+                                        ? Icons.cloud_outlined
+                                        : Icons.location_off_outlined,
+                                    size: 20,
+                                    color: scheme.onSurfaceVariant,
+                                  )
+                                  : Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        weatherIconData(weather.iconCode),
+                                        size: 20,
+                                        color: scheme.primary,
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${(useMetric ? weather.tempCelsius : weather.tempFahrenheit).round()}°',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 15,
+                                          color: scheme.onSurface,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                         ),
                       ),
                     );

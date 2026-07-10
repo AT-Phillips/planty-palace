@@ -46,9 +46,10 @@ class _SearchFieldState extends State<SearchField> {
       decoration: InputDecoration(
         hintText: widget.hintText,
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: widget.controller.text.isNotEmpty
-            ? IconButton(icon: const Icon(Icons.clear), onPressed: _clear)
-            : null,
+        suffixIcon:
+            widget.controller.text.isNotEmpty
+                ? IconButton(icon: const Icon(Icons.clear), onPressed: _clear)
+                : null,
       ),
     );
   }

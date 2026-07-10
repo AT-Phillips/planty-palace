@@ -18,6 +18,7 @@ import 'my_plants_screen.dart';
 import 'plant_detail_screen.dart';
 import 'propagations_screen.dart';
 import 'species_detail_screen.dart';
+import '../utils/app_page_route.dart';
 
 class SpacesScreen extends StatefulWidget {
   /// Switches the shell to the Care tab - used by the "To-Do today" section,
@@ -64,11 +65,15 @@ class SpacesScreenState extends State<SpacesScreen> {
       final plants = await _repository.getPlants();
       // "Needs care today" = any schedule due today or overdue (due-in <= 0),
       // most urgent first.
-      final due = plants.where((p) {
-        final d = mostUrgentDueIn(p);
-        return d != null && d <= 0;
-      }).toList()
-        ..sort((a, b) => (mostUrgentDueIn(a) ?? 0).compareTo(mostUrgentDueIn(b) ?? 0));
+      final due =
+          plants.where((p) {
+              final d = mostUrgentDueIn(p);
+              return d != null && d <= 0;
+            }).toList()
+            ..sort(
+              (a, b) =>
+                  (mostUrgentDueIn(a) ?? 0).compareTo(mostUrgentDueIn(b) ?? 0),
+            );
       if (!mounted) return;
       setState(() => _dueToday = due);
     } catch (e) {
@@ -116,27 +121,17 @@ class SpacesScreenState extends State<SpacesScreen> {
   }
 
   Future<void> _navigateToSpace(Garden space) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => MyPlantsScreen(garden: space)),
-    );
+    await Navigator.push(context, appRoute(MyPlantsScreen(garden: space)));
     if (mounted) _loadSpaces();
   }
 
-
   Future<void> _navigateToPropagations() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const PropagationsScreen()),
-    );
+    await Navigator.push(context, appRoute(const PropagationsScreen()));
     if (mounted) _loadPropagationCount();
   }
 
   Future<void> _navigateToPlant(Plant plant) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: plant)),
-    );
+    await Navigator.push(context, appRoute(PlantDetailScreen(plant: plant)));
     if (mounted) refresh();
   }
 
@@ -145,8 +140,8 @@ class SpacesScreenState extends State<SpacesScreen> {
     // show the photo, names, and an "Add to My Plants" action.
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => SpeciesDetailScreen(
+      appRoute(
+        SpeciesDetailScreen(
           species: PerenualSpeciesDetail(
             scientificName: item.scientificName,
             commonName: item.commonName,
@@ -164,24 +159,25 @@ class SpacesScreenState extends State<SpacesScreen> {
     final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('New Space'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Living Room'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('New Space'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'e.g. Living Room'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Create'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Create'),
-          ),
-        ],
-      ),
     );
 
     if (name != null && name.isNotEmpty) {
@@ -194,24 +190,25 @@ class SpacesScreenState extends State<SpacesScreen> {
     final controller = TextEditingController(text: space.name);
     final name = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Rename Space'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: const InputDecoration(hintText: 'e.g. Living Room'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Rename Space'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              decoration: const InputDecoration(hintText: 'e.g. Living Room'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
 
     if (name != null && name.isNotEmpty && name != space.name) {
@@ -224,25 +221,29 @@ class SpacesScreenState extends State<SpacesScreen> {
     final count = _plantCounts[space.id] ?? 0;
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Space?'),
-        content: Text(
-          count > 0
-              ? 'This deletes "${space.name}". Its $count plant${count == 1 ? '' : 's'} '
-                  'will move to ${PlantRepository.defaultGardenName} instead of being deleted.'
-              : 'This deletes "${space.name}".',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete Space?'),
+            content: Text(
+              count > 0
+                  ? 'This deletes "${space.name}". Its $count plant${count == 1 ? '' : 's'} '
+                      'will move to ${PlantRepository.defaultGardenName} instead of being deleted.'
+                  : 'This deletes "${space.name}".',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ),
-        ],
-      ),
     );
 
     if (confirmed != true || !mounted) return;
@@ -275,7 +276,8 @@ class SpacesScreenState extends State<SpacesScreen> {
     if (mounted) _loadSpaces();
   }
 
-  int get _totalPlants => _plantCounts.values.fold(0, (sum, count) => sum + count);
+  int get _totalPlants =>
+      _plantCounts.values.fold(0, (sum, count) => sum + count);
 
   // --- Section builders -----------------------------------------------------
 
@@ -304,7 +306,9 @@ class SpacesScreenState extends State<SpacesScreen> {
 
   Future<void> _markWatered(Plant plant) async {
     await _repository.markWatered(plant.id!);
-    final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
+    final updated = plant.copyWith(
+      lastWatered: DateTime.now().toIso8601String(),
+    );
     await NotificationService().scheduleWateringReminder(updated);
     _loadDueTasks();
   }
@@ -349,7 +353,9 @@ class SpacesScreenState extends State<SpacesScreen> {
             Row(
               children: [
                 Icon(
-                  has ? Icons.priority_high_rounded : Icons.check_circle_outline,
+                  has
+                      ? Icons.priority_high_rounded
+                      : Icons.check_circle_outline,
                   color: has ? urgent : scheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 10),
@@ -359,7 +365,10 @@ class SpacesScreenState extends State<SpacesScreen> {
                         ? '${_dueToday.length == 1 ? _dueToday.first.name : '${_dueToday.length} plants'} '
                             '${_dueToday.length == 1 ? 'is' : 'are'} overdue'
                         : "You're all caught up",
-                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 17,
+                    ),
                   ),
                 ),
               ],
@@ -384,8 +393,14 @@ class SpacesScreenState extends State<SpacesScreen> {
                       size: 40,
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    title: Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text(_dueLabel(plant), style: TextStyle(color: urgent)),
+                    title: Text(
+                      plant.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      _dueLabel(plant),
+                      style: TextStyle(color: urgent),
+                    ),
                     trailing: IconButton(
                       onPressed: () => _markWatered(plant),
                       tooltip: 'Water now',
@@ -412,7 +427,8 @@ class SpacesScreenState extends State<SpacesScreen> {
   Widget _projectsSection() {
     return _section(
       title: 'Projects',
-      subtitle: '$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}',
+      subtitle:
+          '$_propagationCount ${_propagationCount == 1 ? 'propagation' : 'propagations'}',
       children: [
         ListTile(
           leading: const Icon(Icons.eco_outlined),
@@ -431,7 +447,8 @@ class SpacesScreenState extends State<SpacesScreen> {
       // Shown immediately (starts at 0/0, like Projects/Wishlist) rather than
       // gated on _spacesLoaded - that guard is only for the empty-state
       // prompt below, not this count line, so it doesn't flash in late.
-      subtitle: '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
+      subtitle:
+          '$_totalPlants ${_totalPlants == 1 ? 'plant' : 'plants'} · '
           '${_spaces.length} ${_spaces.length == 1 ? 'space' : 'spaces'}',
       children: [
         for (final space in _spaces) _buildSpaceRow(space),
@@ -466,7 +483,10 @@ class SpacesScreenState extends State<SpacesScreen> {
           borderRadius: BorderRadius.circular(10),
         ),
       ),
-      title: Text(space.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+      title: Text(
+        space.name,
+        style: const TextStyle(fontWeight: FontWeight.w600),
+      ),
       subtitle: Text('$count plant${count == 1 ? '' : 's'}'),
       trailing: PopupMenuButton<String>(
         icon: const Icon(Icons.more_vert),
@@ -474,10 +494,12 @@ class SpacesScreenState extends State<SpacesScreen> {
           if (action == 'edit') _editSpace(space);
           if (action == 'delete') _deleteSpace(space);
         },
-        itemBuilder: (context) => [
-          const PopupMenuItem(value: 'edit', child: Text('Rename')),
-          if (!isDefault) const PopupMenuItem(value: 'delete', child: Text('Delete')),
-        ],
+        itemBuilder:
+            (context) => [
+              const PopupMenuItem(value: 'edit', child: Text('Rename')),
+              if (!isDefault)
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
+            ],
       ),
       onTap: () => _navigateToSpace(space),
     );
@@ -486,9 +508,8 @@ class SpacesScreenState extends State<SpacesScreen> {
   Widget _wishlistSection() {
     return _section(
       title: 'Wishlist',
-      subtitle: _wishlist.isEmpty
-          ? 'Plants you want'
-          : '${_wishlist.length} saved',
+      subtitle:
+          _wishlist.isEmpty ? 'Plants you want' : '${_wishlist.length} saved',
       children: [
         if (_wishlist.isEmpty)
           const Padding(

@@ -72,13 +72,19 @@ Future<T?> showAppActionSheet<T>(
                     if (title != null)
                       Text(
                         title,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
                       ),
                     if (message != null) ...[
                       const SizedBox(height: 4),
                       Text(
                         message,
-                        style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                        style: TextStyle(
+                          color: scheme.onSurfaceVariant,
+                          fontSize: 13,
+                        ),
                       ),
                     ],
                   ],
@@ -91,13 +97,19 @@ Future<T?> showAppActionSheet<T>(
                   Navigator.of(context).pop(action.value);
                 },
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 15),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 15,
+                  ),
                   child: Row(
                     children: [
                       Icon(
                         action.icon,
                         size: 22,
-                        color: action.destructive ? scheme.error : scheme.onSurface,
+                        color:
+                            action.destructive
+                                ? scheme.error
+                                : scheme.onSurface,
                       ),
                       const SizedBox(width: 16),
                       Text(
@@ -105,7 +117,10 @@ Future<T?> showAppActionSheet<T>(
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
-                          color: action.destructive ? scheme.error : scheme.onSurface,
+                          color:
+                              action.destructive
+                                  ? scheme.error
+                                  : scheme.onSurface,
                         ),
                       ),
                     ],

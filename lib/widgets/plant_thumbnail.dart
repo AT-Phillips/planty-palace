@@ -63,7 +63,10 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
     if (photoUrl == null || photoUrl.isEmpty) return null;
 
     try {
-      return await PhotoStorageService().ensureLocalCopy(widget.plant.id!, photoUrl);
+      return await PhotoStorageService().ensureLocalCopy(
+        widget.plant.id!,
+        photoUrl,
+      );
     } catch (_) {
       return null;
     }

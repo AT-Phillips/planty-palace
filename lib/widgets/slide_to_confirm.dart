@@ -30,7 +30,8 @@ class SlideToConfirm extends StatefulWidget {
   State<SlideToConfirm> createState() => _SlideToConfirmState();
 }
 
-class _SlideToConfirmState extends State<SlideToConfirm> with SingleTickerProviderStateMixin {
+class _SlideToConfirmState extends State<SlideToConfirm>
+    with SingleTickerProviderStateMixin {
   static const double _height = 56;
   static const double _knob = 48;
   static const double _pad = 4;
@@ -58,9 +59,12 @@ class _SlideToConfirmState extends State<SlideToConfirm> with SingleTickerProvid
         }
 
         return GestureDetector(
-          onHorizontalDragUpdate: _confirming
-              ? null
-              : (d) => setState(() => _dragX = (_dragX + d.delta.dx).clamp(0.0, maxX)),
+          onHorizontalDragUpdate:
+              _confirming
+                  ? null
+                  : (d) => setState(
+                    () => _dragX = (_dragX + d.delta.dx).clamp(0.0, maxX),
+                  ),
           onHorizontalDragEnd: _confirming ? null : (_) => onEnd(),
           child: Container(
             height: _height,
@@ -80,7 +84,10 @@ class _SlideToConfirmState extends State<SlideToConfirm> with SingleTickerProvid
               children: [
                 // Label fades as the knob advances so it never sits under it.
                 Opacity(
-                  opacity: (1 - (_dragX / (maxX == 0 ? 1 : maxX))).clamp(0.0, 1.0),
+                  opacity: (1 - (_dragX / (maxX == 0 ? 1 : maxX))).clamp(
+                    0.0,
+                    1.0,
+                  ),
                   child: Text(
                     widget.label,
                     style: TextStyle(
@@ -92,9 +99,10 @@ class _SlideToConfirmState extends State<SlideToConfirm> with SingleTickerProvid
                   ),
                 ),
                 AnimatedPositioned(
-                  duration: _confirming || _dragX == 0
-                      ? const Duration(milliseconds: 180)
-                      : Duration.zero,
+                  duration:
+                      _confirming || _dragX == 0
+                          ? const Duration(milliseconds: 180)
+                          : Duration.zero,
                   curve: Curves.easeOut,
                   left: _pad + _dragX,
                   top: _pad,

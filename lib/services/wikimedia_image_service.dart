@@ -39,11 +39,13 @@ class WikimediaImageService {
   /// "Acer palmatum 'Gwen's Rose Delight'" -> "Acer palmatum", and
   /// "Malus 'Candied Apple'" -> "Malus". Null if nothing is left.
   String? _baseSpecies(String query) {
-    final cleaned = query
-        .replaceAll(RegExp(r"['‘’“”].*$"), '')
-        .replaceAll(RegExp(r'\(.*\)'), '')
-        .trim();
-    final words = cleaned.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    final cleaned =
+        query
+            .replaceAll(RegExp(r"['‘’“”].*$"), '')
+            .replaceAll(RegExp(r'\(.*\)'), '')
+            .trim();
+    final words =
+        cleaned.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
     if (words.isEmpty) return null;
     return words.take(2).join(' ');
   }
@@ -92,7 +94,8 @@ class WikimediaImageService {
 
       return WikimediaImage(
         url: url,
-        attribution: attributionParts.isEmpty ? null : attributionParts.join(' · '),
+        attribution:
+            attributionParts.isEmpty ? null : attributionParts.join(' · '),
       );
     } catch (_) {
       return null;

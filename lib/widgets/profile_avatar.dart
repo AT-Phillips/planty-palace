@@ -15,7 +15,8 @@ const List<IconData> presetAvatarIcons = [
   Icons.local_florist,
 ];
 
-bool isPresetAvatar(String? photoUrl) => photoUrl != null && photoUrl.startsWith(_presetPrefix);
+bool isPresetAvatar(String? photoUrl) =>
+    photoUrl != null && photoUrl.startsWith(_presetPrefix);
 
 String presetAvatarValue(int index) => '$_presetPrefix$index';
 
@@ -37,12 +38,20 @@ class ProfileAvatar extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     final presetIndex = presetAvatarIndex(photoUrl);
-    if (presetIndex != null && presetIndex >= 0 && presetIndex < presetAvatarIcons.length) {
-      final color = ThemeController.accentColors[presetIndex % ThemeController.accentColors.length];
+    if (presetIndex != null &&
+        presetIndex >= 0 &&
+        presetIndex < presetAvatarIcons.length) {
+      final color =
+          ThemeController.accentColors[presetIndex %
+              ThemeController.accentColors.length];
       return CircleAvatar(
         radius: size / 2,
         backgroundColor: color,
-        child: Icon(presetAvatarIcons[presetIndex], color: Colors.white, size: size * 0.55),
+        child: Icon(
+          presetAvatarIcons[presetIndex],
+          color: Colors.white,
+          size: size * 0.55,
+        ),
       );
     }
 
@@ -57,7 +66,11 @@ class ProfileAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: size / 2,
       backgroundColor: scheme.surfaceContainerHighest,
-      child: Icon(Icons.person_outline, color: scheme.onSurfaceVariant, size: size * 0.55),
+      child: Icon(
+        Icons.person_outline,
+        color: scheme.onSurfaceVariant,
+        size: size * 0.55,
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../services/auth_service.dart';
 import '../services/photo_storage_service.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/inset_group.dart';
 import '../widgets/profile_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -38,9 +39,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _saveName() async {
-    await AuthService.instance.updateProfile(displayName: _nameController.text.trim());
+    await AuthService.instance.updateProfile(
+      displayName: _nameController.text.trim(),
+    );
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name updated')));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Name updated')));
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -50,7 +55,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     setState(() => _isUploadingPhoto = true);
     try {
       final uid = AuthService.instance.currentUser!.uid;
-      final photoUrl = await PhotoStorageService().uploadProfilePhoto(uid, File(picked.path));
+      final photoUrl = await PhotoStorageService().uploadProfilePhoto(
+        uid,
+        File(picked.path),
+      );
       await AuthService.instance.updateProfile(photoUrl: photoUrl);
       if (!mounted) return;
       setState(() {});
@@ -65,7 +73,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _selectPreset(int index) async {
-    await AuthService.instance.updateProfile(photoUrl: presetAvatarValue(index));
+    await AuthService.instance.updateProfile(
+      photoUrl: presetAvatarValue(index),
+    );
     if (!mounted) return;
     setState(() {});
   }
@@ -108,94 +118,115 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Change Password'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: currentController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Current password'),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: newController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'New password'),
-              ),
-              if (dialogError != null) ...[
-                const SizedBox(height: 12),
-                Text(dialogError!, style: TextStyle(color: Theme.of(context).colorScheme.error)),
-              ],
-            ],
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setDialogState) => AlertDialog(
+                  title: const Text('Change Password'),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: currentController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Current password',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: newController,
+                        obscureText: true,
+                        decoration: const InputDecoration(
+                          labelText: 'New password',
+                        ),
+                      ),
+                      if (dialogError != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          dialogError!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancel'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          await AuthService.instance.changePassword(
+                            currentController.text,
+                            newController.text,
+                          );
+                          if (context.mounted) Navigator.pop(context, true);
+                        } catch (e) {
+                          setDialogState(() => dialogError = e.toString());
+                        }
+                      },
+                      child: const Text('Save'),
+                    ),
+                  ],
+                ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                try {
-                  await AuthService.instance.changePassword(
-                    currentController.text,
-                    newController.text,
-                  );
-                  if (context.mounted) Navigator.pop(context, true);
-                } catch (e) {
-                  setDialogState(() => dialogError = e.toString());
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        ),
-      ),
     );
 
     if (confirmed == true && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Password updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Password updated')));
     }
   }
 
   Future<void> _deleteAccount() async {
     final passwordController = TextEditingController();
-    final isEmailAccount = !AuthService.instance.isAnonymous && AuthService.instance.email != null;
+    final isEmailAccount =
+        !AuthService.instance.isAnonymous && AuthService.instance.email != null;
 
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'This permanently deletes every Space, plant, propagation, and photo tied to '
-              'this account. This cannot be undone.',
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete account?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'This permanently deletes every Space, plant, propagation, and photo tied to '
+                  'this account. This cannot be undone.',
+                ),
+                if (isEmailAccount) ...[
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Confirm your password',
+                    ),
+                  ),
+                ],
+              ],
             ),
-            if (isEmailAccount) ...[
-              const SizedBox(height: 16),
-              TextField(
-                controller: passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: 'Confirm your password'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text(
+                  'Delete',
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               ),
             ],
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete', style: TextStyle(color: Theme.of(context).colorScheme.error)),
           ),
-        ],
-      ),
     );
     if (confirmed != true || !mounted) return;
 
@@ -225,11 +256,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           children: [
             _isUploadingPhoto
                 ? const SizedBox(
-                    width: 96,
-                    height: 96,
-                    child: CircularProgressIndicator.adaptive(),
-                  )
-                : ProfileAvatar(photoUrl: AuthService.instance.photoUrl, size: 96),
+                  width: 96,
+                  height: 96,
+                  child: CircularProgressIndicator.adaptive(),
+                )
+                : ProfileAvatar(
+                  photoUrl: AuthService.instance.photoUrl,
+                  size: 96,
+                ),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -253,7 +287,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerLeft,
-              child: Text('Or choose an icon', style: TextStyle(color: scheme.onSurfaceVariant)),
+              child: Text(
+                'Or choose an icon',
+                style: TextStyle(color: scheme.onSurfaceVariant),
+              ),
             ),
             const SizedBox(height: 8),
             Row(
@@ -262,7 +299,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 for (var i = 0; i < presetAvatarIcons.length; i++)
                   GestureDetector(
                     onTap: () => _selectPreset(i),
-                    child: ProfileAvatar(photoUrl: presetAvatarValue(i), size: 44),
+                    child: ProfileAvatar(
+                      photoUrl: presetAvatarValue(i),
+                      size: 44,
+                    ),
                   ),
               ],
             ),
@@ -325,13 +365,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _isSubmitting ? null : _upgrade,
-              child: _isSubmitting
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Text('Save my account'),
+              child:
+                  _isSubmitting
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator.adaptive(
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Text('Save my account'),
             ),
             const SizedBox(height: 20),
             Row(
@@ -339,7 +382,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 Expanded(child: Divider(color: scheme.outlineVariant)),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text('or continue with', style: TextStyle(color: scheme.onSurfaceVariant)),
+                  child: Text(
+                    'or continue with',
+                    style: TextStyle(color: scheme.onSurfaceVariant),
+                  ),
                 ),
                 Expanded(child: Divider(color: scheme.outlineVariant)),
               ],
@@ -378,34 +424,44 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _accountManagementSection() {
     final scheme = Theme.of(context).colorScheme;
 
-    return Card(
-      child: Column(
-        children: [
-          if (AuthService.instance.email != null)
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Change Password'),
-              trailing: const Icon(Icons.chevron_right),
-              onTap: _changePassword,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InsetGroup(
+          dividerIndent: 56,
+          children: [
+            if (AuthService.instance.email != null)
+              InsetRow(
+                icon: Icons.lock_outline,
+                title: 'Change Password',
+                onTap: _changePassword,
+              ),
+            InsetRow(
+              icon: Icons.logout,
+              title: 'Sign Out',
+              onTap: _signOut,
+              showChevron: false,
             ),
-          ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Sign Out'),
-            onTap: _signOut,
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: Icon(Icons.delete_forever_outlined, color: scheme.error),
-            title: Text('Delete Account', style: TextStyle(color: scheme.error)),
-            onTap: _isSubmitting ? null : _deleteAccount,
-          ),
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              child: Text(_error!, style: TextStyle(color: scheme.error)),
+          ],
+        ),
+        InsetGroup(
+          children: [
+            InsetRow(
+              icon: Icons.delete_forever_outlined,
+              iconColor: scheme.error,
+              title: 'Delete Account',
+              titleColor: scheme.error,
+              showChevron: false,
+              onTap: _isSubmitting ? null : _deleteAccount,
             ),
-        ],
-      ),
+          ],
+        ),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(_error!, style: TextStyle(color: scheme.error)),
+          ),
+      ],
     );
   }
 

@@ -18,6 +18,7 @@ import '../widgets/pest_disease_view.dart';
 import '../widgets/search_field.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'plant_detail_screen.dart';
+import '../utils/app_page_route.dart';
 
 /// The single most urgent care line for a plant - whichever of
 /// watering/fertilizing/repotting/pruning is soonest due, matching the
@@ -28,11 +29,23 @@ import 'plant_detail_screen.dart';
     if (daysUntilDue(plant) != null)
       (daysUntilDue(plant)!, wateringStatusText(plant), isOverdue(plant)),
     if (daysUntilFertilizeDue(plant) != null)
-      (daysUntilFertilizeDue(plant)!, fertilizingStatusText(plant), isFertilizingOverdue(plant)),
+      (
+        daysUntilFertilizeDue(plant)!,
+        fertilizingStatusText(plant),
+        isFertilizingOverdue(plant),
+      ),
     if (daysUntilRepotDue(plant) != null)
-      (daysUntilRepotDue(plant)!, repottingStatusText(plant), isRepottingOverdue(plant)),
+      (
+        daysUntilRepotDue(plant)!,
+        repottingStatusText(plant),
+        isRepottingOverdue(plant),
+      ),
     if (daysUntilPruneDue(plant) != null)
-      (daysUntilPruneDue(plant)!, pruningStatusText(plant), isPruningOverdue(plant)),
+      (
+        daysUntilPruneDue(plant)!,
+        pruningStatusText(plant),
+        isPruningOverdue(plant),
+      ),
   ];
   if (candidates.isEmpty) return null;
   candidates.sort((a, b) => a.$1.compareTo(b.$1));
@@ -85,15 +98,16 @@ class CareScreenState extends State<CareScreen> {
   void refresh() => _load();
 
   List<Plant> get _filteredPlants {
-    final list = _plants.where((p) {
-      if (_query.isNotEmpty &&
-          !p.name.toLowerCase().contains(_query) &&
-          !p.species.toLowerCase().contains(_query)) {
-        return false;
-      }
-      if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
-      return true;
-    }).toList();
+    final list =
+        _plants.where((p) {
+          if (_query.isNotEmpty &&
+              !p.name.toLowerCase().contains(_query) &&
+              !p.species.toLowerCase().contains(_query)) {
+            return false;
+          }
+          if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
+          return true;
+        }).toList();
     sortPlants(list, _sortOption);
     return list;
   }
@@ -110,7 +124,9 @@ class CareScreenState extends State<CareScreen> {
 
   Future<void> _markWatered(Plant plant) async {
     await _repository.markWatered(plant.id!);
-    final updated = plant.copyWith(lastWatered: DateTime.now().toIso8601String());
+    final updated = plant.copyWith(
+      lastWatered: DateTime.now().toIso8601String(),
+    );
     await NotificationService().scheduleWateringReminder(updated);
     // HomeWidgetService().refresh(); // widget disabled for now
     if (!mounted) return;
@@ -120,7 +136,7 @@ class CareScreenState extends State<CareScreen> {
   Future<void> _navigateToDetail(Plant plant) async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => PlantDetailScreen(plant: plant)),
+      appRoute(PlantDetailScreen(plant: plant)),
     );
     if (result == true && mounted) {
       _load();
@@ -152,12 +168,15 @@ class CareScreenState extends State<CareScreen> {
     });
   }
 
-  bool get _anySelectedHasFertilizing =>
-      _plants.any((p) => _selectedIds.contains(p.id) && p.fertilizingIntervalDays != null);
-  bool get _anySelectedHasRepotting =>
-      _plants.any((p) => _selectedIds.contains(p.id) && p.repottingIntervalDays != null);
-  bool get _anySelectedHasPruning =>
-      _plants.any((p) => _selectedIds.contains(p.id) && p.pruningIntervalDays != null);
+  bool get _anySelectedHasFertilizing => _plants.any(
+    (p) => _selectedIds.contains(p.id) && p.fertilizingIntervalDays != null,
+  );
+  bool get _anySelectedHasRepotting => _plants.any(
+    (p) => _selectedIds.contains(p.id) && p.repottingIntervalDays != null,
+  );
+  bool get _anySelectedHasPruning => _plants.any(
+    (p) => _selectedIds.contains(p.id) && p.pruningIntervalDays != null,
+  );
 
   Future<void> _bulkAction(String action) async {
     final selected = _plants.where((p) => _selectedIds.contains(p.id)).toList();
@@ -167,7 +186,8 @@ class CareScreenState extends State<CareScreen> {
         await NotificationService().scheduleWateringReminder(
           plant.copyWith(lastWatered: DateTime.now().toIso8601String()),
         );
-      } else if (action == 'fertilize' && plant.fertilizingIntervalDays != null) {
+      } else if (action == 'fertilize' &&
+          plant.fertilizingIntervalDays != null) {
         await _repository.markFertilized(plant.id!);
         await NotificationService().scheduleFertilizingReminder(
           plant.copyWith(lastFertilized: DateTime.now().toIso8601String()),
@@ -214,9 +234,16 @@ class CareScreenState extends State<CareScreen> {
           PopupMenuButton<PlantSortOption>(
             initialValue: _sortOption,
             onSelected: (option) => setState(() => _sortOption = option),
-            itemBuilder: (context) => PlantSortOption.values
-                .map((option) => PopupMenuItem(value: option, child: Text(_sortLabel(option))))
-                .toList(),
+            itemBuilder:
+                (context) =>
+                    PlantSortOption.values
+                        .map(
+                          (option) => PopupMenuItem(
+                            value: option,
+                            child: Text(_sortLabel(option)),
+                          ),
+                        )
+                        .toList(),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -242,29 +269,40 @@ class CareScreenState extends State<CareScreen> {
       color: selected ? scheme.primaryContainer.withValues(alpha: 0.4) : null,
       child: InkWell(
         borderRadius: BorderRadius.circular(AppTheme.radius),
-        onTap: () => _selectionMode ? _toggleSelection(plant) : _navigateToDetail(plant),
+        onTap:
+            () =>
+                _selectionMode
+                    ? _toggleSelection(plant)
+                    : _navigateToDetail(plant),
         onLongPress: _selectionMode ? null : () => _startSelection(plant),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           child: Row(
             children: [
               _selectionMode
-                  ? Checkbox(value: selected, onChanged: (_) => _toggleSelection(plant))
+                  ? Checkbox(
+                    value: selected,
+                    onChanged: (_) => _toggleSelection(plant),
+                  )
                   : CareRing(plant: plant, heroTag: 'plant_${plant.id}'),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(plant.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      plant.name,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     Text(
                       status?.text ?? 'No care schedule set',
-                      style: overdue
-                          ? TextStyle(
-                              color: AppTheme.urgentColor(context),
-                              fontWeight: FontWeight.w600,
-                            )
-                          : TextStyle(color: scheme.onSurfaceVariant),
+                      style:
+                          overdue
+                              ? TextStyle(
+                                color: AppTheme.urgentColor(context),
+                                fontWeight: FontWeight.w600,
+                              )
+                              : TextStyle(color: scheme.onSurfaceVariant),
                     ),
                   ],
                 ),
@@ -275,11 +313,18 @@ class CareScreenState extends State<CareScreen> {
                   tooltip: 'Mark as watered',
                   icon: Icon(
                     Icons.water_drop,
-                    color: overdue ? AppTheme.urgentColor(context) : scheme.outlineVariant,
+                    color:
+                        overdue
+                            ? AppTheme.urgentColor(context)
+                            : scheme.outlineVariant,
                   ),
                   style: IconButton.styleFrom(
                     backgroundColor:
-                        overdue ? AppTheme.urgentColor(context).withValues(alpha: 0.15) : null,
+                        overdue
+                            ? AppTheme.urgentColor(
+                              context,
+                            ).withValues(alpha: 0.15)
+                            : null,
                     shape: const CircleBorder(),
                   ),
                 ),
@@ -314,7 +359,13 @@ class CareScreenState extends State<CareScreen> {
           children: [
             Icon(Icons.water_drop, color: Colors.white),
             SizedBox(width: 8),
-            Text('Watered', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            Text(
+              'Watered',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -327,34 +378,48 @@ class CareScreenState extends State<CareScreen> {
     final filtered = _filteredPlants;
 
     return Scaffold(
-      appBar: _selectionMode
-          ? FrostedAppBar(
-              title: '${_selectedIds.length} selected',
-              leading: IconButton(icon: const Icon(Icons.close), onPressed: _exitSelection),
-              actions: [
-                IconButton(
-                  icon: const Icon(Icons.water_drop),
-                  tooltip: 'Mark Watered',
-                  onPressed: () => _bulkAction('water'),
+      appBar:
+          _selectionMode
+              ? FrostedAppBar(
+                title: '${_selectedIds.length} selected',
+                leading: IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: _exitSelection,
                 ),
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert),
-                  onSelected: _bulkAction,
-                  itemBuilder: (context) => [
-                    if (_anySelectedHasFertilizing)
-                      const PopupMenuItem(value: 'fertilize', child: Text('Mark Fertilized')),
-                    if (_anySelectedHasRepotting)
-                      const PopupMenuItem(value: 'repot', child: Text('Mark Repotted')),
-                    if (_anySelectedHasPruning)
-                      const PopupMenuItem(value: 'prune', child: Text('Mark Pruned')),
-                  ],
-                ),
-              ],
-            )
-          : const FrostedAppBar(
-              title: 'Care',
-              actions: [WeatherAppBarChip(), AccountButton()],
-            ),
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.water_drop),
+                    tooltip: 'Mark Watered',
+                    onPressed: () => _bulkAction('water'),
+                  ),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert),
+                    onSelected: _bulkAction,
+                    itemBuilder:
+                        (context) => [
+                          if (_anySelectedHasFertilizing)
+                            const PopupMenuItem(
+                              value: 'fertilize',
+                              child: Text('Mark Fertilized'),
+                            ),
+                          if (_anySelectedHasRepotting)
+                            const PopupMenuItem(
+                              value: 'repot',
+                              child: Text('Mark Repotted'),
+                            ),
+                          if (_anySelectedHasPruning)
+                            const PopupMenuItem(
+                              value: 'prune',
+                              child: Text('Mark Pruned'),
+                            ),
+                        ],
+                  ),
+                ],
+              )
+              : const FrostedAppBar(
+                title: 'Care',
+                actions: [WeatherAppBarChip(), AccountButton()],
+              ),
       body: Column(
         children: [
           if (!_selectionMode)
@@ -362,7 +427,11 @@ class CareScreenState extends State<CareScreen> {
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
               child: SegmentedButton<int>(
                 segments: const [
-                  ButtonSegment(value: 0, label: Text('My Plants'), icon: Icon(Icons.eco_outlined)),
+                  ButtonSegment(
+                    value: 0,
+                    label: Text('My Plants'),
+                    icon: Icon(Icons.eco_outlined),
+                  ),
                   ButtonSegment(
                     value: 1,
                     label: Text('Diagnose'),
@@ -371,13 +440,15 @@ class CareScreenState extends State<CareScreen> {
                 ],
                 selected: {_careSection},
                 showSelectedIcon: false,
-                onSelectionChanged: (s) => setState(() => _careSection = s.first),
+                onSelectionChanged:
+                    (s) => setState(() => _careSection = s.first),
               ),
             ),
           Expanded(
-            child: _careSection == 1
-                ? const PestDiseaseView()
-                : _buildPlantsSection(filtered),
+            child:
+                _careSection == 1
+                    ? const PestDiseaseView()
+                    : _buildPlantsSection(filtered),
           ),
         ],
       ),
@@ -389,7 +460,8 @@ class CareScreenState extends State<CareScreen> {
       return const EmptyState(
         icon: Icons.water_drop_outlined,
         title: 'Nothing to water yet',
-        message: 'Once you add plants with a watering schedule, '
+        message:
+            'Once you add plants with a watering schedule, '
             "they'll show up here when they need attention.",
       );
     }
@@ -404,18 +476,21 @@ class CareScreenState extends State<CareScreen> {
         ),
         _buildFilterBar(),
         Expanded(
-          child: filtered.isEmpty
-              ? EmptyState(
-                  icon: Icons.filter_alt_off_outlined,
-                  title: 'No matching plants',
-                  message: _overdueOnly
-                      ? 'Nothing is overdue right now.'
-                      : 'Try a different search.',
-                )
-              : ListView.builder(
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) => _buildCareCard(filtered[index]),
-                ),
+          child:
+              filtered.isEmpty
+                  ? EmptyState(
+                    icon: Icons.filter_alt_off_outlined,
+                    title: 'No matching plants',
+                    message:
+                        _overdueOnly
+                            ? 'Nothing is overdue right now.'
+                            : 'Try a different search.',
+                  )
+                  : ListView.builder(
+                    itemCount: filtered.length,
+                    itemBuilder:
+                        (context, index) => _buildCareCard(filtered[index]),
+                  ),
         ),
       ],
     );

@@ -145,9 +145,11 @@ class Plant {
       lastWatered: lastWatered ?? this.lastWatered,
       wateringIntervalDays: wateringIntervalDays ?? this.wateringIntervalDays,
       lastFertilized: lastFertilized ?? this.lastFertilized,
-      fertilizingIntervalDays: fertilizingIntervalDays ?? this.fertilizingIntervalDays,
+      fertilizingIntervalDays:
+          fertilizingIntervalDays ?? this.fertilizingIntervalDays,
       lastRepotted: lastRepotted ?? this.lastRepotted,
-      repottingIntervalDays: repottingIntervalDays ?? this.repottingIntervalDays,
+      repottingIntervalDays:
+          repottingIntervalDays ?? this.repottingIntervalDays,
       lastPruned: lastPruned ?? this.lastPruned,
       pruningIntervalDays: pruningIntervalDays ?? this.pruningIntervalDays,
       speciesDescription: speciesDescription ?? this.speciesDescription,

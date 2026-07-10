@@ -30,7 +30,9 @@ void main() async {
   // an authenticated user.
   if (Platform.isAndroid || Platform.isIOS) {
     try {
-      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
     } catch (e) {
       debugPrint('Firebase init failed, continuing without it: $e');
     }
@@ -95,16 +97,24 @@ class ThicketApp extends StatelessWidget {
               valueListenable: ThemeController.instance.backgroundPaletteIndex,
               builder: (context, backgroundIndex, _) {
                 final seedColor = ThemeController.accentColors[accentIndex];
-                final palette = ThemeController.backgroundPalettes[backgroundIndex];
+                final palette =
+                    ThemeController.backgroundPalettes[backgroundIndex];
                 return MaterialApp(
                   title: 'Thicket',
-                  theme: AppTheme.lightTheme(seedColor: seedColor, palette: palette),
-                  darkTheme: AppTheme.darkTheme(seedColor: seedColor, palette: palette),
+                  theme: AppTheme.lightTheme(
+                    seedColor: seedColor,
+                    palette: palette,
+                  ),
+                  darkTheme: AppTheme.darkTheme(
+                    seedColor: seedColor,
+                    palette: palette,
+                  ),
                   themeMode: mode,
                   scrollBehavior: AppScrollBehavior(),
-                  home: OnboardingPreferences.instance.completed.value
-                      ? const MainShell()
-                      : const OnboardingScreen(),
+                  home:
+                      OnboardingPreferences.instance.completed.value
+                          ? const MainShell()
+                          : const OnboardingScreen(),
                 );
               },
             );

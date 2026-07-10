@@ -14,9 +14,10 @@ class ShimmerLoading extends StatefulWidget {
 
 class _ShimmerLoadingState extends State<ShimmerLoading>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1300))
-        ..repeat();
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1300),
+  )..repeat();
 
   @override
   void dispose() {
@@ -28,7 +29,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final base = scheme.surfaceContainerHighest;
-    final highlight = Color.alphaBlend(scheme.onSurface.withValues(alpha: 0.06), base);
+    final highlight = Color.alphaBlend(
+      scheme.onSurface.withValues(alpha: 0.06),
+      base,
+    );
 
     return AnimatedBuilder(
       animation: _controller,
@@ -106,7 +110,10 @@ class SkeletonListTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SkeletonBox(width: MediaQuery.of(context).size.width * 0.5, height: 12),
+                SkeletonBox(
+                  width: MediaQuery.of(context).size.width * 0.5,
+                  height: 12,
+                ),
                 const SizedBox(height: 8),
                 const SkeletonBox(width: 90, height: 10),
               ],

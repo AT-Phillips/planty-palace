@@ -74,7 +74,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   bool? poisonousToHumans;
   bool? poisonousToPets;
   final TextEditingController nicknameController = TextEditingController();
-  final TextEditingController careInstructionsController = TextEditingController();
+  final TextEditingController careInstructionsController =
+      TextEditingController();
 
   @override
   void initState() {
@@ -107,7 +108,8 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         wateringIntervalDays = widget.prefillWateringIntervalDays!;
         wateringManuallySet = true;
       }
-      if (widget.prefillImagePath != null && widget.prefillImagePath!.isNotEmpty) {
+      if (widget.prefillImagePath != null &&
+          widget.prefillImagePath!.isNotEmpty) {
         _identifierService.imageFile = File(widget.prefillImagePath!);
       }
     }
@@ -188,12 +190,23 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       title: 'Plant photo',
       message: 'Used to identify the plant and as its cover photo.',
       actions: [
-        const AppSheetAction(icon: Icons.camera_alt_outlined, label: 'Take Photo', value: 'camera'),
         const AppSheetAction(
-            icon: Icons.photo_library_outlined, label: 'Choose from Library', value: 'gallery'),
+          icon: Icons.camera_alt_outlined,
+          label: 'Take Photo',
+          value: 'camera',
+        ),
+        const AppSheetAction(
+          icon: Icons.photo_library_outlined,
+          label: 'Choose from Library',
+          value: 'gallery',
+        ),
         if (hasPhoto)
           const AppSheetAction(
-              icon: Icons.delete_outline, label: 'Remove Photo', value: 'remove', destructive: true),
+            icon: Icons.delete_outline,
+            label: 'Remove Photo',
+            value: 'remove',
+            destructive: true,
+          ),
       ],
     );
     switch (action) {
@@ -229,9 +242,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       suggestions = await _identifierService.identifyPlant();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.toString()}')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
     }
 
     if (!mounted) return;
@@ -250,7 +263,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
   Future<void> _savePlant() async {
     if (selectedName == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add a photo and identify your plant first')),
+        const SnackBar(
+          content: Text('Add a photo and identify your plant first'),
+        ),
       );
       return;
     }
@@ -260,7 +275,9 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
     try {
       final pickedImage = _identifierService.imageFile;
       final permanentImage =
-          pickedImage == null ? null : await ensurePermanentPlantImage(pickedImage);
+          pickedImage == null
+              ? null
+              : await ensurePermanentPlantImage(pickedImage);
       final nickname = nicknameController.text.trim();
 
       final plant = Plant(
@@ -272,16 +289,26 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         careInstructions: careInstructionsController.text,
         gardenId: widget.plant?.gardenId ?? widget.gardenId,
         createdAt: widget.plant?.createdAt ?? DateTime.now().toIso8601String(),
-        lastWatered: widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
+        lastWatered:
+            widget.plant?.lastWatered ?? DateTime.now().toIso8601String(),
         wateringIntervalDays: wateringIntervalDays,
-        lastFertilized: widget.plant?.lastFertilized ??
-            (fertilizingIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        lastFertilized:
+            widget.plant?.lastFertilized ??
+            (fertilizingIntervalDays != null
+                ? DateTime.now().toIso8601String()
+                : null),
         fertilizingIntervalDays: fertilizingIntervalDays,
-        lastRepotted: widget.plant?.lastRepotted ??
-            (repottingIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        lastRepotted:
+            widget.plant?.lastRepotted ??
+            (repottingIntervalDays != null
+                ? DateTime.now().toIso8601String()
+                : null),
         repottingIntervalDays: repottingIntervalDays,
-        lastPruned: widget.plant?.lastPruned ??
-            (pruningIntervalDays != null ? DateTime.now().toIso8601String() : null),
+        lastPruned:
+            widget.plant?.lastPruned ??
+            (pruningIntervalDays != null
+                ? DateTime.now().toIso8601String()
+                : null),
         pruningIntervalDays: pruningIntervalDays,
         speciesDescription: speciesDescription,
         speciesOrigin: speciesOrigin,
@@ -366,12 +393,20 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 4),
-                child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
               ),
               SizedBox(
                 height: 190,
                 child: CupertinoPicker(
-                  scrollController: FixedExtentScrollController(initialItem: startIndex),
+                  scrollController: FixedExtentScrollController(
+                    initialItem: startIndex,
+                  ),
                   itemExtent: 38,
                   onSelectedItemChanged: (i) {
                     Haptics.selection();
@@ -382,7 +417,10 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                       Center(
                         child: Text(
                           _intervalLabel(it),
-                          style: TextStyle(fontSize: 18, color: scheme.onSurface),
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: scheme.onSurface,
+                          ),
                         ),
                       ),
                   ],
@@ -393,11 +431,14 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: () => Navigator.of(context).pop((items[tempIndex],)),
+                    onPressed:
+                        () => Navigator.of(context).pop((items[tempIndex],)),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.fernColor(context),
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     child: const Text('Done'),
@@ -437,9 +478,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_a_photo_outlined, size: 34, color: scheme.onSurfaceVariant),
+                        Icon(
+                          Icons.add_a_photo_outlined,
+                          size: 34,
+                          color: scheme.onSurfaceVariant,
+                        ),
                         const SizedBox(height: 8),
-                        Text('Add a photo', style: TextStyle(color: scheme.onSurfaceVariant)),
+                        Text(
+                          'Add a photo',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
+                        ),
                       ],
                     ),
                   ),
@@ -448,7 +496,10 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                     left: 12,
                     bottom: 12,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.black.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(20),
@@ -458,8 +509,14 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                         children: [
                           Icon(Icons.autorenew, size: 14, color: Colors.white),
                           SizedBox(width: 5),
-                          Text('Change photo',
-                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text(
+                            'Change photo',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -499,11 +556,17 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(selectedName!, style: AppTheme.plantNameStyle(context, size: 16)),
+                  Text(
+                    selectedName!,
+                    style: AppTheme.plantNameStyle(context, size: 16),
+                  ),
                   if (selectedCommonName != null)
                     Text(
                       selectedCommonName!,
-                      style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: scheme.onSurfaceVariant,
+                      ),
                     ),
                 ],
               ),
@@ -546,9 +609,16 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           ),
           SegmentedButton<String>(
             segments: const [
-              ButtonSegment(value: 'leaf', label: Text('Leaf'), icon: Icon(Icons.eco_outlined)),
               ButtonSegment(
-                  value: 'flower', label: Text('Flower'), icon: Icon(Icons.local_florist_outlined)),
+                value: 'leaf',
+                label: Text('Leaf'),
+                icon: Icon(Icons.eco_outlined),
+              ),
+              ButtonSegment(
+                value: 'flower',
+                label: Text('Flower'),
+                icon: Icon(Icons.local_florist_outlined),
+              ),
             ],
             selected: {_identifierService.organ},
             onSelectionChanged: (selection) => _setOrgan(selection.first),
@@ -556,18 +626,21 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           const SizedBox(height: 12),
           FilledButton.icon(
             onPressed: isLoading ? null : _identifyPlant,
-            icon: isLoading
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                  )
-                : const Icon(Icons.travel_explore),
+            icon:
+                isLoading
+                    ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+                    )
+                    : const Icon(Icons.travel_explore),
             label: Text(isLoading ? 'Identifying...' : 'Identify Plant'),
             style: FilledButton.styleFrom(
               backgroundColor: AppTheme.fernColor(context),
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
               padding: const EdgeInsets.symmetric(vertical: 14),
             ),
           ),
@@ -575,7 +648,10 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
             const SizedBox(height: 16),
             Text(
               'Select the closest match',
-              style: TextStyle(fontWeight: FontWeight.w600, color: scheme.onSurfaceVariant),
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: scheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 8),
             ...suggestions.map(_buildSuggestionRow),
@@ -605,7 +681,11 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       ),
       child: Text(
         '$percent%',
-        style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12),
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
+        ),
       ),
     );
   }
@@ -631,12 +711,18 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
                     children: [
                       Text(
                         suggestion.scientificName,
-                        style: const TextStyle(fontStyle: FontStyle.italic, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontStyle: FontStyle.italic,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                       if (suggestion.commonName != null)
                         Text(
                           suggestion.commonName!,
-                          style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 13),
+                          style: TextStyle(
+                            color: scheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                     ],
                   ),
@@ -685,10 +771,11 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
           wateringIntervalDays,
           _wateringIntervalOptions,
           allowNone: false,
-          onPicked: (v) => setState(() {
-            wateringIntervalDays = v!;
-            wateringManuallySet = true;
-          }),
+          onPicked:
+              (v) => setState(() {
+                wateringIntervalDays = v!;
+                wateringManuallySet = true;
+              }),
         ),
         _scheduleRow(
           CareKind.feed,
@@ -763,28 +850,31 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: isSaving
-                ? const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16),
-                      child: SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+            child:
+                isSaving
+                    ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                    )
+                    : TextButton(
+                      onPressed: _savePlant,
+                      child: Text(
+                        'Save',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppTheme.fernColor(context),
+                        ),
                       ),
                     ),
-                  )
-                : TextButton(
-                    onPressed: _savePlant,
-                    child: Text(
-                      'Save',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
-                        color: AppTheme.fernColor(context),
-                      ),
-                    ),
-                  ),
           ),
         ],
       ),

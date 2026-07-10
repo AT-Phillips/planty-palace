@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../utils/app_page_route.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/settings_sections.dart';
@@ -15,10 +16,7 @@ class AccountScreen extends StatefulWidget {
 
 class _AccountScreenState extends State<AccountScreen> {
   Future<void> _openEditProfile() async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const EditProfileScreen()),
-    );
+    await Navigator.push(context, appRoute(const EditProfileScreen()));
     if (mounted) setState(() {});
   }
 
@@ -38,14 +36,51 @@ class _AccountScreenState extends State<AccountScreen> {
       subtitleColor = null;
     }
 
-    return Card(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 6),
-      child: ListTile(
-        leading: ProfileAvatar(photoUrl: AuthService.instance.photoUrl),
-        title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: TextStyle(color: subtitleColor)),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: _openEditProfile,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+      child: Material(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: _openEditProfile,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                ProfileAvatar(
+                  photoUrl: AuthService.instance.photoUrl,
+                  size: 44,
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Edit Profile',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15.5,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        subtitle,
+                        style: TextStyle(color: subtitleColor, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -64,7 +99,11 @@ class _AccountScreenState extends State<AccountScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.cloud_off, size: 48, color: scheme.onSurfaceVariant),
+                  Icon(
+                    Icons.cloud_off,
+                    size: 48,
+                    color: scheme.onSurfaceVariant,
+                  ),
                   const SizedBox(height: 16),
                   const Text(
                     'Account features aren\'t available on this platform',

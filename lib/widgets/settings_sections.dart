@@ -10,6 +10,8 @@ import '../screens/info_screen.dart';
 import '../screens/schedules_screen.dart';
 import '../services/theme_controller.dart';
 import '../services/weather_service.dart';
+import '../utils/app_page_route.dart';
+import 'inset_group.dart';
 import 'weather_detail_sheet.dart';
 
 /// All former Settings-tab content, extracted into a plain widget (no
@@ -34,9 +36,9 @@ class SettingsSections extends StatelessWidget {
   }
 
   void _showComingSoon(BuildContext context, String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$feature is coming soon.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('$feature is coming soon.')));
   }
 
   Future<void> _rateApp(BuildContext context) async {
@@ -50,7 +52,9 @@ class SettingsSections extends StatelessWidget {
   }
 
   Future<void> _shareApp() async {
-    await Share.share('Check out Thicket, the plant-care app I use: $appStoreUrl');
+    await Share.share(
+      'Check out Thicket, the plant-care app I use: $appStoreUrl',
+    );
   }
 
   @override
@@ -74,13 +78,23 @@ class SettingsSections extends StatelessWidget {
                         const SizedBox(height: 8),
                         SegmentedButton<ThemeMode>(
                           segments: const [
-                            ButtonSegment(value: ThemeMode.system, label: Text('System')),
-                            ButtonSegment(value: ThemeMode.light, label: Text('Light')),
-                            ButtonSegment(value: ThemeMode.dark, label: Text('Dark')),
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              label: Text('System'),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              label: Text('Light'),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              label: Text('Dark'),
+                            ),
                           ],
                           selected: {mode},
-                          onSelectionChanged: (selection) =>
-                              ThemeController.instance.setThemeMode(selection.first),
+                          onSelectionChanged:
+                              (selection) => ThemeController.instance
+                                  .setThemeMode(selection.first),
                         ),
                         const SizedBox(height: 16),
                         Row(
@@ -88,27 +102,40 @@ class SettingsSections extends StatelessWidget {
                             const Text('Accent color'),
                             const Spacer(),
                             ValueListenableBuilder<int>(
-                              valueListenable: ThemeController.instance.accentColorIndex,
+                              valueListenable:
+                                  ThemeController.instance.accentColorIndex,
                               builder: (context, selectedIndex, _) {
                                 return Row(
                                   children: [
-                                    for (var i = 0; i < ThemeController.accentColors.length; i++)
+                                    for (
+                                      var i = 0;
+                                      i < ThemeController.accentColors.length;
+                                      i++
+                                    )
                                       Padding(
                                         padding: const EdgeInsets.only(left: 8),
                                         child: GestureDetector(
-                                          onTap: () => ThemeController.instance.setAccentColor(i),
+                                          onTap:
+                                              () => ThemeController.instance
+                                                  .setAccentColor(i),
                                           child: Container(
                                             width: 28,
                                             height: 28,
                                             decoration: BoxDecoration(
-                                              color: ThemeController.accentColors[i],
+                                              color:
+                                                  ThemeController
+                                                      .accentColors[i],
                                               shape: BoxShape.circle,
-                                              border: i == selectedIndex
-                                                  ? Border.all(
-                                                      color: Theme.of(context).colorScheme.onSurface,
-                                                      width: 2,
-                                                    )
-                                                  : null,
+                                              border:
+                                                  i == selectedIndex
+                                                      ? Border.all(
+                                                        color:
+                                                            Theme.of(context)
+                                                                .colorScheme
+                                                                .onSurface,
+                                                        width: 2,
+                                                      )
+                                                      : null,
                                             ),
                                           ),
                                         ),
@@ -125,37 +152,49 @@ class SettingsSections extends StatelessWidget {
                             const Text('Background'),
                             const Spacer(),
                             ValueListenableBuilder<int>(
-                              valueListenable: ThemeController.instance.backgroundPaletteIndex,
+                              valueListenable:
+                                  ThemeController
+                                      .instance
+                                      .backgroundPaletteIndex,
                               builder: (context, selectedIndex, _) {
                                 final scheme = Theme.of(context).colorScheme;
                                 final brightness = Theme.of(context).brightness;
                                 return Row(
                                   children: [
-                                    for (var i = 0;
-                                        i < ThemeController.backgroundPalettes.length;
-                                        i++)
+                                    for (
+                                      var i = 0;
+                                      i <
+                                          ThemeController
+                                              .backgroundPalettes
+                                              .length;
+                                      i++
+                                    )
                                       Padding(
                                         padding: const EdgeInsets.only(left: 8),
                                         child: GestureDetector(
-                                          onTap: () =>
-                                              ThemeController.instance.setBackgroundPalette(i),
+                                          onTap:
+                                              () => ThemeController.instance
+                                                  .setBackgroundPalette(i),
                                           child: Container(
                                             width: 28,
                                             height: 28,
                                             decoration: BoxDecoration(
                                               // Preview the tone for the current brightness, so
                                               // the dot shows what you'll actually get.
-                                              color: ThemeController.backgroundPalettes[i]
+                                              color: ThemeController
+                                                  .backgroundPalettes[i]
                                                   .swatchFor(brightness),
                                               shape: BoxShape.circle,
                                               // Always outline: several palettes are near-black
                                               // (or near-white) and would vanish against the card
                                               // otherwise.
                                               border: Border.all(
-                                                color: i == selectedIndex
-                                                    ? scheme.onSurface
-                                                    : scheme.outlineVariant,
-                                                width: i == selectedIndex ? 2 : 1,
+                                                color:
+                                                    i == selectedIndex
+                                                        ? scheme.onSurface
+                                                        : scheme.outlineVariant,
+                                                width:
+                                                    i == selectedIndex ? 2 : 1,
                                               ),
                                             ),
                                           ),
@@ -173,37 +212,37 @@ class SettingsSections extends StatelessWidget {
                 },
               ),
               const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.notifications_outlined),
-                title: const Text('Schedules'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SchedulesScreen()),
-                ),
+              InsetRow(
+                icon: Icons.notifications_outlined,
+                title: 'Schedules',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(const SchedulesScreen()),
+                    ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.wb_sunny_outlined),
-                title: const Text('Weather'),
-                trailing: const Icon(Icons.chevron_right),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.wb_sunny_outlined,
+                title: 'Weather',
                 onTap: () async {
                   final weather = await WeatherService().fetchCurrentWeather();
-                  if (context.mounted) showWeatherDetailSheet(context, weather: weather);
+                  if (context.mounted)
+                    showWeatherDetailSheet(context, weather: weather);
                 },
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.language),
-                title: const Text('Language'),
-                trailing: const Text('English'),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.language,
+                title: 'Language',
+                value: 'English',
                 onTap: () => _showComingSoon(context, 'More languages'),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.workspace_premium_outlined),
-                title: const Text('Manage Subscription'),
-                subtitle: const Text('Free plan — upgrade options coming soon'),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.workspace_premium_outlined,
+                title: 'Manage Subscription',
+                value: 'Free plan',
                 onTap: () => _showComingSoon(context, 'Subscriptions'),
               ),
             ],
@@ -214,86 +253,86 @@ class SettingsSections extends StatelessWidget {
           margin: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
             children: [
-              ListTile(
-                leading: const Icon(Icons.help_outline),
-                title: const Text('Help & Support'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InfoScreen(
-                      title: 'Help & Support',
-                      body: helpText,
-                      showContactButton: true,
+              InsetRow(
+                icon: Icons.help_outline,
+                title: 'Help & Support',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        const InfoScreen(
+                          title: 'Help & Support',
+                          body: helpText,
+                          showContactButton: true,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.quiz_outlined),
-                title: const Text('FAQ'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InfoScreen(title: 'FAQ', qaEntries: faqEntries),
-                  ),
-                ),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.quiz_outlined,
+                title: 'FAQ',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        const InfoScreen(title: 'FAQ', qaEntries: faqEntries),
+                      ),
+                    ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.star_outline),
-                title: const Text('Rate Thicket'),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.star_outline,
+                title: 'Rate Thicket',
                 onTap: () => _rateApp(context),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.share_outlined),
-                title: const Text('Share Thicket'),
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                icon: Icons.share_outlined,
+                title: 'Share Thicket',
                 onTap: _shareApp,
               ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Privacy Policy'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InfoScreen(
-                      title: 'Privacy Policy',
-                      body: privacyPolicyText,
+              const Divider(height: 1, indent: 56),
+              InsetRow(
+                title: 'Privacy Policy',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        const InfoScreen(
+                          title: 'Privacy Policy',
+                          body: privacyPolicyText,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Terms & Conditions'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InfoScreen(
-                      title: 'Terms & Conditions',
-                      body: termsAndConditionsText,
+              const Divider(height: 1, indent: 16),
+              InsetRow(
+                title: 'Terms & Conditions',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        const InfoScreen(
+                          title: 'Terms & Conditions',
+                          body: termsAndConditionsText,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                title: const Text('Billing Terms'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const InfoScreen(
-                      title: 'Billing Terms',
-                      body: billingTermsText,
+              const Divider(height: 1, indent: 16),
+              InsetRow(
+                title: 'Billing Terms',
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        const InfoScreen(
+                          title: 'Billing Terms',
+                          body: billingTermsText,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
               ),
             ],
           ),

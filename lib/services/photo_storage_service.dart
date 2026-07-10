@@ -14,7 +14,9 @@ class PhotoStorageService {
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
-      throw StateError('No signed-in user - ensureSignedIn() must run before any photo access.');
+      throw StateError(
+        'No signed-in user - ensureSignedIn() must run before any photo access.',
+      );
     }
     return uid;
   }
@@ -39,7 +41,11 @@ class PhotoStorageService {
     }
   }
 
-  Future<String> uploadTimelinePhoto(String plantId, String photoId, File file) async {
+  Future<String> uploadTimelinePhoto(
+    String plantId,
+    String photoId,
+    File file,
+  ) async {
     final ref = _timelinePhotoRef(plantId, photoId);
     await ref.putFile(file);
     return ref.getDownloadURL();
@@ -57,7 +63,9 @@ class PhotoStorageService {
   /// itself is deleted.
   Future<void> deleteAllPhotosForPlant(String plantId) async {
     try {
-      final folder = FirebaseStorage.instance.ref('plant_photos/$_uid/$plantId');
+      final folder = FirebaseStorage.instance.ref(
+        'plant_photos/$_uid/$plantId',
+      );
       final listing = await folder.listAll();
       for (final item in listing.items) {
         await item.delete();

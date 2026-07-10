@@ -7,6 +7,7 @@ import 'care_screen.dart';
 import 'discover_screen.dart';
 import 'guides_screen.dart';
 import 'spaces_screen.dart';
+import '../utils/app_page_route.dart';
 
 /// Hosts the app's 4 persistent tabs (Spaces, Care, Find, Guides) plus the
 /// central camera quick-action. Account isn't a tab - it's reached via the
@@ -30,7 +31,10 @@ class _MainShellState extends State<MainShell> {
   final _careKey = GlobalKey<CareScreenState>();
 
   late final List<Widget> _tabs = [
-    SpacesScreen(key: _spacesKey, onGoToCare: () => setState(() => _selectedIndex = 1)),
+    SpacesScreen(
+      key: _spacesKey,
+      onGoToCare: () => setState(() => _selectedIndex = 1),
+    ),
     CareScreen(key: _careKey),
     const DiscoverScreen(),
     const GuidesScreen(),
@@ -41,9 +45,7 @@ class _MainShellState extends State<MainShell> {
     if (!mounted) return;
     await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditPlantScreen(gardenId: defaultSpaceId),
-      ),
+      appRoute(AddEditPlantScreen(gardenId: defaultSpaceId)),
     );
     _spacesKey.currentState?.refresh();
     _careKey.currentState?.refresh();

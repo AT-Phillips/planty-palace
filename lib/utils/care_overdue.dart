@@ -18,12 +18,13 @@ enum PlantSortOption { name, dateAdded, urgency }
 /// The soonest due-in-days across watering/fertilizing/repotting/pruning
 /// (whichever is more urgent), or null if none has a schedule set.
 int? mostUrgentDueIn(Plant plant) {
-  final candidates = [
-    daysUntilDue(plant),
-    daysUntilFertilizeDue(plant),
-    daysUntilRepotDue(plant),
-    daysUntilPruneDue(plant),
-  ].whereType<int>().toList();
+  final candidates =
+      [
+        daysUntilDue(plant),
+        daysUntilFertilizeDue(plant),
+        daysUntilRepotDue(plant),
+        daysUntilPruneDue(plant),
+      ].whereType<int>().toList();
   if (candidates.isEmpty) return null;
   return candidates.reduce((a, b) => a < b ? a : b);
 }
@@ -31,7 +32,9 @@ int? mostUrgentDueIn(Plant plant) {
 void sortPlants(List<Plant> plants, PlantSortOption option) {
   switch (option) {
     case PlantSortOption.name:
-      plants.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+      plants.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
       break;
     case PlantSortOption.dateAdded:
       plants.sort((a, b) => (b.createdAt ?? '').compareTo(a.createdAt ?? ''));

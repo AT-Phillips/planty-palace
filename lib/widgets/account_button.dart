@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../screens/account_screen.dart';
 import '../services/auth_service.dart';
 import 'profile_avatar.dart';
+import '../utils/app_page_route.dart';
 
 /// A circular profile avatar shown in the top-right of the main screens.
 /// Tapping it opens the Account screen - Account lives here rather than in
@@ -18,10 +19,7 @@ class AccountButton extends StatelessWidget {
       padding: const EdgeInsets.only(right: 12),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => const AccountScreen()),
-        ),
+        onTap: () => Navigator.push(context, appRoute(const AccountScreen())),
         child: ProfileAvatar(photoUrl: AuthService.instance.photoUrl, size: 36),
       ),
     );

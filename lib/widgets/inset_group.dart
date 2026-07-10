@@ -33,12 +33,14 @@ class InsetGroup extends StatelessWidget {
     for (var i = 0; i < children.length; i++) {
       rows.add(children[i]);
       if (i != children.length - 1) {
-        rows.add(Divider(
-          height: 1,
-          thickness: 1,
-          indent: dividerIndent,
-          color: scheme.outlineVariant.withValues(alpha: 0.4),
-        ));
+        rows.add(
+          Divider(
+            height: 1,
+            thickness: 1,
+            indent: dividerIndent,
+            color: scheme.outlineVariant.withValues(alpha: 0.4),
+          ),
+        );
       }
     }
 
@@ -83,6 +85,10 @@ class InsetRow extends StatelessWidget {
   /// interactive accent.
   final Color? iconColor;
   final String title;
+
+  /// Overrides the title's text color - e.g. the destructive error color for
+  /// a "Delete Account" row. Defaults to the normal on-surface text color.
+  final Color? titleColor;
   final String? value;
 
   /// Overrides the default trailing (value text + chevron) entirely.
@@ -98,6 +104,7 @@ class InsetRow extends StatelessWidget {
     this.icon,
     this.iconColor,
     required this.title,
+    this.titleColor,
     this.value,
     this.trailing,
     this.onTap,
@@ -129,7 +136,11 @@ class InsetRow extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 15.5,
+                fontWeight: FontWeight.w500,
+                color: titleColor,
+              ),
             ),
           ),
           if (trailing != null)
@@ -141,7 +152,11 @@ class InsetRow extends StatelessWidget {
             ),
           if (chevron) ...[
             const SizedBox(width: 4),
-            Icon(Icons.chevron_right, size: 20, color: scheme.onSurfaceVariant.withValues(alpha: 0.6)),
+            Icon(
+              Icons.chevron_right,
+              size: 20,
+              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
+            ),
           ],
         ],
       ),

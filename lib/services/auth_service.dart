@@ -17,7 +17,8 @@ class AuthService {
 
   bool get isAvailable => Firebase.apps.isNotEmpty;
 
-  User? get currentUser => isAvailable ? FirebaseAuth.instance.currentUser : null;
+  User? get currentUser =>
+      isAvailable ? FirebaseAuth.instance.currentUser : null;
 
   bool get isAnonymous => currentUser?.isAnonymous ?? true;
 
@@ -42,7 +43,10 @@ class AuthService {
   Future<void> upgradeToEmailAccount(String email, String password) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw Exception('No signed-in user to upgrade.');
-    final credential = EmailAuthProvider.credential(email: email, password: password);
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: password,
+    );
     await user.linkWithCredential(credential);
   }
 
@@ -71,12 +75,18 @@ class AuthService {
     if (photoUrl != null) await user.updatePhotoURL(photoUrl);
   }
 
-  Future<void> changePassword(String currentPassword, String newPassword) async {
+  Future<void> changePassword(
+    String currentPassword,
+    String newPassword,
+  ) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || user.email == null) {
       throw Exception('No email/password account to update.');
     }
-    final credential = EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+    final credential = EmailAuthProvider.credential(
+      email: user.email!,
+      password: currentPassword,
+    );
     await user.reauthenticateWithCredential(credential);
     await user.updatePassword(newPassword);
   }
@@ -90,8 +100,10 @@ class AuthService {
     if (user == null) throw Exception('No signed-in user.');
 
     if (!user.isAnonymous && user.email != null && currentPassword != null) {
-      final credential =
-          EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
       await user.reauthenticateWithCredential(credential);
     }
 

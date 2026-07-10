@@ -13,6 +13,7 @@ import '../widgets/search_field.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'species_detail_screen.dart';
+import '../utils/app_page_route.dart';
 
 // Real taxonomic/common group words, not attribute filters (e.g. not "Low
 // light" or "Pet-safe") - Perenual's search is a plain text match against
@@ -98,7 +99,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       }),
     );
     if (!mounted) return;
-    setState(() => _popular = results.whereType<PerenualSpeciesSummary>().toList());
+    setState(
+      () => _popular = results.whereType<PerenualSpeciesSummary>().toList(),
+    );
   }
 
   void _searchCategory(String label) {
@@ -192,15 +195,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       WikimediaImage? fallbackImage;
       final imageUrl = detail.imageUrl;
       if (imageUrl == null || imageUrl.isEmpty) {
-        fallbackImage = await WikimediaImageService().fetchImage(detail.scientificName);
+        fallbackImage = await WikimediaImageService().fetchImage(
+          detail.scientificName,
+        );
       }
       if (!mounted) return;
 
       await Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => SpeciesDetailScreen(
-            species: detail!,
+        appRoute(
+          SpeciesDetailScreen(
+            species: detail,
             fallbackImageUrl: fallbackImage?.url,
             fallbackImageAttribution: fallbackImage?.attribution,
             detailUnavailable: detailUnavailable,
@@ -228,7 +233,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
       children: [
         if (_recent.isNotEmpty) ...[
-          Text('Recently viewed', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Recently viewed',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           SizedBox(
             height: 132,
@@ -260,11 +268,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          entry.summary.commonName ?? entry.summary.scientificName,
+                          entry.summary.commonName ??
+                              entry.summary.scientificName,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -282,12 +294,19 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(Icons.auto_awesome, size: 20, color: scheme.onPrimaryContainer),
+                Icon(
+                  Icons.auto_awesome,
+                  size: 20,
+                  color: scheme.onPrimaryContainer,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     _fact,
-                    style: TextStyle(color: scheme.onPrimaryContainer, height: 1.4),
+                    style: TextStyle(
+                      color: scheme.onPrimaryContainer,
+                      height: 1.4,
+                    ),
                   ),
                 ),
               ],
@@ -295,19 +314,28 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
         ),
         const SizedBox(height: 20),
-        Text('Browse a category', style: Theme.of(context).textTheme.titleSmall),
+        Text(
+          'Browse a category',
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final label in _categoryChips)
-              ActionChip(label: Text(label), onPressed: () => _searchCategory(label)),
+              ActionChip(
+                label: Text(label),
+                onPressed: () => _searchCategory(label),
+              ),
           ],
         ),
         if (_popular.isNotEmpty) ...[
           const SizedBox(height: 24),
-          Text('Popular houseplants', style: Theme.of(context).textTheme.titleSmall),
+          Text(
+            'Popular houseplants',
+            style: Theme.of(context).textTheme.titleSmall,
+          ),
           const SizedBox(height: 8),
           SizedBox(
             height: 132,
@@ -343,7 +371,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ],
                     ),
@@ -396,7 +427,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           if (!_searching && _results.isNotEmpty)
             Expanded(
               child: ListView.builder(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final result = _results[index];
@@ -411,14 +443,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                       result.scientificName,
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
-                    subtitle: result.commonName != null ? Text(result.commonName!) : null,
-                    trailing: isOpening
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                          )
-                        : null,
+                    subtitle:
+                        result.commonName != null
+                            ? Text(result.commonName!)
+                            : null,
+                    trailing:
+                        isOpening
+                            ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator.adaptive(
+                                strokeWidth: 2,
+                              ),
+                            )
+                            : null,
                     onTap: () => _openSpecies(result),
                   );
                 },
@@ -459,7 +497,8 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
   bool _perenualFailed = false;
 
   bool get _hasPerenualThumb =>
-      widget.summary.thumbnailUrl != null && widget.summary.thumbnailUrl!.isNotEmpty;
+      widget.summary.thumbnailUrl != null &&
+      widget.summary.thumbnailUrl!.isNotEmpty;
 
   @override
   void initState() {
@@ -470,7 +509,9 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
   Future<void> _fetchFallback() async {
     if (_fallbackRequested) return;
     _fallbackRequested = true;
-    final image = await WikimediaImageService().fetchImage(widget.summary.scientificName);
+    final image = await WikimediaImageService().fetchImage(
+      widget.summary.scientificName,
+    );
     if (!mounted) return;
     setState(() => _fallbackUrl = image?.url);
   }

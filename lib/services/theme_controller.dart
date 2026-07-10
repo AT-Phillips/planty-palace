@@ -23,13 +23,15 @@ class ThemeController {
 
   /// Selectable app background tones (Forest/Midnight/Slate/Charcoal), chosen
   /// independently of [accentColors]. See AppTheme.backgroundPalettes.
-  static const List<BackgroundPalette> backgroundPalettes = AppTheme.backgroundPalettes;
+  static const List<BackgroundPalette> backgroundPalettes =
+      AppTheme.backgroundPalettes;
 
   final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.system);
   final ValueNotifier<int> accentColorIndex = ValueNotifier(0);
   final ValueNotifier<int> backgroundPaletteIndex = ValueNotifier(0);
 
-  BackgroundPalette get backgroundPalette => backgroundPalettes[backgroundPaletteIndex.value];
+  BackgroundPalette get backgroundPalette =>
+      backgroundPalettes[backgroundPaletteIndex.value];
 
   Future<void> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -40,10 +42,13 @@ class ThemeController {
       _ => ThemeMode.system,
     };
     final savedAccent = prefs.getInt(_accentPrefsKey) ?? 0;
-    accentColorIndex.value = savedAccent >= 0 && savedAccent < accentColors.length ? savedAccent : 0;
+    accentColorIndex.value =
+        savedAccent >= 0 && savedAccent < accentColors.length ? savedAccent : 0;
     final savedBackground = prefs.getInt(_backgroundPrefsKey) ?? 0;
     backgroundPaletteIndex.value =
-        savedBackground >= 0 && savedBackground < backgroundPalettes.length ? savedBackground : 0;
+        savedBackground >= 0 && savedBackground < backgroundPalettes.length
+            ? savedBackground
+            : 0;
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {

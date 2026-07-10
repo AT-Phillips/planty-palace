@@ -76,7 +76,8 @@ class Propagation {
       startedAt: startedAt ?? this.startedAt,
       notes: notes ?? this.notes,
       parentPlantId: parentPlantId ?? this.parentPlantId,
-      parentSpeciesSnapshot: parentSpeciesSnapshot ?? this.parentSpeciesSnapshot,
+      parentSpeciesSnapshot:
+          parentSpeciesSnapshot ?? this.parentSpeciesSnapshot,
       photoUrl: photoUrl ?? this.photoUrl,
       imagePath: imagePath ?? this.imagePath,
       isPromoted: isPromoted ?? this.isPromoted,

@@ -15,13 +15,18 @@ class PropagationRepository {
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
-      throw StateError('No signed-in user - ensureSignedIn() must run before any data access.');
+      throw StateError(
+        'No signed-in user - ensureSignedIn() must run before any data access.',
+      );
     }
     return uid;
   }
 
   CollectionReference<Map<String, dynamic>> get _propagations =>
-      FirebaseFirestore.instance.collection('users').doc(_uid).collection('propagations');
+      FirebaseFirestore.instance
+          .collection('users')
+          .doc(_uid)
+          .collection('propagations');
 
   CollectionReference<Map<String, dynamic>> _photos(String propagationId) =>
       _propagations.doc(propagationId).collection('photos');
@@ -32,8 +37,11 @@ class PropagationRepository {
   }
 
   Future<List<Propagation>> getPropagations() async {
-    final snapshot = await _propagations.orderBy('startedAt', descending: true).get();
-    return snapshot.docs.map((d) => Propagation.fromMap(d.data(), id: d.id)).toList();
+    final snapshot =
+        await _propagations.orderBy('startedAt', descending: true).get();
+    return snapshot.docs
+        .map((d) => Propagation.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   Future<int> getPropagationCount() async {
@@ -50,7 +58,10 @@ class PropagationRepository {
     await PhotoStorageService().deleteAllPhotosForPlant(id);
   }
 
-  Future<void> markPromoted(String propagationId, String promotedPlantId) async {
+  Future<void> markPromoted(
+    String propagationId,
+    String promotedPlantId,
+  ) async {
     await _propagations.doc(propagationId).update({
       'isPromoted': true,
       'promotedPlantId': promotedPlantId,
@@ -60,17 +71,26 @@ class PropagationRepository {
   // --- Growth photo timeline (mirrors PlantRepository) ---
 
   Future<List<PlantPhoto>> getPhotos(String propagationId) async {
-    final snapshot = await _photos(propagationId).orderBy('takenAt', descending: true).get();
-    return snapshot.docs.map((d) => PlantPhoto.fromMap(d.data(), id: d.id)).toList();
+    final snapshot =
+        await _photos(propagationId).orderBy('takenAt', descending: true).get();
+    return snapshot.docs
+        .map((d) => PlantPhoto.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   Future<PlantPhoto> addPhoto(String propagationId, File file) async {
     final doc = _photos(propagationId).doc();
     final takenAt = DateTime.now().toIso8601String();
-    final photoUrl =
-        await PhotoStorageService().uploadTimelinePhoto(propagationId, doc.id, file);
+    final photoUrl = await PhotoStorageService().uploadTimelinePhoto(
+      propagationId,
+      doc.id,
+      file,
+    );
     await doc.set({'photoUrl': photoUrl, 'takenAt': takenAt});
-    await _propagations.doc(propagationId).update({'photoUrl': photoUrl, 'imagePath': file.path});
+    await _propagations.doc(propagationId).update({
+      'photoUrl': photoUrl,
+      'imagePath': file.path,
+    });
     return PlantPhoto(id: doc.id, photoUrl: photoUrl, takenAt: takenAt);
   }
 
@@ -84,15 +104,22 @@ class PropagationRepository {
 
     final remaining = await getPhotos(propagationId);
     if (remaining.isEmpty) {
-      await _propagations.doc(propagationId).update({'photoUrl': null, 'imagePath': ''});
+      await _propagations.doc(propagationId).update({
+        'photoUrl': null,
+        'imagePath': '',
+      });
     } else {
-      await _propagations
-          .doc(propagationId)
-          .update({'photoUrl': remaining.first.photoUrl, 'imagePath': ''});
+      await _propagations.doc(propagationId).update({
+        'photoUrl': remaining.first.photoUrl,
+        'imagePath': '',
+      });
     }
   }
 
   Future<void> setCoverPhoto(String propagationId, PlantPhoto photo) async {
-    await _propagations.doc(propagationId).update({'photoUrl': photo.photoUrl, 'imagePath': ''});
+    await _propagations.doc(propagationId).update({
+      'photoUrl': photo.photoUrl,
+      'imagePath': '',
+    });
   }
 }

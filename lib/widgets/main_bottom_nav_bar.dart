@@ -65,7 +65,11 @@ class MainBottomNavBar extends StatelessWidget {
                   activeColor: scheme.primary,
                   onTap: () => onTap(1),
                 ),
-                _CameraNavItem(onTap: onCameraTap, color: scheme.primary, iconColor: scheme.onPrimary),
+                _CameraNavItem(
+                  onTap: onCameraTap,
+                  color: scheme.primary,
+                  iconColor: scheme.onPrimary,
+                ),
                 _NavItem(
                   icon: Icons.travel_explore_outlined,
                   label: 'Find',
@@ -123,7 +127,11 @@ class _NavItem extends StatelessWidget {
             const SizedBox(height: 2),
             Text(
               label,
-              style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w600),
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -137,7 +145,11 @@ class _CameraNavItem extends StatelessWidget {
   final Color color;
   final Color iconColor;
 
-  const _CameraNavItem({required this.onTap, required this.color, required this.iconColor});
+  const _CameraNavItem({
+    required this.onTap,
+    required this.color,
+    required this.iconColor,
+  });
 
   @override
   Widget build(BuildContext context) {

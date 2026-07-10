@@ -36,13 +36,18 @@ class _SchedulesScreenState extends State<SchedulesScreen> {
                   children: [
                     SwitchListTile(
                       title: const Text('Reminders'),
-                      subtitle: const Text('Watering, fertilizing, repotting & pruning'),
+                      subtitle: const Text(
+                        'Watering, fertilizing, repotting & pruning',
+                      ),
                       value: enabled,
-                      onChanged: (value) => NotificationPreferences.instance.setEnabled(value),
+                      onChanged:
+                          (value) => NotificationPreferences.instance
+                              .setEnabled(value),
                     ),
                     if (enabled)
                       ValueListenableBuilder<TimeOfDay>(
-                        valueListenable: NotificationPreferences.instance.reminderTime,
+                        valueListenable:
+                            NotificationPreferences.instance.reminderTime,
                         builder: (context, time, _) {
                           return ListTile(
                             leading: const Icon(Icons.notifications_outlined),

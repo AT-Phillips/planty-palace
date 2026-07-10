@@ -29,7 +29,8 @@ class PestDiseaseInfo {
       family: map['family'] as String?,
       description: map['description'] as String?,
       solution: map['solution'] as String?,
-      hostPlants: (map['hostPlants'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      hostPlants:
+          (map['hostPlants'] as List?)?.map((e) => e.toString()).toList() ?? [],
       imageUrl: map['imageUrl'] as String?,
     );
   }
@@ -48,10 +49,15 @@ class PestDiseaseService {
     if (query.trim().isEmpty) return [];
 
     try {
-      final result = await _functions.httpsCallable('searchPestsDiseases').call({'query': query});
+      final result = await _functions.httpsCallable('searchPestsDiseases').call(
+        {'query': query},
+      );
       final data = result.data as List;
       return data
-          .map((entry) => PestDiseaseInfo.fromMap(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) =>
+                PestDiseaseInfo.fromMap(Map<String, dynamic>.from(entry)),
+          )
           .toList();
     } on FirebaseFunctionsException catch (e) {
       throw Exception(e.message ?? 'Pest/disease search failed.');

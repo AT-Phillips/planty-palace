@@ -7,7 +7,12 @@ import '../models/plant.dart';
 import '../models/propagation.dart';
 import '../services/plant_repository.dart';
 import '../services/propagation_repository.dart';
+import '../styles/app_theme.dart';
+import '../utils/haptics.dart';
 import '../utils/permanent_image.dart';
+import '../widgets/app_bottom_sheet.dart';
+import '../widgets/frosted_app_bar.dart';
+import '../widgets/inset_group.dart';
 
 const _methods = ['Water', 'Soil', 'Air Layering', 'Division', 'Other'];
 
@@ -19,7 +24,8 @@ class AddEditPropagationScreen extends StatefulWidget {
   const AddEditPropagationScreen({super.key, this.propagation});
 
   @override
-  State<AddEditPropagationScreen> createState() => _AddEditPropagationScreenState();
+  State<AddEditPropagationScreen> createState() =>
+      _AddEditPropagationScreenState();
 }
 
 class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
@@ -64,7 +70,9 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
       setState(() {
         _availablePlants = plants;
         if (widget.propagation?.parentPlantId != null) {
-          final matches = plants.where((p) => p.id == widget.propagation!.parentPlantId);
+          final matches = plants.where(
+            (p) => p.id == widget.propagation!.parentPlantId,
+          );
           _parentPlant = matches.isEmpty ? null : matches.first;
         }
         _loadingPlants = false;
@@ -91,19 +99,93 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
     setState(() => _imageFile = File(picked.path));
   }
 
+  Future<void> _changePhoto() async {
+    final hasPhoto = _imageFile != null;
+    final action = await showAppActionSheet<String>(
+      context,
+      title: 'Propagation photo',
+      actions: [
+        const AppSheetAction(
+          icon: Icons.camera_alt_outlined,
+          label: 'Take Photo',
+          value: 'camera',
+        ),
+        const AppSheetAction(
+          icon: Icons.photo_library_outlined,
+          label: 'Choose from Library',
+          value: 'gallery',
+        ),
+        if (hasPhoto)
+          const AppSheetAction(
+            icon: Icons.delete_outline,
+            label: 'Remove Photo',
+            value: 'remove',
+            destructive: true,
+          ),
+      ],
+    );
+    switch (action) {
+      case 'camera':
+        await _pickImage(ImageSource.camera);
+        break;
+      case 'gallery':
+        await _pickImage(ImageSource.gallery);
+        break;
+      case 'remove':
+        setState(() => _imageFile = null);
+        break;
+    }
+  }
+
+  Future<void> _pickMethod() async {
+    final result = await showAppActionSheet<String>(
+      context,
+      title: 'Method',
+      actions: [
+        for (final m in _methods)
+          AppSheetAction(icon: Icons.eco_outlined, label: m, value: m),
+      ],
+    );
+    if (result != null) setState(() => _method = result);
+  }
+
+  Future<void> _pickParentPlant() async {
+    final result = await showAppActionSheet<Object?>(
+      context,
+      title: 'From plant',
+      actions: [
+        const AppSheetAction(icon: Icons.close, label: 'None', value: _none),
+        for (final p in _availablePlants)
+          AppSheetAction(
+            icon: Icons.local_florist_outlined,
+            label: p.name,
+            value: p,
+          ),
+      ],
+    );
+    if (result == _none) {
+      setState(() => _parentPlant = null);
+    } else if (result is Plant) {
+      setState(() => _parentPlant = result);
+    }
+  }
+
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please give it a name')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please give it a name')));
       return;
     }
 
     setState(() => _isSaving = true);
 
     try {
-      final permanentImage = _imageFile == null ? null : await ensurePermanentPlantImage(_imageFile!);
+      final permanentImage =
+          _imageFile == null
+              ? null
+              : await ensurePermanentPlantImage(_imageFile!);
       final propagation = Propagation(
         id: widget.propagation?.id,
         name: name,
@@ -133,6 +215,7 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
       }
 
       if (!mounted) return;
+      Haptics.medium();
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -144,138 +227,200 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
+  String _dateLabel(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Widget _photoHeader() {
     final scheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.propagation == null ? 'Add Propagation' : 'Edit Propagation'),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-        children: [
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: _imageFile != null
-                        ? Image.file(_imageFile!, height: 180, width: double.infinity, fit: BoxFit.cover)
-                        : Container(
-                            height: 180,
-                            width: double.infinity,
-                            color: scheme.surfaceContainerHighest,
-                            child: Icon(Icons.eco_outlined, size: 40, color: scheme.onSurfaceVariant),
-                          ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          icon: const Icon(Icons.camera_alt_outlined),
-                          label: const Text('Camera'),
-                          onPressed: () => _pickImage(ImageSource.camera),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      child: GestureDetector(
+        onTap: _changePhoto,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(22),
+          child: SizedBox(
+            height: 170,
+            width: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                if (_imageFile != null)
+                  Image.file(_imageFile!, fit: BoxFit.cover)
+                else
+                  Container(
+                    color: scheme.surfaceContainerHighest,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.add_a_photo_outlined,
+                          size: 32,
+                          color: scheme.onSurfaceVariant,
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: FilledButton.tonalIcon(
-                          icon: const Icon(Icons.photo_library_outlined),
-                          label: const Text('Gallery'),
-                          onPressed: () => _pickImage(ImageSource.gallery),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  TextField(
-                    controller: _nameController,
-                    decoration: const InputDecoration(labelText: 'Name'),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _method,
-                    decoration: const InputDecoration(labelText: 'Method'),
-                    items: _methods
-                        .map((m) => DropdownMenuItem(value: m, child: Text(m)))
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => _method = value);
-                    },
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Started'),
-                    subtitle: Text('${_startedAt.year}-${_startedAt.month.toString().padLeft(2, '0')}-${_startedAt.day.toString().padLeft(2, '0')}'),
-                    trailing: const Icon(Icons.calendar_today_outlined),
-                    onTap: _pickDate,
-                  ),
-                  const SizedBox(height: 12),
-                  if (_loadingPlants)
-                    const Center(child: CircularProgressIndicator.adaptive())
-                  else
-                    DropdownButtonFormField<Plant?>(
-                      value: _parentPlant,
-                      decoration: const InputDecoration(labelText: 'From plant (optional)'),
-                      items: [
-                        const DropdownMenuItem(value: null, child: Text('None')),
-                        ..._availablePlants.map(
-                          (p) => DropdownMenuItem(value: p, child: Text(p.name)),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Add a photo',
+                          style: TextStyle(color: scheme.onSurfaceVariant),
                         ),
                       ],
-                      onChanged: (value) => setState(() => _parentPlant = value),
                     ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _notesController,
-                    maxLines: null,
-                    minLines: 3,
-                    decoration: const InputDecoration(hintText: 'Notes (optional)'),
                   ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          decoration: BoxDecoration(
-            color: scheme.surface,
-            border: Border(top: BorderSide(color: scheme.outlineVariant)),
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              onPressed: _isSaving ? null : _save,
-              icon: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.save_outlined),
-              label: const Text('Save Propagation'),
+                if (_imageFile != null)
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 11,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.autorenew, size: 14, color: Colors.white),
+                          SizedBox(width: 5),
+                          Text(
+                            'Change photo',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
       ),
     );
   }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: FrostedAppBar(
+        title:
+            widget.propagation == null ? 'New Propagation' : 'Edit Propagation',
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child:
+                _isSaving
+                    ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator.adaptive(
+                            strokeWidth: 2,
+                          ),
+                        ),
+                      ),
+                    )
+                    : TextButton(
+                      onPressed: _save,
+                      child: Text(
+                        'Save',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: AppTheme.fernColor(context),
+                        ),
+                      ),
+                    ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.only(bottom: 32),
+        children: [
+          _photoHeader(),
+          InsetGroup(
+            header: 'Details',
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 4,
+                ),
+                child: TextField(
+                  controller: _nameController,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    icon: Icon(Icons.badge_outlined, size: 20),
+                    hintText: 'Name',
+                  ),
+                ),
+              ),
+            ],
+          ),
+          InsetGroup(
+            header: 'Schedule',
+            dividerIndent: 56,
+            children: [
+              InsetRow(
+                icon: Icons.eco_outlined,
+                title: 'Method',
+                value: _method,
+                onTap: () {
+                  Haptics.selection();
+                  _pickMethod();
+                },
+              ),
+              InsetRow(
+                icon: Icons.calendar_today_outlined,
+                title: 'Started',
+                value: _dateLabel(_startedAt),
+                onTap: _pickDate,
+              ),
+              InsetRow(
+                icon: Icons.local_florist_outlined,
+                title: 'From plant',
+                value: _loadingPlants ? '…' : (_parentPlant?.name ?? 'None'),
+                onTap:
+                    _loadingPlants
+                        ? null
+                        : () {
+                          Haptics.selection();
+                          _pickParentPlant();
+                        },
+              ),
+            ],
+          ),
+          InsetGroup(
+            header: 'Notes',
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+                child: TextField(
+                  controller: _notesController,
+                  maxLines: null,
+                  minLines: 3,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isCollapsed: true,
+                    hintText: 'Notes (optional)',
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
+
+/// Sentinel distinguishing "user picked None" from "sheet dismissed" in
+/// [_pickParentPlant], since both would otherwise be indistinguishable nulls.
+const Object _none = Object();

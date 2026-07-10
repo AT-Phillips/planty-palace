@@ -48,7 +48,10 @@ class InfoScreen extends StatelessWidget {
                   children: [
                     Text(
                       question,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(answer, style: Theme.of(context).textTheme.bodyMedium),

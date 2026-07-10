@@ -168,7 +168,8 @@ const List<Guide> guides = [
   Guide(
     title: 'Pest & disease basics',
     icon: Icons.pest_control_outlined,
-    summary: 'The fundamentals of spotting and treating common houseplant pests.',
+    summary:
+        'The fundamentals of spotting and treating common houseplant pests.',
     sections: [
       (
         'Inspect regularly',

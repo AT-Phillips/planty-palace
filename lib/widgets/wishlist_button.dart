@@ -55,7 +55,9 @@ class _WishlistButtonState extends State<WishlistButton> {
       setState(() => _saved = nowSaved);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(nowSaved ? 'Added to your wishlist' : 'Removed from your wishlist'),
+          content: Text(
+            nowSaved ? 'Added to your wishlist' : 'Removed from your wishlist',
+          ),
           duration: const Duration(seconds: 2),
         ),
       );

@@ -12,17 +12,24 @@ class WishlistRepository {
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
-      throw StateError('No signed-in user - ensureSignedIn() must run before any data access.');
+      throw StateError(
+        'No signed-in user - ensureSignedIn() must run before any data access.',
+      );
     }
     return uid;
   }
 
-  CollectionReference<Map<String, dynamic>> get _wishlist =>
-      FirebaseFirestore.instance.collection('users').doc(_uid).collection('wishlist');
+  CollectionReference<Map<String, dynamic>> get _wishlist => FirebaseFirestore
+      .instance
+      .collection('users')
+      .doc(_uid)
+      .collection('wishlist');
 
   Future<List<WishlistItem>> getWishlist() async {
     final snapshot = await _wishlist.orderBy('savedAt', descending: true).get();
-    return snapshot.docs.map((d) => WishlistItem.fromMap(d.data(), id: d.id)).toList();
+    return snapshot.docs
+        .map((d) => WishlistItem.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   Future<int> getWishlistCount() async {
@@ -64,7 +71,11 @@ class WishlistRepository {
       await remove(scientificName);
       return false;
     }
-    await add(scientificName: scientificName, commonName: commonName, imageUrl: imageUrl);
+    await add(
+      scientificName: scientificName,
+      commonName: commonName,
+      imageUrl: imageUrl,
+    );
     return true;
   }
 }

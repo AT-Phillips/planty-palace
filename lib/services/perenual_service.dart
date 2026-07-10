@@ -140,10 +140,16 @@ class PerenualService {
     if (query.trim().isEmpty) return [];
 
     try {
-      final result = await _functions.httpsCallable('searchSpecies').call({'query': query});
+      final result = await _functions.httpsCallable('searchSpecies').call({
+        'query': query,
+      });
       final data = result.data as List;
       return data
-          .map((entry) => PerenualSpeciesSummary.fromMap(Map<String, dynamic>.from(entry)))
+          .map(
+            (entry) => PerenualSpeciesSummary.fromMap(
+              Map<String, dynamic>.from(entry),
+            ),
+          )
           .toList();
     } on FirebaseFunctionsException catch (e) {
       throw Exception(e.message ?? 'Species search failed.');
@@ -152,8 +158,12 @@ class PerenualService {
 
   Future<PerenualSpeciesDetail?> fetchSpeciesDetail(int id) async {
     try {
-      final result = await _functions.httpsCallable('fetchSpeciesDetail').call({'id': id});
-      return PerenualSpeciesDetail.fromMap(Map<String, dynamic>.from(result.data as Map));
+      final result = await _functions.httpsCallable('fetchSpeciesDetail').call({
+        'id': id,
+      });
+      return PerenualSpeciesDetail.fromMap(
+        Map<String, dynamic>.from(result.data as Map),
+      );
     } catch (_) {
       return null;
     }

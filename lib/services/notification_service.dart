@@ -27,7 +27,9 @@ class NotificationService {
 
     tz_data.initializeTimeZones();
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const initSettings = InitializationSettings(
       android: androidSettings,
@@ -37,11 +39,13 @@ class NotificationService {
 
     await _plugin
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
     await _plugin
         .resolvePlatformSpecificImplementation<
-            IOSFlutterLocalNotificationsPlugin>()
+          IOSFlutterLocalNotificationsPlugin
+        >()
         ?.requestPermissions(alert: true, badge: true, sound: true);
 
     _initialized = true;
@@ -63,7 +67,9 @@ class NotificationService {
     if (lastWatered == null || intervalDays == null) return;
 
     final reminderTime = NotificationPreferences.instance.reminderTime.value;
-    final dueDate = DateTime.parse(lastWatered).add(Duration(days: intervalDays));
+    final dueDate = DateTime.parse(
+      lastWatered,
+    ).add(Duration(days: intervalDays));
     var scheduledDate = tz.TZDateTime(
       tz.local,
       dueDate.year,
@@ -73,7 +79,9 @@ class NotificationService {
       reminderTime.minute,
     );
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
-      scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+      scheduledDate = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(minutes: 1));
     }
 
     await _plugin.zonedSchedule(
@@ -116,7 +124,9 @@ class NotificationService {
     if (lastFertilized == null || intervalDays == null) return;
 
     final reminderTime = NotificationPreferences.instance.reminderTime.value;
-    final dueDate = DateTime.parse(lastFertilized).add(Duration(days: intervalDays));
+    final dueDate = DateTime.parse(
+      lastFertilized,
+    ).add(Duration(days: intervalDays));
     var scheduledDate = tz.TZDateTime(
       tz.local,
       dueDate.year,
@@ -126,7 +136,9 @@ class NotificationService {
       reminderTime.minute,
     );
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
-      scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+      scheduledDate = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(minutes: 1));
     }
 
     await _plugin.zonedSchedule(
@@ -169,7 +181,9 @@ class NotificationService {
     if (lastRepotted == null || intervalDays == null) return;
 
     final reminderTime = NotificationPreferences.instance.reminderTime.value;
-    final dueDate = DateTime.parse(lastRepotted).add(Duration(days: intervalDays));
+    final dueDate = DateTime.parse(
+      lastRepotted,
+    ).add(Duration(days: intervalDays));
     var scheduledDate = tz.TZDateTime(
       tz.local,
       dueDate.year,
@@ -179,7 +193,9 @@ class NotificationService {
       reminderTime.minute,
     );
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
-      scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+      scheduledDate = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(minutes: 1));
     }
 
     await _plugin.zonedSchedule(
@@ -222,7 +238,9 @@ class NotificationService {
     if (lastPruned == null || intervalDays == null) return;
 
     final reminderTime = NotificationPreferences.instance.reminderTime.value;
-    final dueDate = DateTime.parse(lastPruned).add(Duration(days: intervalDays));
+    final dueDate = DateTime.parse(
+      lastPruned,
+    ).add(Duration(days: intervalDays));
     var scheduledDate = tz.TZDateTime(
       tz.local,
       dueDate.year,
@@ -232,7 +250,9 @@ class NotificationService {
       reminderTime.minute,
     );
     if (scheduledDate.isBefore(tz.TZDateTime.now(tz.local))) {
-      scheduledDate = tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+      scheduledDate = tz.TZDateTime.now(
+        tz.local,
+      ).add(const Duration(minutes: 1));
     }
 
     await _plugin.zonedSchedule(

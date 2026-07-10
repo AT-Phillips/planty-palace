@@ -13,7 +13,12 @@ class CareRing extends StatelessWidget {
   final double size;
   final Object? heroTag;
 
-  const CareRing({super.key, required this.plant, this.size = 52, this.heroTag});
+  const CareRing({
+    super.key,
+    required this.plant,
+    this.size = 52,
+    this.heroTag,
+  });
 
   static const _green = Color(0xFF3FA34D);
   static const _amber = Color(0xFFE0A100);

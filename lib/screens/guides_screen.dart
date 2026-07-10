@@ -5,6 +5,7 @@ import '../widgets/account_button.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'info_screen.dart';
+import '../utils/app_page_route.dart';
 
 /// "Guides" tab: a small library of curated, offline plant-care how-tos. Each
 /// topic opens in the existing InfoScreen (reused for its heading/paragraph
@@ -38,21 +39,31 @@ class GuidesScreen extends StatelessWidget {
           for (final guide in guides)
             Card(
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 leading: CircleAvatar(
                   backgroundColor: scheme.primaryContainer,
                   foregroundColor: scheme.onPrimaryContainer,
                   child: Icon(guide.icon),
                 ),
-                title: Text(guide.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+                title: Text(
+                  guide.title,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
                 subtitle: Text(guide.summary),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => InfoScreen(title: guide.title, qaEntries: guide.sections),
-                  ),
-                ),
+                onTap:
+                    () => Navigator.push(
+                      context,
+                      appRoute(
+                        InfoScreen(
+                          title: guide.title,
+                          qaEntries: guide.sections,
+                        ),
+                      ),
+                    ),
               ),
             ),
         ],

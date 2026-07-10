@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../services/onboarding_preferences.dart';
+import '../styles/app_theme.dart';
+import '../utils/app_page_route.dart';
+import '../utils/haptics.dart';
 import 'main_shell.dart';
 
 class _OnboardingPage {
@@ -8,26 +11,33 @@ class _OnboardingPage {
   final String title;
   final String message;
 
-  const _OnboardingPage({required this.icon, required this.title, required this.message});
+  const _OnboardingPage({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
 }
 
 const _pages = [
   _OnboardingPage(
     icon: Icons.camera_alt_outlined,
     title: 'Identify any plant',
-    message: "Snap a photo and we'll help identify your plant's species, "
+    message:
+        "Snap a photo and we'll help identify your plant's species, "
         'plus give you real care info.',
   ),
   _OnboardingPage(
     icon: Icons.water_drop_outlined,
     title: 'Never forget to water or fertilize',
-    message: 'Track watering and fertilizing schedules for every plant, '
+    message:
+        'Track watering and fertilizing schedules for every plant, '
         "with reminders right when they're due.",
   ),
   _OnboardingPage(
     icon: Icons.eco_outlined,
     title: 'Discover, propagate, and grow your collection',
-    message: 'Browse thousands of species, track cuttings and divisions, '
+    message:
+        'Browse thousands of species, track cuttings and divisions, '
         'and watch your plants thrive with local weather insights.',
   ),
 ];
@@ -52,22 +62,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _finish() async {
     await OnboardingPreferences.instance.setCompleted(true);
     if (!mounted) return;
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const MainShell()),
-    );
+    Navigator.pushReplacement(context, appRoute(const MainShell()));
   }
 
   void _next() {
+    Haptics.selection();
     if (_page == _pages.length - 1) {
       _finish();
       return;
     }
-    _controller.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+    _controller.nextPage(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOut,
+    );
   }
 
   Widget _buildPage(_OnboardingPage page) {
     final scheme = Theme.of(context).colorScheme;
+    final fern = AppTheme.fernColor(context);
 
     return Padding(
       padding: const EdgeInsets.all(32),
@@ -77,22 +89,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Container(
             padding: const EdgeInsets.all(28),
             decoration: BoxDecoration(
-              color: scheme.surfaceContainerHighest,
+              color: fern.withValues(alpha: 0.13),
               shape: BoxShape.circle,
             ),
-            child: Icon(page.icon, size: 52, color: scheme.primary),
+            child: Icon(page.icon, size: 52, color: fern),
           ),
           const SizedBox(height: 28),
           Text(
             page.title,
-            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+            style: AppTheme.plantNameStyle(context, size: 24),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
           Text(
             page.message,
             textAlign: TextAlign.center,
-            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 15),
+            style: TextStyle(
+              color: scheme.onSurfaceVariant,
+              fontSize: 15,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -101,6 +117,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final fern = AppTheme.fernColor(context);
     final scheme = Theme.of(context).colorScheme;
     final isLastPage = _page == _pages.length - 1;
 
@@ -129,13 +146,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 for (var i = 0; i < _pages.length; i++)
-                  Container(
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: 8,
+                    width: i == _page ? 20 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: i == _page ? scheme.primary : scheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                      color: i == _page ? fern : scheme.surfaceContainerHighest,
                     ),
                   ),
               ],
@@ -146,6 +164,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: _next,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: fern,
+                    foregroundColor: Colors.white,
+                    shape: const StadiumBorder(),
+                    padding: const EdgeInsets.symmetric(vertical: 15),
+                    textStyle: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   child: Text(isLastPage ? 'Get Started' : 'Next'),
                 ),
               ),

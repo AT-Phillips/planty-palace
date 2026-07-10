@@ -40,11 +40,16 @@ class GeocodingService {
     if (query.trim().isEmpty) return [];
 
     try {
-      final result = await FirebaseFunctions.instance.httpsCallable('geocodeCity').call({
-        'query': query,
-      });
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('geocodeCity')
+          .call({'query': query});
       final data = result.data as List;
-      return data.map((entry) => GeocodingResult.fromMap(Map<String, dynamic>.from(entry))).toList();
+      return data
+          .map(
+            (entry) =>
+                GeocodingResult.fromMap(Map<String, dynamic>.from(entry)),
+          )
+          .toList();
     } catch (_) {
       return [];
     }

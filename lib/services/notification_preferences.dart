@@ -4,7 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Holds and persists the user's preferred daily watering-reminder time.
 /// Mirrors [ThemeController]'s ValueNotifier + shared_preferences pattern.
 class NotificationPreferences {
-  static final NotificationPreferences instance = NotificationPreferences._internal();
+  static final NotificationPreferences instance =
+      NotificationPreferences._internal();
   NotificationPreferences._internal();
 
   static const _prefsKey = 'reminderTimeMinutes';

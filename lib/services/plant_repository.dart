@@ -21,19 +21,30 @@ class PlantRepository {
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
-      throw StateError('No signed-in user - ensureSignedIn() must run before any data access.');
+      throw StateError(
+        'No signed-in user - ensureSignedIn() must run before any data access.',
+      );
     }
     return uid;
   }
 
-  CollectionReference<Map<String, dynamic>> get _gardens =>
-      FirebaseFirestore.instance.collection('users').doc(_uid).collection('gardens');
+  CollectionReference<Map<String, dynamic>> get _gardens => FirebaseFirestore
+      .instance
+      .collection('users')
+      .doc(_uid)
+      .collection('gardens');
 
-  CollectionReference<Map<String, dynamic>> get _plants =>
-      FirebaseFirestore.instance.collection('users').doc(_uid).collection('plants');
+  CollectionReference<Map<String, dynamic>> get _plants => FirebaseFirestore
+      .instance
+      .collection('users')
+      .doc(_uid)
+      .collection('plants');
 
-  CollectionReference<Map<String, dynamic>> get _careLog =>
-      FirebaseFirestore.instance.collection('users').doc(_uid).collection('care_log');
+  CollectionReference<Map<String, dynamic>> get _careLog => FirebaseFirestore
+      .instance
+      .collection('users')
+      .doc(_uid)
+      .collection('care_log');
 
   CollectionReference<Map<String, dynamic>> _photos(String plantId) =>
       _plants.doc(plantId).collection('photos');
@@ -50,7 +61,9 @@ class PlantRepository {
 
   Future<List<Garden>> getGardens() async {
     final snapshot = await _gardens.orderBy(FieldPath.documentId).get();
-    return snapshot.docs.map((d) => Garden.fromMap(d.data(), id: d.id)).toList();
+    return snapshot.docs
+        .map((d) => Garden.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   Future<void> updateGarden(Garden garden) async {
@@ -81,7 +94,10 @@ class PlantRepository {
 
   Future<String> getOrCreateDefaultGardenId() async {
     final existing =
-        await _gardens.where('name', isEqualTo: defaultGardenName).limit(1).get();
+        await _gardens
+            .where('name', isEqualTo: defaultGardenName)
+            .limit(1)
+            .get();
     if (existing.docs.isNotEmpty) {
       return existing.docs.first.id;
     }
@@ -90,7 +106,8 @@ class PlantRepository {
   }
 
   Future<int> getPlantCountForGarden(String gardenId) async {
-    final aggregate = await _plants.where('gardenId', isEqualTo: gardenId).count().get();
+    final aggregate =
+        await _plants.where('gardenId', isEqualTo: gardenId).count().get();
     return aggregate.count ?? 0;
   }
 
@@ -162,8 +179,11 @@ class PlantRepository {
   // --- Growth photo timeline ---
 
   Future<List<PlantPhoto>> getPhotos(String plantId) async {
-    final snapshot = await _photos(plantId).orderBy('takenAt', descending: true).get();
-    return snapshot.docs.map((d) => PlantPhoto.fromMap(d.data(), id: d.id)).toList();
+    final snapshot =
+        await _photos(plantId).orderBy('takenAt', descending: true).get();
+    return snapshot.docs
+        .map((d) => PlantPhoto.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   /// Uploads a new dated photo, adds it to the timeline, and makes it the
@@ -171,9 +191,16 @@ class PlantRepository {
   Future<PlantPhoto> addPhoto(String plantId, File file) async {
     final doc = _photos(plantId).doc();
     final takenAt = DateTime.now().toIso8601String();
-    final photoUrl = await PhotoStorageService().uploadTimelinePhoto(plantId, doc.id, file);
+    final photoUrl = await PhotoStorageService().uploadTimelinePhoto(
+      plantId,
+      doc.id,
+      file,
+    );
     await doc.set({'photoUrl': photoUrl, 'takenAt': takenAt});
-    await _plants.doc(plantId).update({'photoUrl': photoUrl, 'imagePath': file.path});
+    await _plants.doc(plantId).update({
+      'photoUrl': photoUrl,
+      'imagePath': file.path,
+    });
     return PlantPhoto(id: doc.id, photoUrl: photoUrl, takenAt: takenAt);
   }
 
@@ -192,14 +219,20 @@ class PlantRepository {
     if (remaining.isEmpty) {
       await _plants.doc(plantId).update({'photoUrl': null, 'imagePath': ''});
     } else {
-      await _plants.doc(plantId).update({'photoUrl': remaining.first.photoUrl, 'imagePath': ''});
+      await _plants.doc(plantId).update({
+        'photoUrl': remaining.first.photoUrl,
+        'imagePath': '',
+      });
     }
   }
 
   /// Sets an existing timeline photo as the cover without changing the
   /// timeline itself.
   Future<void> setCoverPhoto(String plantId, PlantPhoto photo) async {
-    await _plants.doc(plantId).update({'photoUrl': photo.photoUrl, 'imagePath': ''});
+    await _plants.doc(plantId).update({
+      'photoUrl': photo.photoUrl,
+      'imagePath': '',
+    });
   }
 
   // --- Care log ---
@@ -207,18 +240,27 @@ class PlantRepository {
   /// [wateredAt] is a historical field name kept for backward compatibility
   /// with existing entries - it holds the timestamp for any care event type
   /// (watering or fertilizing), not just watering.
-  Future<void> logCareEvent(String plantId, String wateredAt, {String type = 'watering'}) async {
-    await _careLog.add({'plantId': plantId, 'wateredAt': wateredAt, 'type': type});
+  Future<void> logCareEvent(
+    String plantId,
+    String wateredAt, {
+    String type = 'watering',
+  }) async {
+    await _careLog.add({
+      'plantId': plantId,
+      'wateredAt': wateredAt,
+      'type': type,
+    });
   }
 
   /// Returns watering and fertilizing events for a plant, most recent first.
   /// Entries logged before fertilizing tracking existed have no `type`
   /// field and are treated as watering events.
   Future<List<CareLogEntry>> getCareHistory(String plantId) async {
-    final snapshot = await _careLog
-        .where('plantId', isEqualTo: plantId)
-        .orderBy('wateredAt', descending: true)
-        .get();
+    final snapshot =
+        await _careLog
+            .where('plantId', isEqualTo: plantId)
+            .orderBy('wateredAt', descending: true)
+            .get();
     return snapshot.docs.map((d) {
       final data = d.data();
       return CareLogEntry(
@@ -231,13 +273,18 @@ class PlantRepository {
   // --- Journal notes ---
 
   Future<List<JournalEntry>> getJournalEntries(String plantId) async {
-    final snapshot = await _journal(plantId).orderBy('createdAt', descending: true).get();
-    return snapshot.docs.map((d) => JournalEntry.fromMap(d.data(), id: d.id)).toList();
+    final snapshot =
+        await _journal(plantId).orderBy('createdAt', descending: true).get();
+    return snapshot.docs
+        .map((d) => JournalEntry.fromMap(d.data(), id: d.id))
+        .toList();
   }
 
   Future<JournalEntry> addJournalEntry(String plantId, String text) async {
     final createdAt = DateTime.now().toIso8601String();
-    final doc = await _journal(plantId).add({'text': text, 'createdAt': createdAt});
+    final doc = await _journal(
+      plantId,
+    ).add({'text': text, 'createdAt': createdAt});
     return JournalEntry(id: doc.id, text: text, createdAt: createdAt);
   }
 

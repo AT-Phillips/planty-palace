@@ -32,7 +32,9 @@ class HomeWidgetService {
   String _statusFor(Plant plant, int urgency) {
     final watering = daysUntilDue(plant);
     final useWatering = watering != null && watering == urgency;
-    return useWatering ? wateringStatusText(plant) : fertilizingStatusText(plant);
+    return useWatering
+        ? wateringStatusText(plant)
+        : fertilizingStatusText(plant);
   }
 
   Future<void> refresh() async {
@@ -46,10 +48,16 @@ class HomeWidgetService {
       }
       due.sort((a, b) => a.value.compareTo(b.value));
 
-      final summary = due
-          .take(3)
-          .map((e) => {'name': e.key.name, 'status': _statusFor(e.key, e.value)})
-          .toList();
+      final summary =
+          due
+              .take(3)
+              .map(
+                (e) => {
+                  'name': e.key.name,
+                  'status': _statusFor(e.key, e.value),
+                },
+              )
+              .toList();
 
       await HomeWidget.setAppGroupId(_appGroupId);
       await HomeWidget.saveWidgetData<int>(_countKey, due.length);

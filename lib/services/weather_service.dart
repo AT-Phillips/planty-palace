@@ -40,10 +40,9 @@ class WeatherService {
       final coordinates = await _resolveCoordinates();
       if (coordinates == null) return null;
 
-      final result = await FirebaseFunctions.instance.httpsCallable('fetchWeather').call({
-        'lat': coordinates.$1,
-        'lon': coordinates.$2,
-      });
+      final result = await FirebaseFunctions.instance
+          .httpsCallable('fetchWeather')
+          .call({'lat': coordinates.$1, 'lon': coordinates.$2});
       return WeatherInfo.fromMap(Map<String, dynamic>.from(result.data as Map));
     } catch (_) {
       return null;
@@ -78,7 +77,9 @@ class WeatherService {
       }
 
       return await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.low),
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+        ),
       );
     } catch (_) {
       return null;

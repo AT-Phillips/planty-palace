@@ -29,11 +29,11 @@ class WishlistItem {
       .replaceAll(RegExp(r'^_+|_+$'), '');
 
   Map<String, dynamic> toMap() => {
-        'scientificName': scientificName,
-        'commonName': commonName,
-        'imageUrl': imageUrl,
-        'savedAt': savedAt,
-      };
+    'scientificName': scientificName,
+    'commonName': commonName,
+    'imageUrl': imageUrl,
+    'savedAt': savedAt,
+  };
 
   factory WishlistItem.fromMap(Map<String, dynamic> map, {required String id}) {
     return WishlistItem(

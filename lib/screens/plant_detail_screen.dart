@@ -20,6 +20,7 @@ import '../widgets/care_ring_tile.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
+import '../utils/app_page_route.dart';
 
 IconData _careIconFor(String type) {
   switch (type) {
@@ -91,7 +92,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   Future<void> _markWatered() async {
     await _repository.markWatered(_plant.id!);
-    final updated = _plant.copyWith(lastWatered: DateTime.now().toIso8601String());
+    final updated = _plant.copyWith(
+      lastWatered: DateTime.now().toIso8601String(),
+    );
     await NotificationService().scheduleWateringReminder(updated);
     // HomeWidgetService().refresh(); // widget disabled for now
     if (!mounted) return;
@@ -101,7 +104,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   Future<void> _markFertilized() async {
     await _repository.markFertilized(_plant.id!);
-    final updated = _plant.copyWith(lastFertilized: DateTime.now().toIso8601String());
+    final updated = _plant.copyWith(
+      lastFertilized: DateTime.now().toIso8601String(),
+    );
     await NotificationService().scheduleFertilizingReminder(updated);
     // HomeWidgetService().refresh(); // widget disabled for now
     if (!mounted) return;
@@ -111,7 +116,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   Future<void> _markRepotted() async {
     await _repository.markRepotted(_plant.id!);
-    final updated = _plant.copyWith(lastRepotted: DateTime.now().toIso8601String());
+    final updated = _plant.copyWith(
+      lastRepotted: DateTime.now().toIso8601String(),
+    );
     await NotificationService().scheduleRepottingReminder(updated);
     if (!mounted) return;
     setState(() => _plant = updated);
@@ -120,7 +127,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
   Future<void> _markPruned() async {
     await _repository.markPruned(_plant.id!);
-    final updated = _plant.copyWith(lastPruned: DateTime.now().toIso8601String());
+    final updated = _plant.copyWith(
+      lastPruned: DateTime.now().toIso8601String(),
+    );
     await NotificationService().schedulePruningReminder(updated);
     if (!mounted) return;
     setState(() => _plant = updated);
@@ -148,16 +157,22 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
       ..clearSnackBars()
-      ..showSnackBar(SnackBar(
-        content: Text('${_plant.name} ${kind.pastTense.toLowerCase()}'),
-        duration: const Duration(seconds: 2),
-      ));
+      ..showSnackBar(
+        SnackBar(
+          content: Text('${_plant.name} ${kind.pastTense.toLowerCase()}'),
+          duration: const Duration(seconds: 2),
+        ),
+      );
   }
 
   /// Opens the slide-to-confirm care sheet for [kind]; logs the action or
   /// jumps to the schedule editor based on the user's choice.
   Future<void> _openCareSheet(CareKind kind) async {
-    final result = await showCareActionSheet(context, plant: _plant, kind: kind);
+    final result = await showCareActionSheet(
+      context,
+      plant: _plant,
+      kind: kind,
+    );
     if (!mounted || result == null) return;
     if (result == CareSheetResult.editSchedule) {
       await _editPlant();
@@ -178,26 +193,29 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final controller = TextEditingController();
     final text = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Add journal entry'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: null,
-          minLines: 3,
-          decoration: const InputDecoration(hintText: 'What did you notice?'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Add journal entry'),
+            content: TextField(
+              controller: controller,
+              autofocus: true,
+              maxLines: null,
+              minLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'What did you notice?',
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, controller.text.trim()),
+                child: const Text('Save'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
     if (text == null || text.isEmpty) return;
 
@@ -215,9 +233,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   Future<void> _editPlant() async {
     final result = await Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => AddEditPlantScreen(plant: _plant, gardenId: _plant.gardenId!),
-      ),
+      appRoute(AddEditPlantScreen(plant: _plant, gardenId: _plant.gardenId!)),
     );
     if (result != null && mounted) {
       Navigator.pop(context, true);
@@ -227,20 +243,23 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   Future<void> _deletePlant() async {
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete plant?'),
-        content: Text('This will remove ${_plant.name} and all of its photos and history.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Delete plant?'),
+            content: Text(
+              'This will remove ${_plant.name} and all of its photos and history.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Delete'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
     );
     if (confirmed != true) return;
 
@@ -258,7 +277,10 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (!mounted) return;
     setState(() {
       _timeline = [photo, ..._timeline];
-      _plant = _plant.copyWith(photoUrl: photo.photoUrl, imagePath: permanentImage.path);
+      _plant = _plant.copyWith(
+        photoUrl: photo.photoUrl,
+        imagePath: permanentImage.path,
+      );
     });
   }
 
@@ -267,8 +289,16 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       context,
       title: 'Add a growth photo',
       actions: const [
-        AppSheetAction(icon: Icons.camera_alt_outlined, label: 'Camera', value: ImageSource.camera),
-        AppSheetAction(icon: Icons.photo_library_outlined, label: 'Gallery', value: ImageSource.gallery),
+        AppSheetAction(
+          icon: Icons.camera_alt_outlined,
+          label: 'Camera',
+          value: ImageSource.camera,
+        ),
+        AppSheetAction(
+          icon: Icons.photo_library_outlined,
+          label: 'Gallery',
+          value: ImageSource.gallery,
+        ),
       ],
     );
     if (source != null) await _addTimelinePhoto(source);
@@ -297,7 +327,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (action == 'cover') {
       await _repository.setCoverPhoto(_plant.id!, photo);
       if (!mounted) return;
-      setState(() => _plant = _plant.copyWith(photoUrl: photo.photoUrl, imagePath: ''));
+      setState(
+        () => _plant = _plant.copyWith(photoUrl: photo.photoUrl, imagePath: ''),
+      );
     } else if (action == 'delete') {
       await _repository.deletePhoto(_plant.id!, photo);
       if (!mounted) return;
@@ -305,10 +337,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         _timeline = _timeline.where((p) => p.id != photo.id).toList();
         if (photo.photoUrl == _plant.photoUrl) {
           final newCover = _timeline.isEmpty ? null : _timeline.first;
-          _plant = _plant.copyWith(
-            photoUrl: newCover?.photoUrl,
-            imagePath: '',
-          );
+          _plant = _plant.copyWith(photoUrl: newCover?.photoUrl, imagePath: '');
         }
       });
     }
@@ -321,9 +350,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   /// whole section is omitted if none of them are present (e.g. plants
   /// added before this existed, or species Perenual has no data for).
   List<Widget> _buildSpeciesFactsSection(ColorScheme scheme) {
-    final hasToxicityInfo = _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
-    final isToxic = _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
-    final hasAnyFact = _plant.speciesDescription != null ||
+    final hasToxicityInfo =
+        _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
+    final isToxic =
+        _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
+    final hasAnyFact =
+        _plant.speciesDescription != null ||
         _plant.speciesFamily != null ||
         _plant.speciesOrigin != null ||
         hasToxicityInfo;
@@ -332,22 +364,33 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
 
     return [
       const SizedBox(height: 20),
-      Text('About This Species', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
+      Text(
+        'About This Species',
+        style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary),
+      ),
       const SizedBox(height: 8),
       if (_plant.speciesDescription != null) ...[
         Text(_plant.speciesDescription!),
         const SizedBox(height: 8),
       ],
       if (_plant.speciesFamily != null)
-        Text('Family: ${_plant.speciesFamily}', style: TextStyle(color: scheme.onSurfaceVariant)),
+        Text(
+          'Family: ${_plant.speciesFamily}',
+          style: TextStyle(color: scheme.onSurfaceVariant),
+        ),
       if (_plant.speciesOrigin != null)
-        Text('Origin: ${_plant.speciesOrigin}', style: TextStyle(color: scheme.onSurfaceVariant)),
+        Text(
+          'Origin: ${_plant.speciesOrigin}',
+          style: TextStyle(color: scheme.onSurfaceVariant),
+        ),
       if (hasToxicityInfo) ...[
         const SizedBox(height: 8),
         Row(
           children: [
             Icon(
-              isToxic ? Icons.warning_amber_rounded : Icons.check_circle_outline,
+              isToxic
+                  ? Icons.warning_amber_rounded
+                  : Icons.check_circle_outline,
               size: 18,
               color: isToxic ? scheme.error : scheme.onSurfaceVariant,
             ),
@@ -383,8 +426,18 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   }
 
   static const _monthAbbr = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
 
   /// A compact, friendly local timestamp like "Jul 10 · 2:03 PM" - replaces
@@ -409,20 +462,31 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     for (var i = 0; i < kinds.length; i += 2) {
       final left = kinds[i];
       final right = i + 1 < kinds.length ? kinds[i + 1] : null;
-      rows.add(Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: CareRingTile(kind: left, plant: _plant, onTap: () => _openCareSheet(left)),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: right == null
-                ? const SizedBox()
-                : CareRingTile(kind: right, plant: _plant, onTap: () => _openCareSheet(right)),
-          ),
-        ],
-      ));
+      rows.add(
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: CareRingTile(
+                kind: left,
+                plant: _plant,
+                onTap: () => _openCareSheet(left),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child:
+                  right == null
+                      ? const SizedBox()
+                      : CareRingTile(
+                        kind: right,
+                        plant: _plant,
+                        onTap: () => _openCareSheet(right),
+                      ),
+            ),
+          ],
+        ),
+      );
       if (i + 2 < kinds.length) rows.add(const SizedBox(height: 10));
     }
     return Column(children: rows);
@@ -434,14 +498,20 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   /// empty widget if none of the four have anything to show.
   Widget _buildStatRow(ColorScheme scheme) {
     final lastWatered = _daysAgoLabel(_plant.lastWatered);
-    final hasToxicityInfo = _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
-    final isToxic = _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
+    final hasToxicityInfo =
+        _plant.poisonousToHumans != null || _plant.poisonousToPets != null;
+    final isToxic =
+        _plant.poisonousToHumans == true || _plant.poisonousToPets == true;
 
     final stats = <Widget>[
       if (_plant.wateringIntervalDays != null)
-        _StatItem(label: 'Water', value: 'Every ${_plant.wateringIntervalDays}d'),
+        _StatItem(
+          label: 'Water',
+          value: 'Every ${_plant.wateringIntervalDays}d',
+        ),
       if (lastWatered != null) _StatItem(label: 'Last', value: lastWatered),
-      if (_plant.speciesFamily != null) _StatItem(label: 'Family', value: _plant.speciesFamily!),
+      if (_plant.speciesFamily != null)
+        _StatItem(label: 'Family', value: _plant.speciesFamily!),
       if (hasToxicityInfo)
         _StatItem(
           label: 'Pets',
@@ -463,191 +533,277 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
       appBar: FrostedAppBar(
         title: _plant.name,
         actions: [
-          IconButton(icon: const Icon(Icons.edit_outlined), onPressed: _editPlant),
-          IconButton(icon: const Icon(Icons.delete_outline), onPressed: _deletePlant),
+          IconButton(
+            icon: const Icon(Icons.edit_outlined),
+            onPressed: _editPlant,
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete_outline),
+            onPressed: _deletePlant,
+          ),
         ],
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator.adaptive())
-          : ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                // Full-bleed hero - no inset padding, edge-to-edge.
-                SizedBox(
-                  height: 280,
-                  width: double.infinity,
-                  child: PlantThumbnail(
-                    plant: _plant,
-                    size: double.infinity,
-                    borderRadius: BorderRadius.zero,
-                    heroTag: 'plant_${_plant.id}',
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                Text(_plant.name, style: AppTheme.plantNameStyle(context, size: 24)),
-                const SizedBox(height: 2),
-                Text(
-                  _plant.species,
-                  style: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: scheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildStatRow(scheme),
-                if (_scheduledKinds.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Care', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                  const SizedBox(height: 10),
-                  _careGrid(),
-                  if (_plant.wateringIntervalDays != null) ...[
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        onPressed: _quickWater,
-                        icon: const Icon(Icons.water_drop),
-                        label: Text(waterOverdue ? 'Water now' : 'Mark as watered'),
-                        style: FilledButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                          padding: const EdgeInsets.symmetric(vertical: 15),
-                          backgroundColor:
-                              waterOverdue ? AppTheme.careOverdue(context) : AppTheme.fernColor(context),
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-                if (_plant.careInstructions.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Care Info', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                  const SizedBox(height: 8),
-                  Text(_plant.careInstructions),
-                ],
-                ..._buildSpeciesFactsSection(scheme),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Growth Photos', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                    TextButton.icon(
-                      onPressed: _showAddPhotoOptions,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add'),
-                    ),
-                  ],
-                ),
-                if (_timeline.isEmpty)
-                  Text('No growth photos yet.', style: TextStyle(color: scheme.onSurfaceVariant))
-                else
+      body:
+          _loading
+              ? const Center(child: CircularProgressIndicator.adaptive())
+              : ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  // Full-bleed hero - no inset padding, edge-to-edge.
                   SizedBox(
-                    height: 90,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: _timeline.length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final photo = _timeline[index];
-                        final isCover = photo.photoUrl == _plant.photoUrl;
-                        return GestureDetector(
-                          onTap: () => _openPhotoOptions(photo),
-                          child: Stack(
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  photo.photoUrl,
-                                  width: 80,
-                                  height: 80,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => Container(
-                                    width: 80,
-                                    height: 80,
-                                    color: scheme.surfaceContainerHighest,
-                                    child: const Icon(Icons.broken_image),
+                    height: 280,
+                    width: double.infinity,
+                    child: PlantThumbnail(
+                      plant: _plant,
+                      size: double.infinity,
+                      borderRadius: BorderRadius.zero,
+                      heroTag: 'plant_${_plant.id}',
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _plant.name,
+                          style: AppTheme.plantNameStyle(context, size: 24),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _plant.species,
+                          style: TextStyle(
+                            fontStyle: FontStyle.italic,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _buildStatRow(scheme),
+                        if (_scheduledKinds.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            'Care',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          _careGrid(),
+                          if (_plant.wateringIntervalDays != null) ...[
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                onPressed: _quickWater,
+                                icon: const Icon(Icons.water_drop),
+                                label: Text(
+                                  waterOverdue
+                                      ? 'Water now'
+                                      : 'Mark as watered',
+                                ),
+                                style: FilledButton.styleFrom(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 15,
+                                  ),
+                                  backgroundColor:
+                                      waterOverdue
+                                          ? AppTheme.careOverdue(context)
+                                          : AppTheme.fernColor(context),
+                                  foregroundColor: Colors.white,
                                 ),
                               ),
-                              if (isCover)
-                                Positioned(
-                                  top: 4,
-                                  right: 4,
-                                  child: Icon(Icons.star, size: 18, color: scheme.primary),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 20),
-                Text('Care History', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                const SizedBox(height: 8),
-                if (_careHistory.isEmpty)
-                  Text('No care history yet.', style: TextStyle(color: scheme.onSurfaceVariant))
-                else
-                  for (final entry in _careHistory)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 2),
-                      child: Row(
-                        children: [
-                          Icon(_careIconFor(entry.type), size: 16, color: scheme.onSurfaceVariant),
-                          const SizedBox(width: 8),
-                          Text('${_careLabelFor(entry.type)} · ${_friendlyDateTime(entry.timestamp)}'),
+                            ),
+                          ],
                         ],
-                      ),
-                    ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Journal', style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary)),
-                    TextButton.icon(
-                      onPressed: _addJournalEntry,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add'),
-                    ),
-                  ],
-                ),
-                if (_journal.isEmpty)
-                  Text('No journal entries yet.', style: TextStyle(color: scheme.onSurfaceVariant))
-                else
-                  for (final entry in _journal)
-                    Dismissible(
-                      key: ValueKey(entry.id),
-                      direction: DismissDirection.endToStart,
-                      onDismissed: (_) => _deleteJournalEntry(entry),
-                      background: Container(
-                        color: scheme.errorContainer,
-                        alignment: Alignment.centerRight,
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Icon(Icons.delete, color: scheme.onErrorContainer),
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        if (_plant.careInstructions.isNotEmpty) ...[
+                          const SizedBox(height: 20),
+                          Text(
+                            'Care Info',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: scheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(_plant.careInstructions),
+                        ],
+                        ..._buildSpeciesFactsSection(scheme),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _friendlyDateTime(entry.createdAt),
-                              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
+                              'Growth Photos',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.primary,
+                              ),
                             ),
-                            const SizedBox(height: 2),
-                            Text(entry.text),
+                            TextButton.icon(
+                              onPressed: _showAddPhotoOptions,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add'),
+                            ),
                           ],
                         ),
-                      ),
+                        if (_timeline.isEmpty)
+                          Text(
+                            'No growth photos yet.',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          )
+                        else
+                          SizedBox(
+                            height: 90,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: _timeline.length,
+                              separatorBuilder:
+                                  (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final photo = _timeline[index];
+                                final isCover =
+                                    photo.photoUrl == _plant.photoUrl;
+                                return GestureDetector(
+                                  onTap: () => _openPhotoOptions(photo),
+                                  child: Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          photo.photoUrl,
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (_, __, ___) => Container(
+                                                width: 80,
+                                                height: 80,
+                                                color:
+                                                    scheme
+                                                        .surfaceContainerHighest,
+                                                child: const Icon(
+                                                  Icons.broken_image,
+                                                ),
+                                              ),
+                                        ),
+                                      ),
+                                      if (isCover)
+                                        Positioned(
+                                          top: 4,
+                                          right: 4,
+                                          child: Icon(
+                                            Icons.star,
+                                            size: 18,
+                                            color: scheme.primary,
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Care History',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: scheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        if (_careHistory.isEmpty)
+                          Text(
+                            'No care history yet.',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          )
+                        else
+                          for (final entry in _careHistory)
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 2),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    _careIconFor(entry.type),
+                                    size: 16,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${_careLabelFor(entry.type)} · ${_friendlyDateTime(entry.timestamp)}',
+                                  ),
+                                ],
+                              ),
+                            ),
+                        const SizedBox(height: 20),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Journal',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: scheme.primary,
+                              ),
+                            ),
+                            TextButton.icon(
+                              onPressed: _addJournalEntry,
+                              icon: const Icon(Icons.add),
+                              label: const Text('Add'),
+                            ),
+                          ],
+                        ),
+                        if (_journal.isEmpty)
+                          Text(
+                            'No journal entries yet.',
+                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          )
+                        else
+                          for (final entry in _journal)
+                            Dismissible(
+                              key: ValueKey(entry.id),
+                              direction: DismissDirection.endToStart,
+                              onDismissed: (_) => _deleteJournalEntry(entry),
+                              background: Container(
+                                color: scheme.errorContainer,
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: Icon(
+                                  Icons.delete,
+                                  color: scheme.onErrorContainer,
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 6,
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      _friendlyDateTime(entry.createdAt),
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(entry.text),
+                                  ],
+                                ),
+                              ),
+                            ),
+                      ],
                     ),
-                    ],
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
     );
   }
 }

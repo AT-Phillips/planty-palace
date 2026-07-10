@@ -36,7 +36,10 @@ IconData weatherIconData(String owmIconCode) {
 /// Pops up local weather as a bottom sheet - the single surface for every
 /// weather-related control (current conditions, units, location, and the
 /// show/hide toggle), instead of navigating to separate screens.
-Future<void> showWeatherDetailSheet(BuildContext context, {WeatherInfo? weather}) {
+Future<void> showWeatherDetailSheet(
+  BuildContext context, {
+  WeatherInfo? weather,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -129,8 +132,8 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                   Text(
                     'Weather',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const Spacer(),
                   TextButton(
@@ -144,22 +147,35 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                 ValueListenableBuilder<bool>(
                   valueListenable: UnitPreferences.instance.useMetric,
                   builder: (context, useMetric, _) {
-                    final temp = useMetric ? weather.tempCelsius : weather.tempFahrenheit;
+                    final temp =
+                        useMetric
+                            ? weather.tempCelsius
+                            : weather.tempFahrenheit;
                     final unit = useMetric ? '°C' : '°F';
                     return Row(
                       children: [
-                        Icon(weatherIconData(weather.iconCode), color: scheme.primary, size: 56),
+                        Icon(
+                          weatherIconData(weather.iconCode),
+                          color: scheme.primary,
+                          size: 56,
+                        ),
                         const SizedBox(width: 16),
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '${temp.round()}$unit',
-                              style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontSize: 34,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             Text(
                               weather.condition,
-                              style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 16),
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: 16,
+                              ),
                             ),
                           ],
                         ),
@@ -172,21 +188,30 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                   padding: const EdgeInsets.only(right: 12),
                   child: ValueListenableBuilder<bool>(
                     valueListenable: LocationPreferences.instance.useGps,
-                    builder: (context, useGps, _) => ValueListenableBuilder<String?>(
-                      valueListenable: LocationPreferences.instance.manualLabel,
-                      builder: (context, manualLabel, _) => Row(
-                        children: [
-                          Icon(Icons.location_on_outlined, size: 18, color: scheme.onSurfaceVariant),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              _locationLabel(),
-                              style: TextStyle(color: scheme.onSurfaceVariant),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    builder:
+                        (context, useGps, _) => ValueListenableBuilder<String?>(
+                          valueListenable:
+                              LocationPreferences.instance.manualLabel,
+                          builder:
+                              (context, manualLabel, _) => Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 18,
+                                    color: scheme.onSurfaceVariant,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      _locationLabel(),
+                                      style: TextStyle(
+                                        color: scheme.onSurfaceVariant,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                        ),
                   ),
                 ),
               ] else ...[
@@ -194,7 +219,10 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                   padding: const EdgeInsets.only(right: 12, top: 4, bottom: 8),
                   child: Row(
                     children: [
-                      Icon(Icons.location_off_outlined, color: scheme.onSurfaceVariant),
+                      Icon(
+                        Icons.location_off_outlined,
+                        color: scheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -212,10 +240,10 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
               const SizedBox(height: 12),
               Text(
                 'Location',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleSmall
-                    ?.copyWith(fontWeight: FontWeight.w700, color: scheme.onSurface),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: scheme.onSurface,
+                ),
               ),
               const SizedBox(height: 8),
               OutlinedButton.icon(
@@ -231,7 +259,9 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                       controller: _cityController,
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _searchCity(),
-                      decoration: const InputDecoration(hintText: 'Or search for a city'),
+                      decoration: const InputDecoration(
+                        hintText: 'Or search for a city',
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -272,11 +302,15 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(useMetric ? 'Metric' : 'Imperial', style: const TextStyle(fontSize: 16)),
+                        Text(
+                          useMetric ? 'Metric' : 'Imperial',
+                          style: const TextStyle(fontSize: 16),
+                        ),
                         const Icon(Icons.chevron_right),
                       ],
                     ),
-                    onTap: () => UnitPreferences.instance.setUseMetric(!useMetric),
+                    onTap:
+                        () => UnitPreferences.instance.setUseMetric(!useMetric),
                   );
                 },
               ),
@@ -290,7 +324,9 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                     title: const Text('Show local weather'),
                     subtitle: const Text('Displayed at the top of Spaces'),
                     value: enabled,
-                    onChanged: (value) => WeatherPreferences.instance.setEnabled(value),
+                    onChanged:
+                        (value) =>
+                            WeatherPreferences.instance.setEnabled(value),
                   );
                 },
               ),
