@@ -11,6 +11,7 @@ import '../services/wishlist_repository.dart';
 import '../styles/app_theme.dart';
 import '../utils/care_overdue.dart';
 import '../widgets/account_button.dart';
+import '../widgets/animated_entrance.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
 import '../widgets/weather_appbar_chip.dart';
@@ -562,10 +563,10 @@ class SpacesScreenState extends State<SpacesScreen> {
         child: ListView(
           padding: const EdgeInsets.only(top: 4, bottom: 24),
           children: [
-            _todoCard(),
-            _projectsSection(),
-            _spacesSection(),
-            _wishlistSection(),
+            AnimatedEntrance(index: 0, child: _todoCard()),
+            AnimatedEntrance(index: 1, child: _projectsSection()),
+            AnimatedEntrance(index: 2, child: _spacesSection()),
+            AnimatedEntrance(index: 3, child: _wishlistSection()),
           ],
         ),
       ),

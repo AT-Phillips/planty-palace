@@ -18,6 +18,7 @@ import '../widgets/app_bottom_sheet.dart';
 import '../widgets/care_action_sheet.dart';
 import '../widgets/care_ring_tile.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/pulse_glow.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
 import '../utils/app_page_route.dart';
@@ -470,6 +471,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
               child: CareRingTile(
                 kind: left,
                 plant: _plant,
+                index: i,
                 onTap: () => _openCareSheet(left),
               ),
             ),
@@ -481,6 +483,7 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                       : CareRingTile(
                         kind: right,
                         plant: _plant,
+                        index: i + 1,
                         onTap: () => _openCareSheet(right),
                       ),
             ),
@@ -592,28 +595,33 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           _careGrid(),
                           if (_plant.wateringIntervalDays != null) ...[
                             const SizedBox(height: 12),
-                            SizedBox(
-                              width: double.infinity,
-                              child: FilledButton.icon(
-                                onPressed: _quickWater,
-                                icon: const Icon(Icons.water_drop),
-                                label: Text(
-                                  waterOverdue
-                                      ? 'Water now'
-                                      : 'Mark as watered',
-                                ),
-                                style: FilledButton.styleFrom(
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(16),
+                            PulseGlow(
+                              active: waterOverdue,
+                              color: AppTheme.careOverdue(context),
+                              borderRadius: BorderRadius.circular(16),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: FilledButton.icon(
+                                  onPressed: _quickWater,
+                                  icon: const Icon(Icons.water_drop),
+                                  label: Text(
+                                    waterOverdue
+                                        ? 'Water now'
+                                        : 'Mark as watered',
                                   ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 15,
+                                  style: FilledButton.styleFrom(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 15,
+                                    ),
+                                    backgroundColor:
+                                        waterOverdue
+                                            ? AppTheme.careOverdue(context)
+                                            : AppTheme.fernColor(context),
+                                    foregroundColor: Colors.white,
                                   ),
-                                  backgroundColor:
-                                      waterOverdue
-                                          ? AppTheme.careOverdue(context)
-                                          : AppTheme.fernColor(context),
-                                  foregroundColor: Colors.white,
                                 ),
                               ),
                             ),

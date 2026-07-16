@@ -11,6 +11,7 @@ import '../utils/pruning_status.dart';
 import '../utils/repotting_status.dart';
 import '../utils/watering_status.dart';
 import '../widgets/account_button.dart';
+import '../widgets/animated_entrance.dart';
 import '../widgets/care_ring.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
@@ -489,7 +490,10 @@ class CareScreenState extends State<CareScreen> {
                   : ListView.builder(
                     itemCount: filtered.length,
                     itemBuilder:
-                        (context, index) => _buildCareCard(filtered[index]),
+                        (context, index) => AnimatedEntrance(
+                          index: index,
+                          child: _buildCareCard(filtered[index]),
+                        ),
                   ),
         ),
       ],

@@ -5,12 +5,14 @@ import '../models/plant.dart';
 import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../styles/app_theme.dart';
+import '../utils/app_page_route.dart';
 import '../utils/care_overdue.dart';
 import '../utils/watering_status.dart' show isOverdue;
+import '../widgets/animated_entrance.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
-import '../utils/app_page_route.dart';
+import '../widgets/pulse_glow.dart';
 import '../widgets/search_field.dart';
 import 'add_edit_plant_screen.dart';
 import 'plant_detail_screen.dart';
@@ -295,19 +297,23 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
                     Positioned(
                       top: 8,
                       right: 8,
-                      child: Material(
+                      child: PulseGlow(
+                        active: overdue,
                         color: badgeColor,
-                        shape: const CircleBorder(),
-                        elevation: 2,
-                        child: InkWell(
-                          customBorder: const CircleBorder(),
-                          onTap: () => _markWatered(plant),
-                          child: const Padding(
-                            padding: EdgeInsets.all(6),
-                            child: Icon(
-                              Icons.water_drop,
-                              size: 16,
-                              color: Colors.white,
+                        child: Material(
+                          color: badgeColor,
+                          shape: const CircleBorder(),
+                          elevation: 2,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: () => _markWatered(plant),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(
+                                Icons.water_drop,
+                                size: 16,
+                                color: Colors.white,
+                              ),
                             ),
                           ),
                         ),
@@ -397,8 +403,10 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
                                   ),
                               itemCount: filtered.length,
                               itemBuilder:
-                                  (context, index) =>
-                                      _buildPlantCard(filtered[index]),
+                                  (context, index) => AnimatedEntrance(
+                                    index: index,
+                                    child: _buildPlantCard(filtered[index]),
+                                  ),
                             ),
                   ),
                 ],

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../models/plant.dart';
 import '../styles/app_theme.dart';
 import '../utils/care_kind.dart';
+import 'animated_care_ring.dart';
+import 'pressable.dart';
 
 /// A compact care tile: a progress ring (filling as the next due date
 /// approaches, colored healthy -> amber -> coral by urgency) wrapped around
@@ -14,11 +16,16 @@ class CareRingTile extends StatelessWidget {
   final Plant plant;
   final VoidCallback onTap;
 
+  /// Position of this tile in its grid, used to stagger the ring's draw-on
+  /// animation so the tiles fill in sequence rather than all at once.
+  final int index;
+
   const CareRingTile({
     super.key,
     required this.kind,
     required this.plant,
     required this.onTap,
+    this.index = 0,
   });
 
   /// The urgency color for a kind on a plant: coral when overdue, amber when
@@ -58,35 +65,24 @@ class CareRingTile extends StatelessWidget {
     final fraction = _fraction(kind, plant) ?? 0;
     final overdue = kind.overdue(plant);
 
-    return Material(
-      color: Theme.of(context).cardColor,
-      borderRadius: BorderRadius.circular(16),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
+    return Pressable(
+      onTap: onTap,
+      child: Material(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: Row(
             children: [
-              SizedBox(
-                width: 40,
-                height: 40,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: CircularProgressIndicator(
-                        value: fraction,
-                        strokeWidth: 3,
-                        backgroundColor: scheme.surfaceContainerHighest,
-                        valueColor: AlwaysStoppedAnimation<Color>(color),
-                      ),
-                    ),
-                    Icon(kind.icon, size: 17, color: color),
-                  ],
-                ),
+              AnimatedCareRing(
+                fraction: fraction,
+                color: color,
+                trackColor: scheme.surfaceContainerHighest,
+                size: 40,
+                strokeWidth: 3,
+                delay: Duration(milliseconds: 90 * index),
+                child: Icon(kind.icon, size: 17, color: color),
               ),
               const SizedBox(width: 11),
               Expanded(

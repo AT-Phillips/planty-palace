@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../models/plant.dart';
+import '../styles/app_theme.dart';
 import '../utils/watering_status.dart';
+import 'animated_care_ring.dart';
 import 'plant_thumbnail.dart';
 
-/// A plant thumbnail encircled by a watering-urgency ring: the ring fills as
-/// the next watering approaches and shifts green -> amber -> red (red once
-/// overdue), so the Care list reads at a glance. Falls back to a plain
-/// circular thumbnail when the plant has no watering schedule.
+/// A plant thumbnail encircled by a watering-urgency ring that *draws itself
+/// on*: the ring fills as the next watering approaches and shifts healthy
+/// fern -> amber -> coral (coral once overdue), so the Care list reads at a
+/// glance. Falls back to a plain circular thumbnail when the plant has no
+/// watering schedule. Colors come from the shared care palette so this reads
+/// identically to the plant-detail care rings.
 class CareRing extends StatelessWidget {
   final Plant plant;
   final double size;
@@ -20,9 +24,6 @@ class CareRing extends StatelessWidget {
     this.heroTag,
   });
 
-  static const _green = Color(0xFF3FA34D);
-  static const _amber = Color(0xFFE0A100);
-
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -30,14 +31,14 @@ class CareRing extends StatelessWidget {
     final days = daysUntilDue(plant);
 
     double? fraction;
-    Color ringColor = _green;
+    Color ringColor = AppTheme.careHealthy(context);
     if (interval != null && interval > 0 && days != null) {
       fraction = ((interval - days) / interval).clamp(0.0, 1.0);
       if (days < 0) {
-        ringColor = scheme.error;
+        ringColor = AppTheme.careOverdue(context);
         fraction = 1.0;
       } else if (fraction >= 0.75) {
-        ringColor = _amber;
+        ringColor = AppTheme.careSoon(context);
       }
     }
 
@@ -52,25 +53,13 @@ class CareRing extends StatelessWidget {
       return SizedBox(width: size, height: size, child: Center(child: thumb));
     }
 
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          SizedBox(
-            width: size,
-            height: size,
-            child: CircularProgressIndicator(
-              value: fraction,
-              strokeWidth: 3,
-              backgroundColor: scheme.surfaceContainerHighest,
-              valueColor: AlwaysStoppedAnimation<Color>(ringColor),
-            ),
-          ),
-          thumb,
-        ],
-      ),
+    return AnimatedCareRing(
+      fraction: fraction,
+      color: ringColor,
+      trackColor: scheme.surfaceContainerHighest,
+      size: size,
+      strokeWidth: 3,
+      child: thumb,
     );
   }
 }

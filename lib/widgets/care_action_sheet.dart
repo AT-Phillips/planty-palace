@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/plant.dart';
 import '../styles/app_theme.dart';
 import '../utils/care_kind.dart';
+import 'animated_care_ring.dart';
 import 'app_bottom_sheet.dart';
 import 'care_ring_tile.dart';
 import 'slide_to_confirm.dart';
@@ -52,25 +53,14 @@ class _CareActionSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 96,
-              height: 96,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    width: 96,
-                    height: 96,
-                    child: CircularProgressIndicator(
-                      value: fraction,
-                      strokeWidth: 5,
-                      backgroundColor: scheme.surfaceContainerHighest,
-                      valueColor: AlwaysStoppedAnimation<Color>(color),
-                    ),
-                  ),
-                  Icon(kind.icon, size: 34, color: color),
-                ],
-              ),
+            AnimatedCareRing(
+              fraction: fraction,
+              color: color,
+              trackColor: scheme.surfaceContainerHighest,
+              size: 96,
+              strokeWidth: 5,
+              delay: const Duration(milliseconds: 140),
+              child: Icon(kind.icon, size: 34, color: color),
             ),
             const SizedBox(height: 14),
             Text(
