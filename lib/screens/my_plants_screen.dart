@@ -67,8 +67,9 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
             return false;
           }
           if (_overdueOnly && !hasAnyOverdueCare(p)) return false;
-          if (_spaceFilterId != null && p.gardenId != _spaceFilterId)
+          if (_spaceFilterId != null && p.gardenId != _spaceFilterId) {
             return false;
+          }
           return true;
         }).toList();
     sortPlants(list, _sortOption);
@@ -257,8 +258,12 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   Widget _buildPlantCard(Plant plant) {
     final scheme = Theme.of(context).colorScheme;
     final overdue = isOverdue(plant);
+    // On-schedule: a subtle frosted-white drop over the photo. Overdue: a
+    // solid coral badge that pulses for attention (matches the mockup).
     final badgeColor =
-        overdue ? AppTheme.careOverdue(context) : AppTheme.fernColor(context);
+        overdue
+            ? AppTheme.careOverdue(context)
+            : Colors.white.withValues(alpha: 0.28);
 
     return Dismissible(
       key: ValueKey(plant.id),

@@ -17,7 +17,6 @@ import '../utils/permanent_image.dart';
 import '../widgets/app_bottom_sheet.dart';
 import '../widgets/care_action_sheet.dart';
 import '../widgets/care_ring_tile.dart';
-import '../widgets/frosted_app_bar.dart';
 import '../widgets/pulse_glow.dart';
 import '../widgets/plant_thumbnail.dart';
 import 'add_edit_plant_screen.dart';
@@ -532,46 +531,75 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     final scheme = Theme.of(context).colorScheme;
     final waterOverdue = CareKind.water.overdue(_plant);
 
+    final topInset = MediaQuery.of(context).padding.top;
+
     return Scaffold(
-      appBar: FrostedAppBar(
-        title: _plant.name,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined),
-            onPressed: _editPlant,
-          ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: _deletePlant,
-          ),
-        ],
-      ),
       body:
           _loading
               ? const Center(child: CircularProgressIndicator.adaptive())
-              : ListView(
-                padding: EdgeInsets.zero,
+              : Stack(
                 children: [
-                  // Full-bleed hero - no inset padding, edge-to-edge.
-                  SizedBox(
-                    height: 280,
-                    width: double.infinity,
-                    child: PlantThumbnail(
-                      plant: _plant,
-                      size: double.infinity,
-                      borderRadius: BorderRadius.zero,
-                      heroTag: 'plant_${_plant.id}',
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _plant.name,
-                          style: AppTheme.plantNameStyle(context, size: 24),
+                  ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      // Immersive full-bleed hero (runs under the status bar)
+                      // with a bottom scrim so the overlapping sheet and the
+                      // floating controls stay legible over any photo.
+                      SizedBox(
+                        height: 300,
+                        width: double.infinity,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            PlantThumbnail(
+                              plant: _plant,
+                              size: double.infinity,
+                              borderRadius: BorderRadius.zero,
+                              heroTag: 'plant_${_plant.id}',
+                            ),
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black26],
+                                  stops: [0.6, 1.0],
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                      ),
+                      // Overlapping rounded sheet with a grab handle - the
+                      // signature "content sheet rises over the photo" look.
+                      Transform.translate(
+                        offset: const Offset(0, -26),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: scheme.surface,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(26),
+                            ),
+                          ),
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Center(
+                                child: Container(
+                                  width: 34,
+                                  height: 4,
+                                  decoration: BoxDecoration(
+                                    color: scheme.outlineVariant,
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _plant.name,
+                                style: AppTheme.plantNameStyle(context, size: 24),
+                              ),
                         const SizedBox(height: 2),
                         Text(
                           _plant.species,
@@ -807,11 +835,64 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                                 ),
                               ),
                             ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Positioned(
+                    top: topInset + 6,
+                    left: 8,
+                    child: _CircleIconButton(
+                      icon: Icons.arrow_back_ios_new,
+                      onPressed: () => Navigator.of(context).maybePop(),
+                    ),
+                  ),
+                  Positioned(
+                    top: topInset + 6,
+                    right: 8,
+                    child: Row(
+                      children: [
+                        _CircleIconButton(
+                          icon: Icons.edit_outlined,
+                          onPressed: _editPlant,
+                        ),
+                        const SizedBox(width: 8),
+                        _CircleIconButton(
+                          icon: Icons.delete_outline,
+                          onPressed: _deletePlant,
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
+    );
+  }
+}
+
+/// A translucent, circular icon button that floats over the immersive hero
+/// photo (back, edit, delete) - blurred glass so it stays legible on any image.
+class _CircleIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _CircleIconButton({required this.icon, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withValues(alpha: 0.28),
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 20, color: Colors.white),
+        ),
+      ),
     );
   }
 }

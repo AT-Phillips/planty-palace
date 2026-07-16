@@ -74,31 +74,48 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
 
   @override
   Widget build(BuildContext context) {
+    final w = widget.width ?? widget.size;
+    final h = widget.height ?? widget.size;
+
     final content = ClipRRect(
       borderRadius: widget.borderRadius,
       child: SizedBox(
-        width: widget.width ?? widget.size,
-        height: widget.height ?? widget.size,
+        width: w,
+        height: h,
         child: FutureBuilder<File?>(
           future: _resolvedFile,
           builder: (context, snapshot) {
+            // A lush botanical gradient always sits underneath - so a plant
+            // with no photo (or one still resolving) reads as an intentional,
+            // designed tile rather than an empty square with a lone icon.
+            final placeholder = _PlantPlaceholder(seed: _seed);
+
             if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(
-                child: SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                ),
-              );
+              return placeholder;
             }
             final file = snapshot.data;
-            if (file == null) {
-              return const Icon(Icons.local_florist);
-            }
-            return Image.file(
-              file,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+            if (file == null) return placeholder;
+
+            // Photo fades in over the gradient once resolved.
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                placeholder,
+                Image.file(
+                  file,
+                  fit: BoxFit.cover,
+                  frameBuilder: (_, child, frame, wasSync) {
+                    if (wasSync) return child;
+                    return AnimatedOpacity(
+                      opacity: frame == null ? 0 : 1,
+                      duration: const Duration(milliseconds: 260),
+                      curve: Curves.easeOut,
+                      child: child,
+                    );
+                  },
+                  errorBuilder: (_, __, ___) => placeholder,
+                ),
+              ],
             );
           },
         ),
@@ -109,5 +126,62 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
       return Hero(tag: widget.heroTag!, child: content);
     }
     return content;
+  }
+
+  /// A stable per-plant seed so each plant keeps the same placeholder gradient
+  /// variant across rebuilds (rather than flickering between them).
+  int get _seed => (widget.plant.id ?? widget.plant.name).hashCode;
+}
+
+/// The no-photo backdrop: one of a few hand-tuned botanical green gradients
+/// (mirroring the visual-direction mockup's leaf tiles) with a faint leaf mark,
+/// chosen deterministically from [seed] so every plant gets a consistent but
+/// varied lush fill instead of a flat empty square.
+class _PlantPlaceholder extends StatelessWidget {
+  final int seed;
+
+  const _PlantPlaceholder({required this.seed});
+
+  static const List<List<Color>> _palettes = [
+    [Color(0xFF4F9E6F), Color(0xFF21503A)],
+    [Color(0xFF6BA86A), Color(0xFF2F5F3A)],
+    [Color(0xFF8BBF7A), Color(0xFF46703F)],
+    [Color(0xFF3F8F77), Color(0xFF1C4A45)],
+    [Color(0xFF5AA07C), Color(0xFF244C3B)],
+  ];
+
+  static const List<Alignment> _centers = [
+    Alignment(-0.4, -0.7),
+    Alignment(0.4, -0.6),
+    Alignment(-0.2, -0.5),
+    Alignment(0.2, -0.8),
+    Alignment(0.0, -0.6),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final i = seed.abs() % _palettes.length;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final minSide = constraints.biggest.shortestSide;
+        final iconSize = (minSide * 0.4).clamp(14.0, 88.0);
+        return DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: RadialGradient(
+              center: _centers[i],
+              radius: 1.15,
+              colors: _palettes[i],
+            ),
+          ),
+          child: Center(
+            child: Icon(
+              Icons.eco,
+              size: iconSize,
+              color: Colors.white.withValues(alpha: 0.22),
+            ),
+          ),
+        );
+      },
+    );
   }
 }
