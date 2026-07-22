@@ -18,8 +18,9 @@ String fertilizingStatusText(Plant plant) {
         dueDate.day,
       ).difference(DateTime(today.year, today.month, today.day)).inDays;
 
-  if (daysLeft > 0)
+  if (daysLeft > 0) {
     return 'Fertilize in $daysLeft day${daysLeft == 1 ? '' : 's'}';
+  }
   if (daysLeft == 0) return 'Fertilize today';
   final overdueBy = -daysLeft;
   return 'Fertilizing overdue by $overdueBy day${overdueBy == 1 ? '' : 's'}';

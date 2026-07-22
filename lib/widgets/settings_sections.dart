@@ -227,8 +227,9 @@ class SettingsSections extends StatelessWidget {
                 title: 'Weather',
                 onTap: () async {
                   final weather = await WeatherService().fetchCurrentWeather();
-                  if (context.mounted)
+                  if (context.mounted) {
                     showWeatherDetailSheet(context, weather: weather);
+                  }
                 },
               ),
               const Divider(height: 1, indent: 56),
