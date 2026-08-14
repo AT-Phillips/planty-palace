@@ -350,7 +350,7 @@ class CareScreenState extends State<CareScreen> {
       background: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFF3FA34D),
+          color: context.palette.fern,
           borderRadius: BorderRadius.circular(20),
         ),
         alignment: Alignment.centerLeft,

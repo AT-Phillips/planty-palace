@@ -18,6 +18,8 @@ import 'photo_storage_service.dart';
 class PlantRepository {
   static const defaultGardenName = 'My Plants';
 
+  FirebaseFirestore get _db => FirebaseFirestore.instance;
+
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {
@@ -76,20 +78,26 @@ class PlantRepository {
     final defaultGardenId = await getOrCreateDefaultGardenId();
     if (id == defaultGardenId) return;
 
+    // One atomic batch rather than a round trip per plant: a Space with many
+    // plants reassigned far faster, and can't half-move if interrupted.
     final toReassign = await _plants.where('gardenId', isEqualTo: id).get();
+    final batch = _db.batch();
     for (final doc in toReassign.docs) {
-      await doc.reference.update({'gardenId': defaultGardenId});
+      batch.update(doc.reference, {'gardenId': defaultGardenId});
     }
-    await _gardens.doc(id).delete();
+    batch.delete(_gardens.doc(id));
+    await batch.commit();
   }
 
   /// Hard-deletes every garden doc, including the default one - only for
   /// full account deletion, where there's no data left to reassign into.
   Future<void> deleteAllGardens() async {
     final snapshot = await _gardens.get();
+    final batch = _db.batch();
     for (final doc in snapshot.docs) {
-      await doc.reference.delete();
+      batch.delete(doc.reference);
     }
+    await batch.commit();
   }
 
   Future<String> getOrCreateDefaultGardenId() async {
@@ -156,23 +164,32 @@ class PlantRepository {
     await logCareEvent(plantId, now, type: 'pruning');
   }
 
+  /// Deletes a plant and everything hanging off it.
+  ///
+  /// The three subcollection reads run concurrently, and every delete is
+  /// committed as a single atomic [WriteBatch]. Previously each document was
+  /// deleted in its own sequential round trip, which was slow for a plant
+  /// with any history and - worse - left orphaned care logs, photos, and
+  /// journal entries behind if the app was killed partway through.
   Future<void> deletePlant(String id) async {
-    final logs = await _careLog.where('plantId', isEqualTo: id).get();
-    for (final doc in logs.docs) {
-      await doc.reference.delete();
-    }
+    final results = await Future.wait([
+      _careLog.where('plantId', isEqualTo: id).get(),
+      _photos(id).get(),
+      _journal(id).get(),
+    ]);
 
-    final photoDocs = await _photos(id).get();
-    for (final doc in photoDocs.docs) {
-      await doc.reference.delete();
+    final batch = _db.batch();
+    for (final snapshot in results) {
+      for (final doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
     }
+    batch.delete(_plants.doc(id));
+    await batch.commit();
 
-    final journalDocs = await _journal(id).get();
-    for (final doc in journalDocs.docs) {
-      await doc.reference.delete();
-    }
-
-    await _plants.doc(id).delete();
+    // Storage objects live outside Firestore, so they can't join the batch.
+    // Done after the commit: a leftover image file is harmless, whereas a
+    // Firestore row pointing at a deleted file would render broken.
     await PhotoStorageService().deleteAllPhotosForPlant(id);
   }
 

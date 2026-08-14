@@ -108,17 +108,6 @@ class AppTheme {
     );
   }
 
-  /// The current default - the original hand-tuned green-tinted dark theme
-  /// with a soft sage light surface.
-  static const BackgroundPalette forestPalette = BackgroundPalette(
-    name: 'Forest',
-    darkBackground: Color(0xFF0B120E),
-    darkCard: Color(0xFF1C2A22),
-    darkInputFill: Color(0xFF2A3931),
-    lightBackground: Color(0xFFC7D4C2),
-    lightCard: Color(0xFFF3F7F0),
-  );
-
   /// All selectable background palettes, in picker order (index 0 = Forest,
   /// the default). Derived from [Palette.variants] so the Settings swatches
   /// always preview the exact tones the app will actually render - there is

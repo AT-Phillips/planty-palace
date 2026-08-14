@@ -85,10 +85,15 @@ class SpacesScreenState extends State<SpacesScreen> {
   Future<void> _loadSpaces() async {
     try {
       final spaces = await _repository.getGardens();
-      final counts = <String, int>{};
-      for (final space in spaces) {
-        counts[space.id!] = await _repository.getPlantCountForGarden(space.id!);
-      }
+      // Count every Space concurrently. These were previously awaited one at
+      // a time, so the home screen's load time grew linearly with the number
+      // of Spaces - each count is its own network round trip.
+      final countValues = await Future.wait(
+        spaces.map((s) => _repository.getPlantCountForGarden(s.id!)),
+      );
+      final counts = <String, int>{
+        for (var i = 0; i < spaces.length; i++) spaces[i].id!: countValues[i],
+      };
       if (!mounted) return;
       setState(() {
         _spaces = spaces;
