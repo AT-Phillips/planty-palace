@@ -82,40 +82,58 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
       child: SizedBox(
         width: w,
         height: h,
-        child: FutureBuilder<File?>(
-          future: _resolvedFile,
-          builder: (context, snapshot) {
-            // A lush botanical gradient always sits underneath - so a plant
-            // with no photo (or one still resolving) reads as an intentional,
-            // designed tile rather than an empty square with a lone icon.
-            final placeholder = _PlantPlaceholder(seed: _seed);
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            // Decode budget: the tile's real on-screen size in device pixels.
+            // Without this, a full-resolution camera photo (~4000x3000) is
+            // decoded in full for a ~150px tile - roughly 48MB of memory and a
+            // visible stall per image. Capped so an unbounded constraint (a
+            // full-bleed hero) can't fall back to full resolution.
+            final dpr = MediaQuery.devicePixelRatioOf(context);
+            final targetWidth =
+                constraints.maxWidth.isFinite
+                    ? (constraints.maxWidth * dpr).round().clamp(64, 2048)
+                    : 1080;
 
-            if (snapshot.connectionState != ConnectionState.done) {
-              return placeholder;
-            }
-            final file = snapshot.data;
-            if (file == null) return placeholder;
+            return FutureBuilder<File?>(
+              future: _resolvedFile,
+              builder: (context, snapshot) {
+                // A lush botanical gradient always sits underneath - so a plant
+                // with no photo (or one still resolving) reads as an
+                // intentional, designed tile rather than an empty square.
+                final placeholder = _PlantPlaceholder(seed: _seed);
 
-            // Photo fades in over the gradient once resolved.
-            return Stack(
-              fit: StackFit.expand,
-              children: [
-                placeholder,
-                Image.file(
-                  file,
-                  fit: BoxFit.cover,
-                  frameBuilder: (_, child, frame, wasSync) {
-                    if (wasSync) return child;
-                    return AnimatedOpacity(
-                      opacity: frame == null ? 0 : 1,
-                      duration: const Duration(milliseconds: 260),
-                      curve: Curves.easeOut,
-                      child: child,
-                    );
-                  },
-                  errorBuilder: (_, __, ___) => placeholder,
-                ),
-              ],
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return placeholder;
+                }
+                final file = snapshot.data;
+                if (file == null) return placeholder;
+
+                // Photo fades in over the gradient once resolved.
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    placeholder,
+                    Image.file(
+                      file,
+                      fit: BoxFit.cover,
+                      cacheWidth: targetWidth,
+                      filterQuality: FilterQuality.low,
+                      gaplessPlayback: true,
+                      frameBuilder: (_, child, frame, wasSync) {
+                        if (wasSync) return child;
+                        return AnimatedOpacity(
+                          opacity: frame == null ? 0 : 1,
+                          duration: const Duration(milliseconds: 260),
+                          curve: Curves.easeOut,
+                          child: child,
+                        );
+                      },
+                      errorBuilder: (_, __, ___) => placeholder,
+                    ),
+                  ],
+                );
+              },
             );
           },
         ),

@@ -15,6 +15,7 @@ import '../utils/relative_time.dart';
 import '../widgets/app_bottom_sheet.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/propagation_thumbnail.dart';
+import '../widgets/section_header.dart';
 import 'add_edit_plant_screen.dart';
 import 'add_edit_propagation_screen.dart';
 import 'plant_detail_screen.dart';
@@ -298,34 +299,18 @@ class _PropagationDetailScreenState extends State<PropagationDetailScreen> {
                     ),
                   ],
                   if (_propagation.notes.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      'Notes',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.primary,
-                      ),
-                    ),
+                    const SizedBox(height: 20),
+                    const SectionHeader('Notes'),
                     const SizedBox(height: 8),
                     Text(_propagation.notes),
                   ],
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Growth Photos',
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: scheme.primary,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _showAddPhotoOptions,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add'),
-                      ),
-                    ],
+                  const SizedBox(height: 24),
+                  SectionHeader(
+                    'Growth photos',
+                    action: SectionAction(
+                      label: 'Add',
+                      onPressed: _showAddPhotoOptions,
+                    ),
                   ),
                   if (_timeline.isEmpty)
                     Text(
@@ -354,6 +339,8 @@ class _PropagationDetailScreenState extends State<PropagationDetailScreen> {
                                     width: 80,
                                     height: 80,
                                     fit: BoxFit.cover,
+                                    cacheWidth: 240,
+                                    filterQuality: FilterQuality.low,
                                     errorBuilder:
                                         (_, __, ___) => Container(
                                           width: 80,

@@ -145,6 +145,8 @@ class _PestDiseaseTile extends StatelessWidget {
                     width: 44,
                     height: 44,
                     fit: BoxFit.cover,
+                    cacheWidth: 132,
+                    filterQuality: FilterQuality.low,
                     errorBuilder:
                         (_, __, ___) => const Icon(Icons.bug_report_outlined),
                   ),

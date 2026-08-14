@@ -246,7 +246,12 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
               fit: StackFit.expand,
               children: [
                 if (_imageFile != null)
-                  Image.file(_imageFile!, fit: BoxFit.cover)
+                  Image.file(
+                    _imageFile!,
+                    fit: BoxFit.cover,
+                    cacheWidth: 1080,
+                    filterQuality: FilterQuality.low,
+                  )
                 else
                   Container(
                     color: scheme.surfaceContainerHighest,

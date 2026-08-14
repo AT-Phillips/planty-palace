@@ -22,8 +22,10 @@ class ThemeController {
   ];
 
   /// Selectable app background tones (Forest/Midnight/Slate/Charcoal), chosen
-  /// independently of [accentColors]. See AppTheme.backgroundPalettes.
-  static const List<BackgroundPalette> backgroundPalettes =
+  /// independently of [accentColors]. See AppTheme.backgroundPalettes - which
+  /// is now derived from [Palette.variants] at runtime, so this can't be
+  /// `const`.
+  static final List<BackgroundPalette> backgroundPalettes =
       AppTheme.backgroundPalettes;
 
   final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.system);

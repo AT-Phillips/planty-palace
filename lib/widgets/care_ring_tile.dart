@@ -92,12 +92,7 @@ class CareRingTile extends StatelessWidget {
                   children: [
                     Text(
                       kind.label.toUpperCase(),
-                      style: TextStyle(
-                        fontSize: 9.5,
-                        letterSpacing: 0.5,
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurfaceVariant,
-                      ),
+                      style: AppTheme.microLabelStyle(context),
                     ),
                     const SizedBox(height: 2),
                     Text(

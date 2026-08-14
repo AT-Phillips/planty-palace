@@ -77,6 +77,14 @@ class _PropagationThumbnailState extends State<PropagationThumbnail> {
             return Image.file(
               file,
               fit: BoxFit.cover,
+              // Decode at display size, not full camera resolution - see the
+              // same treatment in PlantThumbnail.
+              cacheWidth:
+                  (widget.size * MediaQuery.devicePixelRatioOf(context))
+                      .round()
+                      .clamp(64, 2048),
+              filterQuality: FilterQuality.low,
+              gaplessPlayback: true,
               errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
             );
           },

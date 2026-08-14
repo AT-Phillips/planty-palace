@@ -471,7 +471,14 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
               fit: StackFit.expand,
               children: [
                 if (file != null)
-                  Image.file(file, fit: BoxFit.cover)
+                  Image.file(
+                    file,
+                    fit: BoxFit.cover,
+                    // A freshly-captured photo is full camera resolution;
+                    // decode it down for this 190px preview.
+                    cacheWidth: 1080,
+                    filterQuality: FilterQuality.low,
+                  )
                 else
                   Container(
                     color: scheme.surfaceContainerHighest,

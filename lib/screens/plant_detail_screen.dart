@@ -19,6 +19,7 @@ import '../widgets/care_action_sheet.dart';
 import '../widgets/care_ring_tile.dart';
 import '../widgets/pulse_glow.dart';
 import '../widgets/plant_thumbnail.dart';
+import '../widgets/section_header.dart';
 import 'add_edit_plant_screen.dart';
 import '../utils/app_page_route.dart';
 
@@ -363,12 +364,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     if (!hasAnyFact) return const [];
 
     return [
-      const SizedBox(height: 20),
-      Text(
-        'About This Species',
-        style: TextStyle(fontWeight: FontWeight.w700, color: scheme.primary),
-      ),
-      const SizedBox(height: 8),
+      const SizedBox(height: 24),
+      const SectionHeader('About this species'),
       if (_plant.speciesDescription != null) ...[
         Text(_plant.speciesDescription!),
         const SizedBox(height: 8),
@@ -611,15 +608,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         const SizedBox(height: 16),
                         _buildStatRow(scheme),
                         if (_scheduledKinds.isNotEmpty) ...[
-                          const SizedBox(height: 20),
-                          Text(
-                            'Care',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: scheme.primary,
-                            ),
-                          ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 24),
+                          const SectionHeader('Care'),
                           _careGrid(),
                           if (_plant.wateringIntervalDays != null) ...[
                             const SizedBox(height: 12),
@@ -656,35 +646,21 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           ],
                         ],
                         if (_plant.careInstructions.isNotEmpty) ...[
-                          const SizedBox(height: 20),
+                          const SizedBox(height: 24),
+                          const SectionHeader('Care notes'),
                           Text(
-                            'Care Info',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: scheme.primary,
-                            ),
+                            _plant.careInstructions,
+                            style: const TextStyle(height: 1.45),
                           ),
-                          const SizedBox(height: 8),
-                          Text(_plant.careInstructions),
                         ],
                         ..._buildSpeciesFactsSection(scheme),
-                        const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Growth Photos',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _showAddPhotoOptions,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add'),
-                            ),
-                          ],
+                        const SizedBox(height: 24),
+                        SectionHeader(
+                          'Growth photos',
+                          action: SectionAction(
+                            label: 'Add',
+                            onPressed: _showAddPhotoOptions,
+                          ),
                         ),
                         if (_timeline.isEmpty)
                           Text(
@@ -714,6 +690,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                                           width: 80,
                                           height: 80,
                                           fit: BoxFit.cover,
+                                          cacheWidth: 240,
+                                          filterQuality: FilterQuality.low,
                                           errorBuilder:
                                               (_, __, ___) => Container(
                                                 width: 80,
@@ -743,15 +721,8 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                               },
                             ),
                           ),
-                        const SizedBox(height: 20),
-                        Text(
-                          'Care History',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: scheme.primary,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 24),
+                        const SectionHeader('Care history'),
                         if (_careHistory.isEmpty)
                           Text(
                             'No care history yet.',
@@ -776,22 +747,12 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                               ),
                             ),
                         const SizedBox(height: 20),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Journal',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                color: scheme.primary,
-                              ),
-                            ),
-                            TextButton.icon(
-                              onPressed: _addJournalEntry,
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add'),
-                            ),
-                          ],
+                        SectionHeader(
+                          'Journal',
+                          action: SectionAction(
+                            label: 'Add',
+                            onPressed: _addJournalEntry,
+                          ),
                         ),
                         if (_journal.isEmpty)
                           Text(

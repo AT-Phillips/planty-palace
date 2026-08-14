@@ -5,6 +5,7 @@ import '../services/plant_repository.dart';
 import '../styles/app_theme.dart';
 import '../utils/app_page_route.dart';
 import '../widgets/frosted_app_bar.dart';
+import '../widgets/section_header.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/wishlist_button.dart';
 import 'add_edit_plant_screen.dart';
@@ -176,26 +177,14 @@ class SpeciesDetailScreen extends StatelessWidget {
             ),
           ],
           if (species.careInstructions.isNotEmpty) ...[
-            const SizedBox(height: 20),
-            Text(
-              'Care Info',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: scheme.primary,
-              ),
-            ),
+            const SizedBox(height: 24),
+            const SectionHeader('Care info'),
             const SizedBox(height: 8),
             Text(species.careInstructions),
           ],
           if (hasFacts) ...[
-            const SizedBox(height: 20),
-            Text(
-              'Facts',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: scheme.primary,
-              ),
-            ),
+            const SizedBox(height: 24),
+            const SectionHeader('Facts'),
             const SizedBox(height: 8),
             if (species.description != null) ...[
               Text(species.description!),

@@ -97,17 +97,15 @@ class ThicketApp extends StatelessWidget {
               valueListenable: ThemeController.instance.backgroundPaletteIndex,
               builder: (context, backgroundIndex, _) {
                 final seedColor = ThemeController.accentColors[accentIndex];
-                final palette =
-                    ThemeController.backgroundPalettes[backgroundIndex];
                 return MaterialApp(
                   title: 'Thicket',
                   theme: AppTheme.lightTheme(
                     seedColor: seedColor,
-                    palette: palette,
+                    paletteIndex: backgroundIndex,
                   ),
                   darkTheme: AppTheme.darkTheme(
                     seedColor: seedColor,
-                    palette: palette,
+                    paletteIndex: backgroundIndex,
                   ),
                   themeMode: mode,
                   scrollBehavior: AppScrollBehavior(),

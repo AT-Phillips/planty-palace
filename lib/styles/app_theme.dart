@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'palette.dart';
+
+export 'palette.dart' show Palette, PaletteContext;
+
 /// A selectable app background "flavour" - the surface/card/input tones the
 /// whole app sits on, chosen independently of the accent (seed) color. The
 /// accent still drives primary/secondary; these just re-tint the backdrop.
@@ -42,39 +46,54 @@ class AppTheme {
   ); // deep, considered sage green
   static const double radius = 20.0;
 
-  /// The brighter "live / interactive" accent - a fresh fern green used for
-  /// primary actions, active states, and healthy-care signals. Distinct from
-  /// the deeper brand [defaultSeedColor] sage (which still drives the overall
-  /// [ColorScheme]); this is the punchier green reserved for things the user
-  /// acts on. Dark mode lifts it so it stays luminous on a dark ground.
-  static Color fernColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFF45C486)
-          : const Color(0xFF1F9D63);
+  // -------------------------------------------------------------------
+  // Color accessors. These now delegate to [Palette] - the single literal
+  // source of truth - rather than each redefining its own hexes. Kept as
+  // named helpers because they read well at call sites and describe intent
+  // ("careOverdue") rather than appearance ("coral").
+  // -------------------------------------------------------------------
 
-  /// Overdue-care urgency - deliberately distinct from both
-  /// [ColorScheme.error] (destructive actions, form validation) and the
-  /// amber toxicity-warning color, so all three read as separate signals
-  /// instead of competing for the same "pay attention" red. This is the one
-  /// coral used everywhere overdue care is signaled (Care rows, the Spaces
-  /// to-do banner, plant-detail care rings).
-  static Color urgentColor(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFFE8825F)
-          : const Color(0xFFDB5F38);
+  /// The live/interactive accent: primary actions and active states.
+  static Color fernColor(BuildContext context) => context.palette.fern;
 
-  /// Care-urgency ring/badge colors, keyed to how soon a schedule is due:
-  /// healthy (plenty of time) -> [fernColor], approaching -> amber,
-  /// overdue -> [urgentColor]. Centralized so the Care list, plant-detail
-  /// care rings, and any status badge all read from one source.
-  static Color careHealthy(BuildContext context) => fernColor(context);
+  /// Overdue care. Distinct from [ColorScheme.error] (destructive actions)
+  /// and from the amber toxicity warning, so all three read as separate
+  /// signals instead of competing for one "alert" red.
+  static Color urgentColor(BuildContext context) => context.palette.coral;
 
-  static Color careSoon(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xFFD6AC5A)
-          : const Color(0xFFC9962B);
+  /// Care-urgency colors, keyed to how soon a schedule is due:
+  /// healthy -> fern, approaching -> amber, overdue -> coral.
+  static Color careHealthy(BuildContext context) => context.palette.mintRing;
 
-  static Color careOverdue(BuildContext context) => urgentColor(context);
+  static Color careSoon(BuildContext context) => context.palette.amber;
+
+  static Color careOverdue(BuildContext context) => context.palette.coral;
+
+  /// The uppercase, letter-spaced, muted label that opens a section
+  /// ("CARE", "GROWTH PHOTOS"). Replaces the accent-colored sentence-case
+  /// headings that made every screen read as stock Material.
+  static TextStyle sectionLabelStyle(BuildContext context) => TextStyle(
+    fontSize: 11,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.9,
+    color: context.palette.inkFaint,
+  );
+
+  /// Small uppercase caption used inside tiles (a care tile's "WATER").
+  static TextStyle microLabelStyle(BuildContext context) => TextStyle(
+    fontSize: 9.5,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.6,
+    color: context.palette.inkFaint,
+  );
+
+  /// Italic secondary line under a plant name (its species).
+  static TextStyle speciesStyle(BuildContext context, {double size = 12}) =>
+      TextStyle(
+        fontSize: size,
+        fontStyle: FontStyle.italic,
+        color: context.palette.inkSoft,
+      );
 
   /// The serif heading style used for plant/species name headings (not app
   /// bar titles, which pick up the same Lora serif automatically via
@@ -100,97 +119,122 @@ class AppTheme {
     lightCard: Color(0xFFF3F7F0),
   );
 
-  /// All selectable background palettes, in picker order. `forestPalette` is
-  /// index 0 (the default).
-  static const List<BackgroundPalette> backgroundPalettes = [
-    forestPalette,
-    BackgroundPalette(
-      name: 'Midnight',
-      darkBackground: Color(0xFF0B1220),
-      darkCard: Color(0xFF1B2537),
-      darkInputFill: Color(0xFF29354B),
-      lightBackground: Color(0xFFC3D2E8),
-      lightCard: Color(0xFFF1F5FB),
-    ),
-    BackgroundPalette(
-      name: 'Slate',
-      darkBackground: Color(0xFF12151A),
-      darkCard: Color(0xFF232830),
-      darkInputFill: Color(0xFF333A44),
-      lightBackground: Color(0xFFCBCFD6),
-      lightCard: Color(0xFFF3F4F6),
-    ),
-    BackgroundPalette(
-      name: 'Charcoal',
-      darkBackground: Color(0xFF0E0F11),
-      darkCard: Color(0xFF1E2023),
-      darkInputFill: Color(0xFF2C2F33),
-      lightBackground: Color(0xFFD9D2C5),
-      lightCard: Color(0xFFF8F5EF),
-    ),
+  /// All selectable background palettes, in picker order (index 0 = Forest,
+  /// the default). Derived from [Palette.variants] so the Settings swatches
+  /// always preview the exact tones the app will actually render - there is
+  /// only ever one source of truth for a palette's colors.
+  static final List<BackgroundPalette> backgroundPalettes = [
+    for (final (name, index) in const [
+      ('Forest', 0),
+      ('Midnight', 1),
+      ('Slate', 2),
+      ('Charcoal', 3),
+    ])
+      BackgroundPalette(
+        name: name,
+        darkBackground: Palette.variants[index].$2.ground,
+        darkCard: Palette.variants[index].$2.card,
+        darkInputFill: Palette.variants[index].$2.ground2,
+        lightBackground: Palette.variants[index].$1.ground,
+        lightCard: Palette.variants[index].$1.card,
+      ),
   ];
 
   static ThemeData lightTheme({
     Color seedColor = defaultSeedColor,
-    BackgroundPalette palette = forestPalette,
-  }) => _themeFor(Brightness.light, seedColor, palette);
+    int paletteIndex = 0,
+  }) => _themeFor(Brightness.light, seedColor, paletteIndex);
 
   static ThemeData darkTheme({
     Color seedColor = defaultSeedColor,
-    BackgroundPalette palette = forestPalette,
-  }) => _themeFor(Brightness.dark, seedColor, palette);
+    int paletteIndex = 0,
+  }) => _themeFor(Brightness.dark, seedColor, paletteIndex);
 
   static ThemeData _themeFor(
     Brightness brightness,
     Color seedColor,
-    BackgroundPalette palette,
+    int paletteIndex,
   ) {
-    var colorScheme = ColorScheme.fromSeed(
+    final p = Palette.resolve(paletteIndex, brightness);
+
+    // Start from a generated scheme (so every niche Material slot has a sane
+    // value), then override every slot the design actually cares about with
+    // the literal token. This is the crux of the redesign: previously these
+    // slots held algorithm output, so screens reading `scheme.onSurfaceVariant`
+    // et al could never render the designed palette. Now they do - which fixes
+    // the whole app at once instead of per-call-site.
+    final generated = ColorScheme.fromSeed(
       seedColor: seedColor,
       brightness: brightness,
     );
-    if (brightness == Brightness.dark) {
-      colorScheme = colorScheme.copyWith(
-        surface: palette.darkBackground,
-        surfaceContainerHighest: palette.darkInputFill,
-      );
-    } else {
-      colorScheme = colorScheme.copyWith(surface: palette.lightBackground);
-    }
-    final baseTextTheme =
-        brightness == Brightness.dark
+    final colorScheme = generated.copyWith(
+      // The accent picker still means something: it drives `primary`, so
+      // buttons and active states follow the user's chosen accent.
+      primary: seedColor == defaultSeedColor ? p.fern : generated.primary,
+      // Neutrals carry the design's character, so they are always literal.
+      surface: p.ground,
+      onSurface: p.ink,
+      onSurfaceVariant: p.inkSoft,
+      surfaceContainerLowest: p.ground2,
+      surfaceContainerLow: p.ground,
+      surfaceContainer: p.card,
+      surfaceContainerHigh: p.card,
+      surfaceContainerHighest: p.ground2,
+      outline: p.inkFaint,
+      outlineVariant: p.line,
+      // `error` stays a true red, reserved for destructive actions and
+      // validation - deliberately NOT the coral used for overdue care, so the
+      // two never get confused for each other.
+      error: brightness == Brightness.dark
+          ? const Color(0xFFE5766B)
+          : const Color(0xFFB3261E),
+    );
+
+    final baseTextTheme = (brightness == Brightness.dark
             ? GoogleFonts.interTextTheme(
               ThemeData(brightness: Brightness.dark).textTheme,
             )
-            : GoogleFonts.interTextTheme();
+            : GoogleFonts.interTextTheme())
+        .apply(bodyColor: p.ink, displayColor: p.ink);
 
-    final cardColor =
-        brightness == Brightness.dark ? palette.darkCard : palette.lightCard;
+    final cardColor = p.card;
 
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: colorScheme.surface,
+      scaffoldBackgroundColor: p.ground,
+      canvasColor: p.ground,
+      dividerColor: p.line,
       textTheme: baseTextTheme,
+      // The literal design tokens, reachable anywhere via `context.palette`.
+      extensions: <ThemeExtension<dynamic>>[p],
+      dividerTheme: DividerThemeData(
+        color: p.hairline,
+        thickness: 1,
+        space: 1,
+      ),
       appBarTheme: AppBarTheme(
-        backgroundColor: colorScheme.surface,
-        foregroundColor: colorScheme.onSurface,
+        backgroundColor: p.ground,
+        foregroundColor: p.ink,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: false,
         // Serif display type for every screen title - the one editorial
         // touch that's shared infrastructure (FrostedAppBar), so every
         // screen picks it up without a per-screen change.
         titleTextStyle: GoogleFonts.lora(
-          fontSize: 21,
+          fontSize: 26,
           fontWeight: FontWeight.w500,
-          color: colorScheme.onSurface,
+          letterSpacing: -0.4,
+          color: p.ink,
         ),
       ),
       cardTheme: CardThemeData(
         elevation: 0,
         color: cardColor,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(radius),
         ),

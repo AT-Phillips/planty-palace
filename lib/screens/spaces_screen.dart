@@ -329,8 +329,12 @@ class SpacesScreenState extends State<SpacesScreen> {
     final has = _dueToday.isNotEmpty;
     final urgent = AppTheme.urgentColor(context);
 
+    final p = context.palette;
+
     return Card(
-      color: has ? urgent.withValues(alpha: 0.15) : scheme.surfaceContainerHigh,
+      // The designed soft-coral fill, not an alpha-blended accent - so the
+      // banner reads as a deliberate surface in both themes.
+      color: has ? p.coralSoft : p.card,
       clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Padding(
@@ -340,40 +344,38 @@ class SpacesScreenState extends State<SpacesScreen> {
           children: [
             if (has)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 5),
                 child: Text(
                   '${_dueToday.length} ${_dueToday.length == 1 ? 'PLANT NEEDS' : 'PLANTS NEED'} CARE',
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: 0.6,
+                    letterSpacing: 0.8,
                     color: urgent,
                   ),
                 ),
               ),
-            Row(
-              children: [
-                Icon(
-                  has
-                      ? Icons.priority_high_rounded
-                      : Icons.check_circle_outline,
-                  color: has ? urgent : scheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    has
-                        ? '${_dueToday.length == 1 ? _dueToday.first.name : '${_dueToday.length} plants'} '
-                            '${_dueToday.length == 1 ? 'is' : 'are'} overdue'
-                        : "You're all caught up",
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 17,
+            // Serif headline - the mockup's editorial voice for the single
+            // most important line on the home screen.
+            if (has)
+              Text(
+                '${_dueToday.length == 1 ? _dueToday.first.name : '${_dueToday.length} plants'} '
+                '${_dueToday.length == 1 ? 'is' : 'are'} overdue',
+                style: AppTheme.plantNameStyle(context, size: 19),
+              )
+            else
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: p.mintRing, size: 20),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      "You're all caught up",
+                      style: AppTheme.plantNameStyle(context, size: 18),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
             if (!has)
               Padding(
                 padding: const EdgeInsets.only(top: 4, bottom: 8),
