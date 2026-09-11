@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Rules-test harness dependencies
+firebase-test/node_modules/
+firestore-debug.log
+ui-debug.log

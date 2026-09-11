@@ -75,22 +75,37 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     _load();
   }
 
+  /// Loads the three independent sections concurrently, each isolated from
+  /// the others' failures.
+  ///
+  /// These used to be three sequential awaits inside one try block, so a
+  /// single failing query (the care-log one needs a composite index) threw
+  /// before the later assignments ran - and the screen rendered with *no*
+  /// growth photos, *no* care history and *no* journal, silently. One section
+  /// being unavailable should cost only that section.
   Future<void> _load() async {
-    try {
-      final timeline = await _repository.getPhotos(_plant.id!);
-      final history = await _repository.getCareHistory(_plant.id!);
-      final journal = await _repository.getJournalEntries(_plant.id!);
-      if (!mounted) return;
-      setState(() {
-        _timeline = timeline;
-        _careHistory = history;
-        _journal = journal;
-        _loading = false;
-      });
-    } catch (e) {
-      debugPrint('Failed to load plant detail: $e');
-      if (mounted) setState(() => _loading = false);
-    }
+    final results = await Future.wait([
+      _repository.getPhotos(_plant.id!).catchError((Object e) {
+        debugPrint('Failed to load growth photos: $e');
+        return <PlantPhoto>[];
+      }),
+      _repository.getCareHistory(_plant.id!).catchError((Object e) {
+        debugPrint('Failed to load care history: $e');
+        return <CareLogEntry>[];
+      }),
+      _repository.getJournalEntries(_plant.id!).catchError((Object e) {
+        debugPrint('Failed to load journal: $e');
+        return <JournalEntry>[];
+      }),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _timeline = results[0] as List<PlantPhoto>;
+      _careHistory = results[1] as List<CareLogEntry>;
+      _journal = results[2] as List<JournalEntry>;
+      _loading = false;
+    });
   }
 
   Future<void> _markWatered() async {

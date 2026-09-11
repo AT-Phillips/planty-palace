@@ -1,0 +1,12 @@
+{
+  "name": "thicket-rules-tests",
+  "private": true,
+  "type": "module",
+  "description": "Security-rules tests for the Thicket Firestore database. Run from the repo root: npm --prefix firebase-test test",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project=thicket-rules-test \"node --test rules.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1"
+  }
+}

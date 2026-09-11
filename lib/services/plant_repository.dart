@@ -363,18 +363,41 @@ class PlantRepository {
   /// Entries logged before fertilizing tracking existed have no `type`
   /// field and are treated as watering events.
   Future<List<CareLogEntry>> getCareHistory(String plantId) async {
-    final snapshot =
-        await _careLog
-            .where('plantId', isEqualTo: plantId)
-            .orderBy('wateredAt', descending: true)
-            .get();
-    return snapshot.docs.map((d) {
-      final data = d.data();
-      return CareLogEntry(
-        type: data['type'] as String? ?? 'watering',
-        timestamp: data['wateredAt'] as String,
-      );
-    }).toList();
+    // An equality filter plus an order-by on a different field needs a
+    // composite index (see firestore.indexes.json). If that index is missing
+    // or still building, Firestore fails the query outright with
+    // `failed-precondition` - which previously took the whole plant detail
+    // screen's load down with it. Fall back to fetching the plant's entries
+    // unordered and sorting them here: the same result, slightly more data
+    // over the wire, and the screen keeps working while an index builds.
+    QuerySnapshot<Map<String, dynamic>> snapshot;
+    var sortLocally = false;
+    try {
+      snapshot =
+          await _careLog
+              .where('plantId', isEqualTo: plantId)
+              .orderBy('wateredAt', descending: true)
+              .get();
+    } on FirebaseException catch (e) {
+      if (e.code != 'failed-precondition') rethrow;
+      snapshot = await _careLog.where('plantId', isEqualTo: plantId).get();
+      sortLocally = true;
+    }
+
+    final entries =
+        snapshot.docs.map((d) {
+          final data = d.data();
+          return CareLogEntry(
+            type: data['type'] as String? ?? 'watering',
+            timestamp: data['wateredAt'] as String,
+          );
+        }).toList();
+
+    // Timestamps are ISO-8601, so lexicographic order is chronological.
+    if (sortLocally) {
+      entries.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    }
+    return entries;
   }
 
   // --- Journal notes ---

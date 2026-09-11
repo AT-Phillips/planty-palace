@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "care_log",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "plantId", "order": "ASCENDING" },
+        { "fieldPath": "wateredAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
