@@ -23,6 +23,7 @@ import '../widgets/section_header.dart';
 import 'add_edit_plant_screen.dart';
 import '../utils/app_page_route.dart';
 import '../widgets/app_dialogs.dart';
+import '../widgets/primitives.dart';
 
 IconData _careIconFor(String type) {
   switch (type) {
@@ -488,7 +489,23 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
     ];
     if (stats.isEmpty) return const SizedBox.shrink();
 
-    return Row(children: [for (final stat in stats) Expanded(child: stat)]);
+    // One quiet panel rather than four figures floating on the page - it
+    // groups them as a single "at a glance" block and stops the two-stat
+    // case (the common one) reading as two stray columns.
+    final p = context.palette;
+    return AppCard(
+      bordered: true,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      child: Row(
+        children: [
+          for (var i = 0; i < stats.length; i++) ...[
+            if (i > 0)
+              Container(width: 1, height: 30, color: p.hairline),
+            Expanded(child: stats[i]),
+          ],
+        ],
+      ),
+    );
   }
 
   @override
@@ -692,28 +709,69 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                         const SizedBox(height: 24),
                         const SectionHeader('Care history'),
                         if (_careHistory.isEmpty)
-                          Text(
-                            'No care history yet.',
-                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          _EmptyNote(
+                            'Nothing logged yet. Watering or feeding this '
+                            'plant adds to its history.',
                           )
                         else
-                          for (final entry in _careHistory)
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    _careIconFor(entry.type),
-                                    size: 16,
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    '${_careLabelFor(entry.type)} · ${_friendlyDateTime(entry.timestamp)}',
-                                  ),
-                                ],
-                              ),
+                          AppCard(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 6,
                             ),
+                            child: Column(
+                              children: [
+                                // Capped so a long-lived plant does not turn
+                                // the detail screen into an endless log.
+                                for (final entry in _careHistory.take(8))
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 7,
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _careIconFor(entry.type),
+                                          size: 15,
+                                          color: context.palette.fern,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Expanded(
+                                          child: Text(
+                                            _careLabelFor(entry.type),
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        Text(
+                                          _friendlyDateTime(entry.timestamp),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: context.palette.inkFaint,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (_careHistory.length > 8)
+                                  Padding(
+                                    padding: const EdgeInsets.only(
+                                      top: 4,
+                                      bottom: 8,
+                                    ),
+                                    child: Text(
+                                      '+ ${_careHistory.length - 8} earlier',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: context.palette.inkFaint,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         const SizedBox(height: 20),
                         SectionHeader(
                           'Journal',
@@ -723,9 +781,9 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
                           ),
                         ),
                         if (_journal.isEmpty)
-                          Text(
-                            'No journal entries yet.',
-                            style: TextStyle(color: scheme.onSurfaceVariant),
+                          _EmptyNote(
+                            'Notes you add here stay with this plant - what '
+                            'you changed, and what happened next.',
                           )
                         else
                           for (final entry in _journal)
@@ -860,6 +918,26 @@ class _StatItem extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The quiet line shown where a section has no content yet.
+///
+/// Replaces three separate inline "No X yet." strings. Framed as what the
+/// section is *for* rather than as a statement of absence, so an empty
+/// detail screen invites the next action instead of just reporting nothing.
+class _EmptyNote extends StatelessWidget {
+  final String message;
+
+  const _EmptyNote(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Text(
+      message,
+      style: TextStyle(fontSize: 13, height: 1.5, color: p.inkFaint),
     );
   }
 }

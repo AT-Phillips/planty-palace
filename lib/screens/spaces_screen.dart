@@ -180,18 +180,40 @@ class SpacesScreenState extends State<SpacesScreen> {
 
   // --- Mutations ------------------------------------------------------------
 
-  Future<void> _markWatered(Plant plant) async {
-    // Drop it from the to-do list immediately and bump the done counter, so
-    // the tap feels instant rather than waiting on a network round trip.
+  /// Performs whatever this plant actually needs.
+  ///
+  /// The button used to always water, even when the row was listed because
+  /// feeding (or repotting, or pruning) was the overdue thing - so tapping it
+  /// neither matched the label nor cleared the row, which then reappeared on
+  /// the next refresh. It now acts on the plant's most urgent kind.
+  Future<void> _completeCare(Plant plant) async {
+    final kind = mostUrgentKind(plant);
+    if (kind == null) return;
+
+    // Update the list immediately so the tap feels instant rather than
+    // waiting on a network round trip.
+    //
+    // A plant can need more than one thing: feeding the Fiddle Leaf Fig may
+    // still leave its watering overdue. Removing it outright would drop the
+    // row and then have the reload put it straight back, so it is only
+    // removed when nothing else is due - otherwise the row stays and
+    // re-labels itself to whatever is now most urgent.
+    final updated = kind.withPerformed(plant, DateTime.now());
+    final stillDue = (mostUrgentDueIn(updated) ?? 1) <= 0;
     setState(() {
-      _dueToday.removeWhere((p) => p.id == plant.id);
+      final index = _dueToday.indexWhere((p) => p.id == plant.id);
+      if (index != -1) {
+        if (stillDue) {
+          _dueToday[index] = updated;
+        } else {
+          _dueToday.removeAt(index);
+        }
+      }
       _completedToday++;
     });
     try {
-      await _repository.markCare(plant.id!, CareKind.water);
-      await NotificationService().scheduleWateringReminder(
-        CareKind.water.withPerformed(plant, DateTime.now()),
-      );
+      await _repository.markCare(plant.id!, kind);
+      await _scheduleReminder(updated, kind);
     } catch (e) {
       if (!mounted) return;
       showAppSnack(context, 'Could not save that. Please try again.',
@@ -200,6 +222,16 @@ class SpacesScreenState extends State<SpacesScreen> {
       return;
     }
     if (mounted) _loadHub();
+  }
+
+  Future<void> _scheduleReminder(Plant plant, CareKind kind) {
+    final notifications = NotificationService();
+    return switch (kind) {
+      CareKind.water => notifications.scheduleWateringReminder(plant),
+      CareKind.feed => notifications.scheduleFertilizingReminder(plant),
+      CareKind.repot => notifications.scheduleRepottingReminder(plant),
+      CareKind.prune => notifications.schedulePruningReminder(plant),
+    };
   }
 
   Future<void> _createSpace() async {
@@ -375,13 +407,19 @@ class SpacesScreenState extends State<SpacesScreen> {
                     subtitle: _dueLabel(plant),
                     subtitleUrgent: true,
                     onTap: () => _navigateToPlant(plant),
-                    trailing: CircleAction(
-                      icon: Icons.water_drop_rounded,
-                      color: p.coral,
-                      filled: true,
-                      size: 36,
-                      tooltip: 'Water now',
-                      onTap: () => _markWatered(plant),
+                    trailing: Builder(
+                      builder: (context) {
+                        final kind =
+                            mostUrgentKind(plant) ?? CareKind.water;
+                        return CircleAction(
+                          icon: kind.icon,
+                          color: p.coral,
+                          filled: true,
+                          size: 36,
+                          tooltip: '${kind.label} now',
+                          onTap: () => _completeCare(plant),
+                        );
+                      },
                     ),
                   ),
                 ),
@@ -411,8 +449,12 @@ class SpacesScreenState extends State<SpacesScreen> {
 
   String _dueLabel(Plant plant) {
     final due = mostUrgentDueIn(plant) ?? 0;
-    if (due < 0) return 'Overdue by ${-due} ${-due == 1 ? 'day' : 'days'}';
-    return 'Due today';
+    final kind = mostUrgentKind(plant);
+    final what = kind == null ? 'Care' : kind.label;
+    if (due < 0) {
+      return '$what · overdue by ${-due} ${-due == 1 ? 'day' : 'days'}';
+    }
+    return '$what · due today';
   }
 
   /// Three big numbers. The hierarchy contrast a modern layout needs - a

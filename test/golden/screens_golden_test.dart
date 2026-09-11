@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:planty_palace/screens/account_screen.dart';
 import 'package:planty_palace/screens/care_screen.dart';
+import 'package:planty_palace/screens/guides_screen.dart';
+import 'package:planty_palace/screens/plant_detail_screen.dart';
 import 'package:planty_palace/screens/my_plants_screen.dart';
 import 'package:planty_palace/screens/spaces_screen.dart';
 import 'package:planty_palace/styles/app_theme.dart';
@@ -94,16 +97,39 @@ void main() {
     await renderScreen(tester, const MyPlantsScreen(), 'my_plants_light');
   });
 
-  testWidgets('Spaces hub - all caught up', (tester) async {
-    // Every plant recently watered, so the panel shows its calm state rather
-    // than the coral "needs care" treatment.
+  testWidgets('Plant detail - light', (tester) async {
+    await renderScreen(
+      tester,
+      PlantDetailScreen(plant: samplePlants().first),
+      'plant_detail_light',
+    );
+  });
+
+  testWidgets('Guides - light', (tester) async {
+    await renderScreen(tester, const GuidesScreen(), 'guides_light');
+  });
+
+  testWidgets('Account and settings - light', (tester) async {
+    await renderScreen(tester, const AccountScreen(), 'account_light');
+  });
+
+  testWidgets('Care - failed load shows a retryable error', (tester) async {
+    installFakeRepositories(plantRepository: FakePlantRepository.failing());
+    await renderScreen(tester, const CareScreen(), 'care_error');
+  });
+
+  testWidgets('My Plants - empty collection', (tester) async {
     installFakeRepositories(
-      plantRepository: FakePlantRepository(
-        plants: [
-          for (final plant in samplePlants())
-            plant.copyWith(lastWatered: daysAgo(0)),
-        ],
-      ),
+      plantRepository: FakePlantRepository(plants: [], gardens: []),
+    );
+    await renderScreen(tester, const MyPlantsScreen(), 'my_plants_empty');
+  });
+
+  testWidgets('Spaces hub - all caught up', (tester) async {
+    // Every schedule freshly satisfied, so the panel shows its calm state
+    // rather than the coral "needs care" treatment.
+    installFakeRepositories(
+      plantRepository: FakePlantRepository(plants: caughtUpPlants()),
     );
     await renderScreen(tester, const SpacesScreen(), 'spaces_caught_up');
   });

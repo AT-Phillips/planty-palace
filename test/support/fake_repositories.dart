@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:planty_palace/models/care_log_entry.dart';
 import 'package:planty_palace/models/garden.dart';
+import 'package:planty_palace/models/journal_entry.dart';
 import 'package:planty_palace/models/plant.dart';
 import 'package:planty_palace/models/plant_photo.dart';
 import 'package:planty_palace/models/propagation.dart';
@@ -75,6 +77,18 @@ List<Plant> samplePlants() => [
     careInstructions: '',
     gardenId: 'g1',
   ),
+];
+
+/// The same collection with every schedule freshly satisfied, so nothing is
+/// due or overdue - the hub's "all caught up" state.
+List<Plant> caughtUpPlants() => [
+  for (final plant in samplePlants())
+    plant.copyWith(
+      lastWatered: daysAgo(0),
+      lastFertilized: daysAgo(0),
+      lastRepotted: daysAgo(0),
+      lastPruned: daysAgo(0),
+    ),
 ];
 
 List<Garden> sampleGardens() => [
@@ -201,6 +215,38 @@ class FakePlantRepository extends PlantRepository {
 
   @override
   Future<List<PlantPhoto>> getPhotos(String plantId) async => [];
+
+  @override
+  Future<List<CareLogEntry>> getCareHistory(String plantId) async => [
+    CareLogEntry(type: 'watering', timestamp: daysAgo(2)),
+    CareLogEntry(type: 'fertilizing', timestamp: daysAgo(11)),
+    CareLogEntry(type: 'watering', timestamp: daysAgo(14)),
+  ];
+
+  @override
+  Future<List<JournalEntry>> getJournalEntries(String plantId) async => [
+    JournalEntry(
+      id: 'j1',
+      text: 'New leaf unfurling on the north side. Moved it a foot closer '
+          'to the window.',
+      createdAt: daysAgo(4),
+    ),
+  ];
+
+  @override
+  Future<JournalEntry> addJournalEntry(String plantId, String text) async {
+    calls.add('addJournalEntry:$plantId');
+    return JournalEntry(
+      id: 'j${DateTime.now().microsecondsSinceEpoch}',
+      text: text,
+      createdAt: DateTime.now().toIso8601String(),
+    );
+  }
+
+  @override
+  Future<void> deleteJournalEntry(String plantId, String entryId) async {
+    calls.add('deleteJournalEntry:$entryId');
+  }
 }
 
 class FakePropagationRepository extends PropagationRepository {

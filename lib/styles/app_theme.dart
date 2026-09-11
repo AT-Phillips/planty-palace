@@ -182,6 +182,14 @@ class AppTheme {
       error: brightness == Brightness.dark
           ? const Color(0xFFE5766B)
           : const Color(0xFFB3261E),
+      // The last two generated slots. Left algorithmic they came out as a
+      // pink-mauve container that belonged to no part of this palette; the
+      // soft coral is the tone the design already uses for "something is
+      // wrong here".
+      errorContainer: p.coralSoft,
+      onErrorContainer: brightness == Brightness.dark
+          ? const Color(0xFFE5766B)
+          : const Color(0xFFB3261E),
     );
 
     final baseTextTheme = (brightness == Brightness.dark

@@ -1,4 +1,5 @@
 import '../models/plant.dart';
+import 'care_kind.dart';
 import 'fertilizing_status.dart';
 import 'pruning_status.dart';
 import 'repotting_status.dart';
@@ -27,6 +28,27 @@ int? mostUrgentDueIn(Plant plant) {
       ].whereType<int>().toList();
   if (candidates.isEmpty) return null;
   return candidates.reduce((a, b) => a < b ? a : b);
+}
+
+/// Which care kind is the most urgent for a plant right now, or null if it
+/// has no schedules at all.
+///
+/// The hub's to-do row needs this, not just the number of days: a plant can
+/// be listed because its *feeding* is overdue while its watering is fine, and
+/// an action button that always watered would neither clear the row nor match
+/// the label above it.
+CareKind? mostUrgentKind(Plant plant) {
+  CareKind? best;
+  int? bestDue;
+  for (final kind in CareKind.values) {
+    final due = kind.dueInDays(plant);
+    if (due == null) continue;
+    if (bestDue == null || due < bestDue) {
+      bestDue = due;
+      best = kind;
+    }
+  }
+  return best;
 }
 
 void sortPlants(List<Plant> plants, PlantSortOption option) {
