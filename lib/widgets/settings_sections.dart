@@ -125,16 +125,20 @@ class SettingsSections extends StatelessWidget {
                     ),
                   ),
             ),
-            InsetRow(
-              icon: Icons.star_outline,
-              title: 'Rate Thicket',
-              onTap: () => _rateApp(context),
-            ),
-            InsetRow(
-              icon: Icons.share_outlined,
-              title: 'Share Thicket',
-              onTap: _shareApp,
-            ),
+            // Both deep-link to the App Store listing, which does not exist
+            // while the app is TestFlight-only - see app_links.dart.
+            if (hasAppStoreListing) ...[
+              InsetRow(
+                icon: Icons.star_outline,
+                title: 'Rate Thicket',
+                onTap: () => _rateApp(context),
+              ),
+              InsetRow(
+                icon: Icons.share_outlined,
+                title: 'Share Thicket',
+                onTap: _shareApp,
+              ),
+            ],
           ],
         ),
         InsetGroup(

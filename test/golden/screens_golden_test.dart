@@ -1,3 +1,6 @@
+@Tags(['golden'])
+library;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +11,7 @@ import 'package:planty_palace/screens/propagations_screen.dart';
 import 'package:planty_palace/screens/species_detail_screen.dart';
 import 'package:planty_palace/services/perenual_service.dart';
 import 'package:planty_palace/screens/care_screen.dart';
+import 'package:planty_palace/screens/discover_screen.dart';
 import 'package:planty_palace/screens/guides_screen.dart';
 import 'package:planty_palace/screens/plant_detail_screen.dart';
 import 'package:planty_palace/screens/my_plants_screen.dart';
@@ -18,11 +22,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../support/fake_repositories.dart';
 
 /// Renders each main screen at phone size and writes a PNG, so the design can
-/// actually be *looked at* rather than only reasoned about from code. Run
-/// with `flutter test --update-goldens` to regenerate after a design change.
+/// actually be *looked at* rather than only reasoned about from code.
 ///
-/// These are deliberately not asserted against pixel-exact baselines in CI -
-/// fonts differ between machines. Their value is the rendered artefact.
+///     flutter test --tags golden --update-goldens
+///
+/// Tagged, and excluded from the default run by dart_test.yaml, because
+/// several of these screens are legitimately nondeterministic: plant detail
+/// prints the current clock time in its care history, and Find picks a random
+/// plant fact on every build. Asserting those pixel-for-pixel would mean a
+/// suite that fails for reasons unrelated to any change - so their value here
+/// is the rendered artefact for review, not a regression gate. The behaviour
+/// suite is what guards against regressions.
 void main() {
   setUpAll(() {
     // Google Fonts would try to fetch over the network here; without this it
@@ -166,6 +176,10 @@ void main() {
       const PropagationsScreen(),
       'propagations_light',
     );
+  });
+
+  testWidgets('Find - explore state', (tester) async {
+    await renderScreen(tester, const DiscoverScreen(), 'discover_light');
   });
 
   testWidgets('Care at large accessibility text', (tester) async {

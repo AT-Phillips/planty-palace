@@ -1,0 +1,11 @@
+# Golden tests render each screen to a PNG for design review. They are skipped
+# in the default `flutter test` run because some of the screens they capture
+# are legitimately nondeterministic (plant detail prints the current time;
+# Find picks a random plant fact), so a pixel comparison would fail for
+# reasons unrelated to any code change.
+#
+# Regenerate them deliberately:
+#     flutter test test/golden --run-skipped --update-goldens
+tags:
+  golden:
+    skip: "Design-review artefact - run with: flutter test test/golden --run-skipped --update-goldens"
