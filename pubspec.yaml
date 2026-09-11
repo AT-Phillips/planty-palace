@@ -77,6 +77,19 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # Lora and Inter, bundled rather than fetched.
+  #
+  # google_fonts downloads a family over the network on first use and caches
+  # it to disk. That meant a cold first launch rendered every string in the
+  # platform fallback face and then visibly reflowed once the real font
+  # arrived - and rendered wrong entirely with no connection. Shipping the
+  # faces as assets (which google_fonts prefers over the network when the
+  # filenames match its convention) makes typography correct on frame one,
+  # offline, with no font request at runtime. See the matching
+  # `allowRuntimeFetching = false` in main.dart.
+  assets:
+    - assets/fonts/
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

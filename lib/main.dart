@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import 'firebase_options.dart';
 import 'screens/main_shell.dart';
@@ -22,6 +23,13 @@ import 'utils/app_scroll_behavior.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Lora and Inter ship as assets (see pubspec), so there is never a reason
+  // to fetch a face at runtime. Turning fetching off makes that guarantee
+  // explicit: if a weight were ever missing from the bundle it fails loudly
+  // in development instead of silently adding a network round trip - and a
+  // font-flash - to a user's first launch.
+  GoogleFonts.config.allowRuntimeFetching = false;
 
   // Firebase isn't configured for Windows/Linux desktop (used for local dev)
   // - skip there so `flutter run -d windows` keeps working. Any Firebase
@@ -91,30 +99,18 @@ class ThicketApp extends StatelessWidget {
       valueListenable: ThemeController.instance.themeMode,
       builder: (context, mode, _) {
         return ValueListenableBuilder<int>(
-          valueListenable: ThemeController.instance.accentColorIndex,
-          builder: (context, accentIndex, _) {
-            return ValueListenableBuilder<int>(
-              valueListenable: ThemeController.instance.backgroundPaletteIndex,
-              builder: (context, backgroundIndex, _) {
-                final seedColor = ThemeController.accentColors[accentIndex];
-                return MaterialApp(
-                  title: 'Thicket',
-                  theme: AppTheme.lightTheme(
-                    seedColor: seedColor,
-                    paletteIndex: backgroundIndex,
-                  ),
-                  darkTheme: AppTheme.darkTheme(
-                    seedColor: seedColor,
-                    paletteIndex: backgroundIndex,
-                  ),
-                  themeMode: mode,
-                  scrollBehavior: AppScrollBehavior(),
-                  home:
-                      OnboardingPreferences.instance.completed.value
-                          ? const MainShell()
-                          : const OnboardingScreen(),
-                );
-              },
+          valueListenable: ThemeController.instance.backgroundPaletteIndex,
+          builder: (context, backgroundIndex, _) {
+            return MaterialApp(
+              title: 'Thicket',
+              theme: AppTheme.lightTheme(paletteIndex: backgroundIndex),
+              darkTheme: AppTheme.darkTheme(paletteIndex: backgroundIndex),
+              themeMode: mode,
+              scrollBehavior: AppScrollBehavior(),
+              home:
+                  OnboardingPreferences.instance.completed.value
+                      ? const MainShell()
+                      : const OnboardingScreen(),
             );
           },
         );

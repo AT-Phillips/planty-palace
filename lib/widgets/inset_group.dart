@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../styles/app_theme.dart';
+import 'primitives.dart';
+import 'section_header.dart';
 
 /// An iOS-style "inset grouped" section: an optional uppercase header label
 /// above a single rounded card whose rows are separated by inset hairline
@@ -27,7 +29,7 @@ class InsetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
 
     final rows = <Widget>[];
     for (var i = 0; i < children.length; i++) {
@@ -38,7 +40,7 @@ class InsetGroup extends StatelessWidget {
             height: 1,
             thickness: 1,
             indent: dividerIndent,
-            color: scheme.outlineVariant.withValues(alpha: 0.4),
+            color: p.hairline,
           ),
         );
       }
@@ -49,23 +51,9 @@ class InsetGroup extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (header != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(6, 0, 6, 8),
-              child: Text(
-                header!.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.6,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          Material(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
-            clipBehavior: Clip.antiAlias,
+          if (header != null) SectionHeader(header!),
+          AppCard(
+            padding: EdgeInsets.zero,
             child: Column(mainAxisSize: MainAxisSize.min, children: rows),
           ),
         ],
@@ -113,9 +101,9 @@ class InsetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     final chevron = showChevron ?? (onTap != null);
-    final tint = iconColor ?? AppTheme.fernColor(context);
+    final tint = iconColor ?? p.fern;
 
     final content = Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
@@ -127,7 +115,7 @@ class InsetRow extends StatelessWidget {
               height: 28,
               decoration: BoxDecoration(
                 color: tint.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(9),
               ),
               child: Icon(icon, size: 16, color: tint),
             ),
@@ -137,9 +125,9 @@ class InsetRow extends StatelessWidget {
             child: Text(
               title,
               style: TextStyle(
-                fontSize: 15.5,
+                fontSize: 15,
                 fontWeight: FontWeight.w500,
-                color: titleColor,
+                color: titleColor ?? p.ink,
               ),
             ),
           ),
@@ -148,21 +136,96 @@ class InsetRow extends StatelessWidget {
           else if (value != null)
             Text(
               value!,
-              style: TextStyle(fontSize: 15, color: scheme.onSurfaceVariant),
+              style: TextStyle(fontSize: 14, color: p.inkFaint),
             ),
           if (chevron) ...[
             const SizedBox(width: 4),
-            Icon(
-              Icons.chevron_right,
-              size: 20,
-              color: scheme.onSurfaceVariant.withValues(alpha: 0.6),
-            ),
+            Icon(Icons.chevron_right_rounded, size: 20, color: p.inkFaint),
           ],
         ],
       ),
     );
 
     if (onTap == null) return content;
-    return InkWell(onTap: onTap, child: content);
+    return Material(
+      type: MaterialType.transparency,
+      child: InkWell(onTap: onTap, child: content),
+    );
+  }
+}
+
+/// A settings row whose trailing control is a switch.
+///
+/// Replaces [SwitchListTile], which forces Material's list-tile metrics and
+/// puts the whole row into the switch's tap target - so a mis-tap anywhere
+/// on the row silently toggles a setting. Here the switch is the control and
+/// the row is just layout, matching the rest of [InsetGroup].
+class InsetSwitchRow extends StatelessWidget {
+  final IconData? icon;
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const InsetSwitchRow({
+    super.key,
+    this.icon,
+    required this.title,
+    this.subtitle,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 11, 12, 11),
+      child: Row(
+        children: [
+          if (icon != null) ...[
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: p.fern.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: Icon(icon, size: 16, color: p.fern),
+            ),
+            const SizedBox(width: 12),
+          ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: p.ink,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: TextStyle(fontSize: 12.5, color: p.inkFaint),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Switch.adaptive(
+            value: value,
+            onChanged: onChanged,
+            activeTrackColor: p.fern,
+          ),
+        ],
+      ),
+    );
   }
 }

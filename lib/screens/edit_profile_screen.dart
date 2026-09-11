@@ -5,8 +5,11 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/auth_service.dart';
 import '../services/photo_storage_service.dart';
+import '../styles/app_theme.dart';
+import '../widgets/app_dialogs.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/inset_group.dart';
+import '../widgets/primitives.dart';
 import '../widgets/profile_avatar.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -38,14 +41,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     super.dispose();
   }
 
+  // --- Photo / avatar -------------------------------------------------------
+
   Future<void> _saveName() async {
-    await AuthService.instance.updateProfile(
-      displayName: _nameController.text.trim(),
-    );
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Name updated')));
+    FocusScope.of(context).unfocus();
+    try {
+      await AuthService.instance.updateProfile(
+        displayName: _nameController.text.trim(),
+      );
+      if (!mounted) return;
+      showAppSnack(context, 'Name updated');
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnack(context, authErrorMessage(e), error: true);
+    }
   }
 
   Future<void> _pickPhoto(ImageSource source) async {
@@ -63,9 +72,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       if (!mounted) return;
       setState(() {});
     } catch (e) {
+      debugPrint('Profile photo upload failed: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update photo: ${e.toString()}')),
+      showAppSnack(
+        context,
+        "Couldn't update your photo. Check your connection and try again.",
+        error: true,
       );
     } finally {
       if (mounted) setState(() => _isUploadingPhoto = false);
@@ -81,12 +93,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   void _showComingSoon(String provider) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Sign in with $provider is coming soon.')),
-    );
+    showAppSnack(context, 'Sign in with $provider is coming soon.');
+  }
+
+  // --- Account --------------------------------------------------------------
+
+  /// Validates locally before spending a network round trip, so the common
+  /// mistakes (empty field, obvious typo, short password) are caught
+  /// instantly instead of coming back as a Firebase error code.
+  String? _validateCredentials() {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty) return 'Enter an email address.';
+    if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+      return 'That email address does not look right.';
+    }
+    if (password.length < 6) {
+      return 'Pick a password at least 6 characters long.';
+    }
+    return null;
   }
 
   Future<void> _upgrade() async {
+    FocusScope.of(context).unfocus();
+    final validationError = _validateCredentials();
+    if (validationError != null) {
+      setState(() => _error = validationError);
+      return;
+    }
+
     setState(() {
       _isSubmitting = true;
       _error = null;
@@ -98,325 +133,280 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       );
       if (!mounted) return;
       setState(() {});
+      showAppSnack(context, 'Account saved. Your plants are backed up.');
     } catch (e) {
-      setState(() => _error = e.toString());
+      debugPrint('Account upgrade failed: $e');
+      if (!mounted) return;
+      setState(() => _error = authErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   Future<void> _signOut() async {
+    final confirmed = await showAppConfirm(
+      context,
+      title: 'Sign out?',
+      message:
+          'You can sign back in anytime with your email and password to get '
+          'your plants back.',
+      confirmLabel: 'Sign out',
+    );
+    if (!confirmed) return;
     await AuthService.instance.signOut();
     if (!mounted) return;
     Navigator.pop(context);
   }
 
   Future<void> _changePassword() async {
-    final currentController = TextEditingController();
-    final newController = TextEditingController();
-    String? dialogError;
-
-    final confirmed = await showDialog<bool>(
+    final changed = await showDialog<bool>(
       context: context,
-      builder:
-          (context) => StatefulBuilder(
-            builder:
-                (context, setDialogState) => AlertDialog(
-                  title: const Text('Change Password'),
-                  content: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      TextField(
-                        controller: currentController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Current password',
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: newController,
-                        obscureText: true,
-                        decoration: const InputDecoration(
-                          labelText: 'New password',
-                        ),
-                      ),
-                      if (dialogError != null) ...[
-                        const SizedBox(height: 12),
-                        Text(
-                          dialogError!,
-                          style: TextStyle(
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context, false),
-                      child: const Text('Cancel'),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        try {
-                          await AuthService.instance.changePassword(
-                            currentController.text,
-                            newController.text,
-                          );
-                          if (context.mounted) Navigator.pop(context, true);
-                        } catch (e) {
-                          setDialogState(() => dialogError = e.toString());
-                        }
-                      },
-                      child: const Text('Save'),
-                    ),
-                  ],
-                ),
-          ),
+      builder: (context) => const _ChangePasswordDialog(),
     );
-
-    if (confirmed == true && mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Password updated')));
+    if (changed == true && mounted) {
+      showAppSnack(context, 'Password updated');
     }
   }
 
   Future<void> _deleteAccount() async {
-    final passwordController = TextEditingController();
     final isEmailAccount =
         !AuthService.instance.isAnonymous && AuthService.instance.email != null;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete account?'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'This permanently deletes every Space, plant, propagation, and photo tied to '
-                  'this account. This cannot be undone.',
-                ),
-                if (isEmailAccount) ...[
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Confirm your password',
-                    ),
-                  ),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: Text(
-                  'Delete',
-                  style: TextStyle(color: Theme.of(context).colorScheme.error),
-                ),
-              ),
-            ],
-          ),
+    // Deleting an account is irreversible and wipes every plant, so it takes
+    // two deliberate steps: confirm the consequence, then (for a real
+    // account) re-enter the password.
+    final confirmed = await showAppConfirm(
+      context,
+      title: 'Delete account?',
+      message:
+          'This permanently deletes every Space, plant, propagation, and '
+          'photo tied to this account. It cannot be undone.',
+      confirmLabel: 'Delete everything',
+      destructive: true,
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
+
+    String? password;
+    if (isEmailAccount) {
+      password = await showAppPrompt(
+        context,
+        title: 'Confirm your password',
+        hintText: 'Password',
+        confirmLabel: 'Delete account',
+      );
+      if (password == null || !mounted) return;
+    }
 
     setState(() => _isSubmitting = true);
     try {
-      await AuthService.instance.deleteAccount(
-        currentPassword: isEmailAccount ? passwordController.text : null,
-      );
+      await AuthService.instance.deleteAccount(currentPassword: password);
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
+      debugPrint('Account deletion failed: $e');
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
-        _error = e.toString();
+        _error = authErrorMessage(e);
       });
     }
   }
 
-  Widget _avatarSection() {
-    final scheme = Theme.of(context).colorScheme;
+  // --- Sections -------------------------------------------------------------
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            _isUploadingPhoto
-                ? const SizedBox(
-                  width: 96,
-                  height: 96,
-                  child: CircularProgressIndicator.adaptive(),
-                )
-                : ProfileAvatar(
-                  photoUrl: AuthService.instance.photoUrl,
-                  size: 96,
+  Widget _avatarSection() {
+    final p = context.palette;
+    final currentPhoto = AuthService.instance.photoUrl;
+    final selectedPreset = presetAvatarIndex(currentPhoto);
+
+    return AppCard(
+      radius: AppRadius.xl,
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 18),
+      child: Column(
+        children: [
+          SizedBox(
+            width: 104,
+            height: 104,
+            child:
+                _isUploadingPhoto
+                    ? const Center(
+                      child: CircularProgressIndicator.adaptive(),
+                    )
+                    : ProfileAvatar(photoUrl: currentPhoto, size: 104),
+          ),
+          Gap.lg,
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                  label: const Text('Camera'),
+                  onPressed: () => _pickPhoto(ImageSource.camera),
                 ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.camera_alt_outlined),
-                    label: const Text('Camera'),
-                    onPressed: () => _pickPhoto(ImageSource.camera),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton.tonalIcon(
-                    icon: const Icon(Icons.photo_library_outlined),
-                    label: const Text('Gallery'),
-                    onPressed: () => _pickPhoto(ImageSource.gallery),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Or choose an icon',
-                style: TextStyle(color: scheme.onSurfaceVariant),
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.photo_library_outlined, size: 18),
+                  label: const Text('Gallery'),
+                  onPressed: () => _pickPhoto(ImageSource.gallery),
+                ),
+              ),
+            ],
+          ),
+          Gap.lg,
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'OR CHOOSE AN ICON',
+              style: AppTheme.sectionLabelStyle(context),
             ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                for (var i = 0; i < presetAvatarIcons.length; i++)
-                  GestureDetector(
-                    onTap: () => _selectPreset(i),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              for (var i = 0; i < presetAvatarIcons.length; i++)
+                GestureDetector(
+                  onTap: () => _selectPreset(i),
+                  // The selected icon gets a fern ring - previously there was
+                  // no indication of which preset was in use.
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color:
+                            selectedPreset == i ? p.fern : Colors.transparent,
+                        width: 2.5,
+                      ),
+                    ),
                     child: ProfileAvatar(
                       photoUrl: presetAvatarValue(i),
-                      size: 44,
+                      size: 42,
                     ),
                   ),
-              ],
-            ),
-          ],
-        ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _nameSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Display name'),
-              ),
+    return AppCard(
+      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _nameController,
+              textCapitalization: TextCapitalization.words,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _saveName(),
+              decoration: const InputDecoration(labelText: 'Display name'),
             ),
-            const SizedBox(width: 12),
-            IconButton(icon: const Icon(Icons.check), onPressed: _saveName),
-          ],
-        ),
+          ),
+          const SizedBox(width: 10),
+          CircleAction(
+            icon: Icons.check_rounded,
+            color: context.palette.fern,
+            filled: true,
+            tooltip: 'Save name',
+            onTap: _saveName,
+          ),
+        ],
       ),
     );
   }
 
   Widget _anonymousSection() {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
 
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'Save your account with an email and password so you can recover your Gardens '
-              'and plants on a new device or after reinstalling.',
-              style: TextStyle(color: scheme.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
+    return AppCard(
+      radius: AppRadius.xl,
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Back up your plants',
+            style: AppTheme.plantNameStyle(context, size: 19),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Add an email and password so you can recover your Spaces and '
+            'plants on a new device, or after reinstalling.',
+            style: TextStyle(fontSize: 13.5, height: 1.5, color: p.inkSoft),
+          ),
+          Gap.lg,
+          TextField(
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            autocorrect: false,
+            textInputAction: TextInputAction.next,
+            decoration: const InputDecoration(labelText: 'Email'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) => _upgrade(),
+            decoration: const InputDecoration(labelText: 'Password'),
+          ),
+          if (_error != null) ...[
             const SizedBox(height: 12),
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Password'),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: scheme.error)),
-            ],
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: _isSubmitting ? null : _upgrade,
-              child:
-                  _isSubmitting
-                      ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator.adaptive(
-                          strokeWidth: 2,
-                        ),
-                      )
-                      : const Text('Save my account'),
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(child: Divider(color: scheme.outlineVariant)),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Text(
-                    'or continue with',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-                ),
-                Expanded(child: Divider(color: scheme.outlineVariant)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _showComingSoon('Apple'),
-                    child: const Text('Apple'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _showComingSoon('Google'),
-                    child: const Text('Google'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _showComingSoon('Facebook'),
-                    child: const Text('Facebook'),
-                  ),
-                ),
-              ],
-            ),
+            _ErrorLine(message: _error!),
           ],
-        ),
+          Gap.md,
+          FilledButton(
+            onPressed: _isSubmitting ? null : _upgrade,
+            child:
+                _isSubmitting
+                    ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator.adaptive(
+                        strokeWidth: 2,
+                      ),
+                    )
+                    : const Text('Save my account'),
+          ),
+          Gap.lg,
+          Row(
+            children: [
+              Expanded(child: Divider(color: p.line)),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'or continue with',
+                  style: TextStyle(fontSize: 12, color: p.inkFaint),
+                ),
+              ),
+              Expanded(child: Divider(color: p.line)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              for (final provider in const ['Apple', 'Google', 'Facebook'])
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      right: provider == 'Facebook' ? 0 : 8,
+                    ),
+                    child: OutlinedButton(
+                      onPressed: () => _showComingSoon(provider),
+                      child: Text(provider),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -428,7 +418,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         InsetGroup(
+          header: 'Account',
           dividerIndent: 56,
+          margin: EdgeInsets.zero,
           children: [
             if (AuthService.instance.email != null)
               InsetRow(
@@ -444,7 +436,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ],
         ),
+        Gap.md,
         InsetGroup(
+          margin: EdgeInsets.zero,
           children: [
             InsetRow(
               icon: Icons.delete_forever_outlined,
@@ -456,11 +450,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ],
         ),
-        if (_error != null)
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Text(_error!, style: TextStyle(color: scheme.error)),
-          ),
+        if (_error != null) ...[
+          Gap.md,
+          _ErrorLine(message: _error!),
+        ],
       ],
     );
   }
@@ -472,14 +465,183 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       appBar: const FrostedAppBar(title: 'Edit Profile'),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        padding: const EdgeInsets.fromLTRB(
+          Gap.screen,
+          16,
+          Gap.screen,
+          32,
+        ),
         children: [
           _avatarSection(),
-          const SizedBox(height: 12),
+          Gap.md,
           _nameSection(),
-          const SizedBox(height: 12),
+          Gap.lg,
           if (isAnonymous) _anonymousSection() else _accountManagementSection(),
         ],
+      ),
+    );
+  }
+}
+
+/// An inline form error, on a soft error-tinted panel rather than as bare red
+/// text - so it reads as part of the form instead of a stray sentence.
+class _ErrorLine extends StatelessWidget {
+  final String message;
+
+  const _ErrorLine({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      decoration: BoxDecoration(
+        color: p.coralSoft,
+        borderRadius: AppRadius.smAll,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline_rounded, size: 16, color: scheme.error),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                fontSize: 12.5,
+                height: 1.4,
+                color: p.ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The change-password form.
+///
+/// A real widget rather than an inline `StatefulBuilder` inside `showDialog`,
+/// so its two [TextEditingController]s are disposed when the dialog closes -
+/// the previous inline version leaked one pair per invocation.
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _currentController = TextEditingController();
+  final _newController = TextEditingController();
+  String? _error;
+  bool _submitting = false;
+
+  @override
+  void dispose() {
+    _currentController.dispose();
+    _newController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    if (_newController.text.length < 6) {
+      setState(() => _error = 'Pick a password at least 6 characters long.');
+      return;
+    }
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+    try {
+      await AuthService.instance.changePassword(
+        _currentController.text,
+        _newController.text,
+      );
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      debugPrint('Password change failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _submitting = false;
+        _error = authErrorMessage(e);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Container(
+        decoration: BoxDecoration(
+          color: p.cardRaised,
+          borderRadius: AppRadius.xlAll,
+          boxShadow: p.shadowHi,
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 24, 22, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Change password',
+              textAlign: TextAlign.center,
+              style: AppTheme.plantNameStyle(context, size: 20),
+            ),
+            Gap.md,
+            TextField(
+              controller: _currentController,
+              obscureText: true,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(
+                labelText: 'Current password',
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _newController,
+              obscureText: true,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              decoration: const InputDecoration(labelText: 'New password'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              _ErrorLine(message: _error!),
+            ],
+            Gap.lg,
+            FilledButton(
+              onPressed: _submitting ? null : _submit,
+              child:
+                  _submitting
+                      ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator.adaptive(
+                          strokeWidth: 2,
+                        ),
+                      )
+                      : const Text('Save'),
+            ),
+            const SizedBox(height: 4),
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: p.inkSoft),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -5,6 +5,38 @@ import 'photo_storage_service.dart';
 import 'plant_repository.dart';
 import 'propagation_repository.dart';
 
+/// Turns a Firebase Auth failure into something worth showing a person.
+///
+/// Screens previously surfaced `e.toString()` directly, which renders as
+/// `[firebase_auth/weak-password] Password should be at least 6 characters`
+/// - a bracketed error code and an internal message in the middle of a
+/// profile form. These are the codes this app can actually produce; anything
+/// unrecognised falls back to a generic line rather than leaking internals.
+String authErrorMessage(Object error) {
+  final code = error is FirebaseAuthException ? error.code : '';
+  return switch (code) {
+    'invalid-email' => 'That email address does not look right.',
+    'email-already-in-use' ||
+    'credential-already-in-use' =>
+      'That email is already linked to another account.',
+    'weak-password' => 'Pick a password at least 6 characters long.',
+    'wrong-password' ||
+    'invalid-credential' =>
+      'That password is not right. Try again.',
+    'user-not-found' => 'No account exists for that email.',
+    'user-mismatch' => 'Those credentials belong to a different account.',
+    'requires-recent-login' =>
+      'For security, sign in again before making this change.',
+    'too-many-requests' =>
+      'Too many attempts. Wait a few minutes and try again.',
+    'network-request-failed' =>
+      'No connection. Check your network and try again.',
+    'operation-not-allowed' =>
+      'That sign-in method is not enabled for this app.',
+    _ => 'Something went wrong. Please try again.',
+  };
+}
+
 /// Wraps Firebase Auth with an anonymous-first model: every install signs in
 /// anonymously automatically (no signup friction), and can later "upgrade"
 /// that same account to an email/password so its data is recoverable on

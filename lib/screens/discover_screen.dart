@@ -6,10 +6,13 @@ import 'package:flutter/material.dart';
 import '../services/perenual_service.dart';
 import '../services/species_cache_service.dart';
 import '../services/wikimedia_image_service.dart';
+import '../styles/app_theme.dart';
 import '../widgets/account_button.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/search_field.dart';
+import '../widgets/primitives.dart';
+import '../widgets/section_header.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/weather_appbar_chip.dart';
 import 'species_detail_screen.dart';
@@ -226,18 +229,14 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   /// rather than recent-viewed replacing the rest, since viewing one plant
   /// shouldn't erase the browsing entry points.
   Widget _buildExplore(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
 
     return ListView(
       keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      padding: const EdgeInsets.fromLTRB(Gap.screen, 12, Gap.screen, 24),
       children: [
         if (_recent.isNotEmpty) ...[
-          Text(
-            'Recently viewed',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
+          const SectionHeader('Recently viewed'),
           SizedBox(
             height: 132,
             child: ListView.separated(
@@ -287,56 +286,45 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           ),
           const SizedBox(height: 24),
         ],
-        Card(
-          color: scheme.primaryContainer,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  Icons.auto_awesome,
-                  size: 20,
-                  color: scheme.onPrimaryContainer,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _fact,
-                    style: TextStyle(
-                      color: scheme.onPrimaryContainer,
-                      height: 1.4,
-                    ),
+        AppCard(
+          color: p.fernSoft,
+          flat: true,
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.auto_awesome_rounded, size: 19, color: p.fern),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Text(
+                  _fact,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    color: p.ink,
+                    height: 1.5,
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 20),
-        Text(
-          'Browse a category',
-          style: Theme.of(context).textTheme.titleSmall,
-        ),
-        const SizedBox(height: 8),
+        Gap.lg,
+        const SectionHeader('Browse a category'),
         Wrap(
           spacing: 8,
           runSpacing: 8,
           children: [
             for (final label in _categoryChips)
-              ActionChip(
-                label: Text(label),
-                onPressed: () => _searchCategory(label),
+              FilterPill(
+                label: label,
+                selected: false,
+                onTap: () => _searchCategory(label),
               ),
           ],
         ),
         if (_popular.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text(
-            'Popular houseplants',
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-          const SizedBox(height: 8),
+          Gap.lg,
+          const SectionHeader('Popular houseplants'),
           SizedBox(
             height: 132,
             child: ListView.separated(
@@ -429,35 +417,58 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               child: ListView.builder(
                 keyboardDismissBehavior:
                     ScrollViewKeyboardDismissBehavior.onDrag,
+                padding: const EdgeInsets.fromLTRB(
+                  Gap.screen,
+                  8,
+                  Gap.screen,
+                  24,
+                ),
                 itemCount: _results.length,
                 itemBuilder: (context, index) {
                   final result = _results[index];
                   final isOpening = _openingSpeciesId == result.id;
-                  return ListTile(
-                    leading: _SpeciesThumbnail(
-                      key: ValueKey(result.id),
-                      summary: result,
-                      heroTag: 'species_${result.id}',
+                  // The common name leads when there is one - it is what a
+                  // person actually searched for - with the binomial as the
+                  // italic secondary line. The previous row put the Latin
+                  // name first, which read as a database listing.
+                  final hasCommon = result.commonName != null;
+
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: AppCard(
+                      padding: EdgeInsets.zero,
+                      onTap: () => _openSpecies(result),
+                      child: AppRow(
+                        padding: const EdgeInsets.fromLTRB(12, 11, 14, 11),
+                        leading: _SpeciesThumbnail(
+                          key: ValueKey(result.id),
+                          summary: result,
+                          heroTag: 'species_${result.id}',
+                          size: 46,
+                        ),
+                        title:
+                            hasCommon
+                                ? result.commonName!
+                                : result.scientificName,
+                        serifTitle: true,
+                        subtitle: hasCommon ? result.scientificName : null,
+                        subtitleItalic: true,
+                        trailing:
+                            isOpening
+                                ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator.adaptive(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                                : Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color: context.palette.inkFaint,
+                                ),
+                      ),
                     ),
-                    title: Text(
-                      result.scientificName,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                    subtitle:
-                        result.commonName != null
-                            ? Text(result.commonName!)
-                            : null,
-                    trailing:
-                        isOpening
-                            ? const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator.adaptive(
-                                strokeWidth: 2,
-                              ),
-                            )
-                            : null,
-                    onTap: () => _openSpecies(result),
                   );
                 },
               ),
@@ -528,10 +539,10 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
   Widget build(BuildContext context) {
     final usingPerenual = _hasPerenualThumb && !_perenualFailed;
     final url = usingPerenual ? widget.summary.thumbnailUrl : _fallbackUrl;
-    if (url == null) return const Icon(Icons.local_florist);
+    if (url == null) return _fallbackTile(context);
 
     Widget image = ClipRRect(
-      borderRadius: BorderRadius.circular(8),
+      borderRadius: BorderRadius.circular(AppRadius.sm),
       child: Image.network(
         url,
         width: widget.size,
@@ -543,7 +554,7 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
         cacheWidth: (widget.size * 3).round(),
         errorBuilder: (_, __, ___) {
           if (usingPerenual) _onPerenualImageFailed();
-          return const Icon(Icons.local_florist);
+          return _fallbackTile(context);
         },
       ),
     );
@@ -552,5 +563,24 @@ class _SpeciesThumbnailState extends State<_SpeciesThumbnail> {
       image = Hero(tag: widget.heroTag!, child: image);
     }
     return image;
+  }
+
+  /// A soft fern tile in place of a bare grey icon, so a species with no
+  /// artwork still reads as a designed row rather than a broken one.
+  Widget _fallbackTile(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      width: widget.size,
+      height: widget.size,
+      decoration: BoxDecoration(
+        color: p.fernSoft,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+      ),
+      child: Icon(
+        Icons.local_florist_outlined,
+        size: widget.size * 0.44,
+        color: p.fern,
+      ),
+    );
   }
 }

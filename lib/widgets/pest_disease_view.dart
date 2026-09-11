@@ -6,6 +6,8 @@ import '../services/pest_disease_service.dart';
 import 'empty_state.dart';
 import 'search_field.dart';
 import 'shimmer.dart';
+import '../styles/app_theme.dart';
+import 'primitives.dart';
 
 /// Search for common pests and diseases (spider mites, powdery mildew, root
 /// rot, etc.) with symptoms and treatment info. A bodyless view (no Scaffold)
@@ -131,67 +133,106 @@ class _PestDiseaseTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
 
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      child: ExpansionTile(
-        leading:
-            info.imageUrl != null
-                ? ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
+    return AppExpander(
+      title: info.commonName,
+      subtitle: info.scientificName ?? 'Common houseplant problem',
+      leading: ClipRRect(
+        borderRadius: AppRadius.smAll,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child:
+              info.imageUrl != null
+                  ? Image.network(
                     info.imageUrl!,
-                    width: 44,
-                    height: 44,
                     fit: BoxFit.cover,
                     cacheWidth: 132,
                     filterQuality: FilterQuality.low,
-                    errorBuilder:
-                        (_, __, ___) => const Icon(Icons.bug_report_outlined),
-                  ),
-                )
-                : const Icon(Icons.bug_report_outlined),
-        title: Text(info.commonName),
-        subtitle:
-            info.scientificName != null
-                ? Text(
-                  info.scientificName!,
-                  style: const TextStyle(fontStyle: FontStyle.italic),
-                )
-                : null,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (info.description != null) ...[
-                  Text(info.description!),
-                  const SizedBox(height: 12),
-                ],
-                if (info.solution != null) ...[
-                  Text(
-                    'Solution',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: scheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(info.solution!),
-                  const SizedBox(height: 12),
-                ],
-                if (info.hostPlants.isNotEmpty)
-                  Text(
-                    'Commonly affects: ${info.hostPlants.join(", ")}',
-                    style: TextStyle(color: scheme.onSurfaceVariant),
-                  ),
-              ],
-            ),
-          ),
-        ],
+                    errorBuilder: (_, __, ___) => _fallback(p),
+                  )
+                  : _fallback(p),
+        ),
       ),
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (info.description != null) ...[
+                Text(
+                  info.description!,
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    height: 1.5,
+                    color: p.inkSoft,
+                  ),
+                ),
+                Gap.md,
+              ],
+              if (info.solution != null) ...[
+                // The fix is what a worried plant owner opened this for, so
+                // it gets its own tinted panel rather than a bold run-in
+                // heading in the middle of the description.
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.fromLTRB(13, 12, 13, 13),
+                  decoration: BoxDecoration(
+                    color: p.fernSoft,
+                    borderRadius: AppRadius.mdAll,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.healing_outlined,
+                            size: 15,
+                            color: p.fern,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'WHAT TO DO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.9,
+                              color: p.fern,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        info.solution!,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          height: 1.5,
+                          color: p.ink,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Gap.md,
+              ],
+              if (info.hostPlants.isNotEmpty)
+                Text(
+                  'Commonly affects: ${info.hostPlants.join(", ")}',
+                  style: TextStyle(fontSize: 12.5, color: p.inkFaint),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
+
+  Widget _fallback(Palette p) => ColoredBox(
+    color: p.amberSoft,
+    child: Icon(Icons.bug_report_outlined, size: 20, color: p.amber),
+  );
 }

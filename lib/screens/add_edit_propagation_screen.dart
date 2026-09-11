@@ -13,6 +13,7 @@ import '../utils/permanent_image.dart';
 import '../widgets/app_bottom_sheet.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/inset_group.dart';
+import '../widgets/app_dialogs.dart';
 
 const _methods = ['Water', 'Soil', 'Air Layering', 'Division', 'Other'];
 
@@ -173,9 +174,7 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
   Future<void> _save() async {
     final name = _nameController.text.trim();
     if (name.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Please give it a name')));
+      showAppSnack(context, 'Please give it a name');
       return;
     }
 
@@ -219,8 +218,11 @@ class _AddEditPropagationScreenState extends State<AddEditPropagationScreen> {
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save: ${e.toString()}')),
+      debugPrint('Failed to save propagation: $e');
+      showAppSnack(
+        context,
+        "Couldn't save this propagation. Check your connection and try again.",
+        error: true,
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);

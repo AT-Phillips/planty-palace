@@ -22,6 +22,7 @@ import '../widgets/plant_thumbnail.dart';
 import '../widgets/section_header.dart';
 import 'add_edit_plant_screen.dart';
 import '../utils/app_page_route.dart';
+import '../widgets/app_dialogs.dart';
 
 IconData _careIconFor(String type) {
   switch (type) {
@@ -156,14 +157,11 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
         break;
     }
     if (!mounted) return;
-    ScaffoldMessenger.of(context)
-      ..clearSnackBars()
-      ..showSnackBar(
-        SnackBar(
-          content: Text('${_plant.name} ${kind.pastTense.toLowerCase()}'),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+    showAppSnack(
+      context,
+      '${_plant.name} ${kind.pastTense.toLowerCase()}',
+      duration: const Duration(seconds: 2),
+    );
   }
 
   /// Opens the slide-to-confirm care sheet for [kind]; logs the action or
@@ -191,34 +189,15 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   }
 
   Future<void> _addJournalEntry() async {
-    final controller = TextEditingController();
-    final text = await showDialog<String>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Add journal entry'),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              maxLines: null,
-              minLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'What did you notice?',
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, controller.text.trim()),
-                child: const Text('Save'),
-              ),
-            ],
-          ),
+    // showAppPrompt owns the controller's lifecycle; the previous inline
+    // dialog created one per invocation and never disposed it.
+    final text = await showAppPrompt(
+      context,
+      title: 'Add journal entry',
+      hintText: 'What did you notice?',
+      maxLines: 4,
     );
-    if (text == null || text.isEmpty) return;
+    if (text == null) return;
 
     final entry = await _repository.addJournalEntry(_plant.id!, text);
     if (!mounted) return;
@@ -242,27 +221,16 @@ class _PlantDetailScreenState extends State<PlantDetailScreen> {
   }
 
   Future<void> _deletePlant() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete plant?'),
-            content: Text(
-              'This will remove ${_plant.name} and all of its photos and history.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+    final confirmed = await showAppConfirm(
+      context,
+      title: 'Delete plant?',
+      message:
+          'This removes ${_plant.name} along with all of its photos and care '
+          'history. This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     await _repository.deletePlant(_plant.id!);
     await NotificationService().cancelReminder(_plant.id!);

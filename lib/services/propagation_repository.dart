@@ -12,6 +12,14 @@ import 'photo_storage_service.dart';
 /// generic base, matching this codebase's existing convention of small
 /// parallel services).
 class PropagationRepository {
+  PropagationRepository.raw();
+
+  /// Test seam - see [PlantRepository.testFactory].
+  static PropagationRepository Function()? testFactory;
+
+  factory PropagationRepository() =>
+      testFactory?.call() ?? PropagationRepository.raw();
+
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {

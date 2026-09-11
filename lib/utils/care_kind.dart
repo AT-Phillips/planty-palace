@@ -46,6 +46,16 @@ extension CareKindInfo on CareKind {
     CareKind.prune => 'pruning',
   };
 
+  /// The Plant document field holding the last time this kind was performed.
+  /// Lets the repository write any care kind generically instead of needing
+  /// one hand-written method per kind.
+  String get lastPerformedField => switch (this) {
+    CareKind.water => 'lastWatered',
+    CareKind.feed => 'lastFertilized',
+    CareKind.repot => 'lastRepotted',
+    CareKind.prune => 'lastPruned',
+  };
+
   /// The plant's configured interval for this kind, or null if unscheduled.
   int? intervalDays(Plant plant) => switch (this) {
     CareKind.water => plant.wateringIntervalDays,
@@ -80,4 +90,17 @@ extension CareKindInfo on CareKind {
 
   /// Whether this plant has this kind scheduled at all.
   bool isScheduled(Plant plant) => intervalDays(plant) != null;
+
+  /// Returns [plant] with this kind's "last performed" stamp set to [at] -
+  /// the local mirror of what [PlantRepository.markCare] writes, so a screen
+  /// can update its own state optimistically without refetching.
+  Plant withPerformed(Plant plant, DateTime at) {
+    final stamp = at.toIso8601String();
+    return switch (this) {
+      CareKind.water => plant.copyWith(lastWatered: stamp),
+      CareKind.feed => plant.copyWith(lastFertilized: stamp),
+      CareKind.repot => plant.copyWith(lastRepotted: stamp),
+      CareKind.prune => plant.copyWith(lastPruned: stamp),
+    };
+  }
 }

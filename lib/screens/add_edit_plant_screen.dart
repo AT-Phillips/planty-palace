@@ -15,6 +15,9 @@ import '../utils/permanent_image.dart';
 import '../widgets/app_bottom_sheet.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/inset_group.dart';
+import '../widgets/app_dialogs.dart';
+import '../widgets/primitives.dart';
+import '../widgets/section_header.dart';
 
 const _wateringIntervalOptions = [3, 7, 10, 14, 21, 30];
 const _fertilizingIntervalOptions = [14, 30, 60, 90];
@@ -242,9 +245,15 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       suggestions = await _identifierService.identifyPlant();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
+      // The raw exception goes to the log, not to the user - a Firestore or
+      // HTTP error string is noise to someone who just wanted to add a plant.
+      debugPrint('Plant identification failed: $e');
+      showAppSnack(
         context,
-      ).showSnackBar(SnackBar(content: Text('Error: ${e.toString()}')));
+        "Couldn't identify that photo. Try again, or enter the details "
+        'yourself.',
+        error: true,
+      );
     }
 
     if (!mounted) return;
@@ -262,11 +271,7 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
 
   Future<void> _savePlant() async {
     if (selectedName == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Add a photo and identify your plant first'),
-        ),
-      );
+      showAppSnack(context, 'Add a photo and identify your plant first');
       return;
     }
 
@@ -349,8 +354,11 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       Navigator.pop(context, savedPlant);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to save plant: ${e.toString()}')),
+      debugPrint('Failed to save plant: $e');
+      showAppSnack(
+        context,
+        "Couldn't save this plant. Check your connection and try again.",
+        error: true,
       );
     } finally {
       if (mounted) setState(() => isSaving = false);
@@ -602,33 +610,15 @@ class _AddEditPlantScreenState extends State<AddEditPlantScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 6, bottom: 8),
-            child: Text(
-              "WHAT'S IN THE PHOTO?",
-              style: TextStyle(
-                fontSize: 11.5,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-                color: scheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(
-                value: 'leaf',
-                label: Text('Leaf'),
-                icon: Icon(Icons.eco_outlined),
-              ),
-              ButtonSegment(
-                value: 'flower',
-                label: Text('Flower'),
-                icon: Icon(Icons.local_florist_outlined),
-              ),
+          const SectionHeader("What's in the photo?"),
+          SegmentedTabs(
+            labels: const ['Leaf', 'Flower'],
+            icons: const [
+              Icons.eco_outlined,
+              Icons.local_florist_outlined,
             ],
-            selected: {_identifierService.organ},
-            onSelectionChanged: (selection) => _setOrgan(selection.first),
+            selected: _identifierService.organ == 'flower' ? 1 : 0,
+            onChanged: (i) => _setOrgan(i == 1 ? 'flower' : 'leaf'),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(

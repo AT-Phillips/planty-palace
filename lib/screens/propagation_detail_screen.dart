@@ -19,6 +19,7 @@ import '../widgets/section_header.dart';
 import 'add_edit_plant_screen.dart';
 import 'add_edit_propagation_screen.dart';
 import 'plant_detail_screen.dart';
+import '../widgets/app_dialogs.dart';
 
 class PropagationDetailScreen extends StatefulWidget {
   final Propagation propagation;
@@ -68,27 +69,16 @@ class _PropagationDetailScreenState extends State<PropagationDetailScreen> {
   }
 
   Future<void> _deletePropagation() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Delete propagation?'),
-            content: Text(
-              'This will remove ${_propagation.name} and all of its photos.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Delete'),
-              ),
-            ],
-          ),
+    final confirmed = await showAppConfirm(
+      context,
+      title: 'Delete propagation?',
+      message:
+          'This removes ${_propagation.name} and all of its photos. This '
+          'cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
     );
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     await _repository.deletePropagation(_propagation.id!);
     if (mounted) Navigator.pop(context, true);
@@ -111,28 +101,15 @@ class _PropagationDetailScreenState extends State<PropagationDetailScreen> {
   }
 
   Future<void> _promote() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder:
-          (context) => AlertDialog(
-            title: const Text('Promote to a plant?'),
-            content: Text(
-              '${_propagation.name} will become a new plant you can track watering and care for. '
-              'This propagation stays visible, marked as promoted.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Promote'),
-              ),
-            ],
-          ),
+    final confirmed = await showAppConfirm(
+      context,
+      title: 'Promote to a plant?',
+      message:
+          '${_propagation.name} becomes a new plant you can track watering '
+          'and care for. This propagation stays visible, marked as promoted.',
+      confirmLabel: 'Promote',
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
 
     final gardenId = await PlantRepository().getOrCreateDefaultGardenId();
     if (!mounted) return;

@@ -3,23 +3,19 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../styles/app_theme.dart';
 
-/// Holds and persists the user's chosen [ThemeMode] (system/light/dark),
-/// accent color, and background palette.
+/// Holds and persists the user's chosen [ThemeMode] (system/light/dark) and
+/// background palette.
+///
+/// There is deliberately no accent-color setting. See the comment on
+/// `primary` in AppTheme for why: a configurable accent repainted half the
+/// app while the designed tokens held the other half, which made the built
+/// app look unlike its own design no matter how the design was tuned.
 class ThemeController {
   static final ThemeController instance = ThemeController._internal();
   ThemeController._internal();
 
   static const _prefsKey = 'themeMode';
-  static const _accentPrefsKey = 'accentColorIndex';
   static const _backgroundPrefsKey = 'backgroundPaletteIndex';
-
-  static const List<Color> accentColors = [
-    AppTheme.defaultSeedColor, // Sage
-    Color(0xFF2A6F97), // Ocean
-    Color(0xFFB5533C), // Terracotta
-    Color(0xFF6B4E8E), // Plum
-    Color(0xFFB8860B), // Amber
-  ];
 
   /// Selectable app background tones (Forest/Midnight/Slate/Charcoal), chosen
   /// independently of [accentColors]. See AppTheme.backgroundPalettes - which
@@ -29,7 +25,6 @@ class ThemeController {
       AppTheme.backgroundPalettes;
 
   final ValueNotifier<ThemeMode> themeMode = ValueNotifier(ThemeMode.system);
-  final ValueNotifier<int> accentColorIndex = ValueNotifier(0);
   final ValueNotifier<int> backgroundPaletteIndex = ValueNotifier(0);
 
   BackgroundPalette get backgroundPalette =>
@@ -43,9 +38,6 @@ class ThemeController {
       'dark' => ThemeMode.dark,
       _ => ThemeMode.system,
     };
-    final savedAccent = prefs.getInt(_accentPrefsKey) ?? 0;
-    accentColorIndex.value =
-        savedAccent >= 0 && savedAccent < accentColors.length ? savedAccent : 0;
     final savedBackground = prefs.getInt(_backgroundPrefsKey) ?? 0;
     backgroundPaletteIndex.value =
         savedBackground >= 0 && savedBackground < backgroundPalettes.length
@@ -57,12 +49,6 @@ class ThemeController {
     themeMode.value = mode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_prefsKey, mode.name);
-  }
-
-  Future<void> setAccentColor(int index) async {
-    accentColorIndex.value = index;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_accentPrefsKey, index);
   }
 
   Future<void> setBackgroundPalette(int index) async {

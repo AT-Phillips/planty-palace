@@ -7,6 +7,7 @@ import '../models/garden.dart';
 import '../models/journal_entry.dart';
 import '../models/plant.dart';
 import '../models/plant_photo.dart';
+import '../utils/care_kind.dart';
 import 'auth_service.dart';
 import 'photo_storage_service.dart';
 
@@ -17,6 +18,19 @@ import 'photo_storage_service.dart';
 /// the single source of truth - there's no separate local database anymore.
 class PlantRepository {
   static const defaultGardenName = 'My Plants';
+
+  PlantRepository.raw();
+
+  /// Test seam. Screens construct their repository directly as
+  /// `PlantRepository()`, which makes them impossible to render in a widget
+  /// test without a live Firestore. Routing that call through a replaceable
+  /// factory lets a test install a fake for the whole app in one line,
+  /// without threading a repository parameter through every screen.
+  ///
+  /// Production code never sets this, so the default path is unchanged.
+  static PlantRepository Function()? testFactory;
+
+  factory PlantRepository() => testFactory?.call() ?? PlantRepository.raw();
 
   FirebaseFirestore get _db => FirebaseFirestore.instance;
 
@@ -119,6 +133,51 @@ class PlantRepository {
     return aggregate.count ?? 0;
   }
 
+  /// Every plant plus the Spaces they live in, in two round trips.
+  ///
+  /// The hub screen previously issued one aggregate count *per Space* on top
+  /// of a separate full plant fetch, so its load cost grew with the number of
+  /// Spaces (nine round trips for five Spaces). Since it already needs the
+  /// full plant list for the to-do section, the per-Space counts are derived
+  /// from that same list instead - fewer reads, lower billing, and counts
+  /// that can never disagree with the list they are counting.
+  Future<({List<Garden> spaces, List<Plant> plants, Map<String, int> counts})>
+  getHubSnapshot() async {
+    final results = await Future.wait([_gardens.get(), _plants.get()]);
+
+    final spaces =
+        results[0].docs
+            .map((d) => Garden.fromMap(d.data(), id: d.id))
+            .toList()
+          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final plants =
+        results[1].docs.map((d) => Plant.fromMap(d.data(), id: d.id)).toList();
+
+    final counts = <String, int>{for (final s in spaces) s.id!: 0};
+    for (final plant in plants) {
+      // A plant with no gardenId (or one pointing at a deleted Space) simply
+      // is not counted against any Space, rather than crashing the hub.
+      final id = plant.gardenId;
+      if (id != null && counts.containsKey(id)) {
+        counts[id] = counts[id]! + 1;
+      }
+    }
+
+    return (spaces: spaces, plants: plants, counts: counts);
+  }
+
+  /// How many care events were logged since [since] - the "done today"
+  /// counter on the hub. A single query against the care log, rather than
+  /// per-plant history fetches.
+  Future<int> getCareEventCountSince(DateTime since) async {
+    final aggregate =
+        await _careLog
+            .where('wateredAt', isGreaterThanOrEqualTo: since.toIso8601String())
+            .count()
+            .get();
+    return aggregate.count ?? 0;
+  }
+
   // --- Plants ---
 
   Future<List<Plant>> getPlants() async {
@@ -140,29 +199,60 @@ class PlantRepository {
     await _plants.doc(plant.id).update(plant.toMap());
   }
 
-  Future<void> markWatered(String plantId) async {
+  /// Records that [kind] was performed on a plant just now.
+  ///
+  /// The plant's "last performed" stamp and the care-log entry are written in
+  /// a single atomic batch. Previously these were two sequential round trips,
+  /// which was not only twice the latency on every tap of a water button but
+  /// could also leave the plant marked cared-for with no history row (or the
+  /// reverse) if the second write failed.
+  Future<void> markCare(String plantId, CareKind kind) async {
     final now = DateTime.now().toIso8601String();
-    await _plants.doc(plantId).update({'lastWatered': now});
-    await logCareEvent(plantId, now);
+    final batch = _db.batch();
+    batch.update(_plants.doc(plantId), {kind.lastPerformedField: now});
+    batch.set(_careLog.doc(), {
+      'plantId': plantId,
+      'wateredAt': now,
+      'type': kind.logType,
+    });
+    await batch.commit();
   }
 
-  Future<void> markFertilized(String plantId) async {
+  /// Records [kind] against many plants at once - the Care screen's bulk
+  /// action. One batch for the whole selection rather than a pair of writes
+  /// per plant, so selecting twenty plants costs one commit instead of forty
+  /// round trips.
+  ///
+  /// Firestore caps a batch at 500 writes; each plant costs two, so the work
+  /// is chunked to stay inside that limit.
+  Future<void> markCareBulk(Iterable<String> plantIds, CareKind kind) async {
     final now = DateTime.now().toIso8601String();
-    await _plants.doc(plantId).update({'lastFertilized': now});
-    await logCareEvent(plantId, now, type: 'fertilizing');
+    final ids = plantIds.toList();
+    const perBatch = 200;
+
+    for (var start = 0; start < ids.length; start += perBatch) {
+      final chunk = ids.skip(start).take(perBatch);
+      final batch = _db.batch();
+      for (final id in chunk) {
+        batch.update(_plants.doc(id), {kind.lastPerformedField: now});
+        batch.set(_careLog.doc(), {
+          'plantId': id,
+          'wateredAt': now,
+          'type': kind.logType,
+        });
+      }
+      await batch.commit();
+    }
   }
 
-  Future<void> markRepotted(String plantId) async {
-    final now = DateTime.now().toIso8601String();
-    await _plants.doc(plantId).update({'lastRepotted': now});
-    await logCareEvent(plantId, now, type: 'repotting');
-  }
+  Future<void> markWatered(String plantId) => markCare(plantId, CareKind.water);
 
-  Future<void> markPruned(String plantId) async {
-    final now = DateTime.now().toIso8601String();
-    await _plants.doc(plantId).update({'lastPruned': now});
-    await logCareEvent(plantId, now, type: 'pruning');
-  }
+  Future<void> markFertilized(String plantId) =>
+      markCare(plantId, CareKind.feed);
+
+  Future<void> markRepotted(String plantId) => markCare(plantId, CareKind.repot);
+
+  Future<void> markPruned(String plantId) => markCare(plantId, CareKind.prune);
 
   /// Deletes a plant and everything hanging off it.
   ///

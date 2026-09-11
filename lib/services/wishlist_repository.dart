@@ -9,6 +9,14 @@ import 'auth_service.dart';
 /// Mirrors PropagationRepository's shape (this codebase favours small
 /// parallel repositories over a shared generic base).
 class WishlistRepository {
+  WishlistRepository.raw();
+
+  /// Test seam - see [PlantRepository.testFactory].
+  static WishlistRepository Function()? testFactory;
+
+  factory WishlistRepository() =>
+      testFactory?.call() ?? WishlistRepository.raw();
+
   String get _uid {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) {

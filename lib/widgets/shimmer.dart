@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../styles/app_theme.dart';
+import 'primitives.dart';
+
 /// Wraps a skeleton layout (made of [SkeletonBox]es) and sweeps an animated
 /// highlight across it - a modern "loading" shimmer in place of a spinner.
 /// The moving band also makes waits *feel* shorter than a static placeholder.
@@ -27,10 +30,10 @@ class _ShimmerLoadingState extends State<ShimmerLoading>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final base = scheme.surfaceContainerHighest;
+    final p = context.palette;
+    final base = p.ground2;
     final highlight = Color.alphaBlend(
-      scheme.onSurface.withValues(alpha: 0.06),
+      p.ink.withValues(alpha: 0.06),
       base,
     );
 
@@ -86,7 +89,7 @@ class SkeletonBox extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: context.palette.ground2,
         borderRadius: borderRadius,
       ),
     );
@@ -139,6 +142,129 @@ class SearchSkeletonList extends StatelessWidget {
         physics: const NeverScrollableScrollPhysics(),
         itemCount: rows,
         itemBuilder: (_, __) => const SkeletonListTile(),
+      ),
+    );
+  }
+}
+
+/// Skeleton for the photo grid on My Plants: square photo blocks with two
+/// caption lines, matching the real tile's proportions so the layout does not
+/// shift when content arrives.
+class PlantGridSkeleton extends StatelessWidget {
+  final int count;
+
+  const PlantGridSkeleton({super.key, this.count = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: GridView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(Gap.screen, 4, Gap.screen, 16),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 14,
+          crossAxisSpacing: 14,
+          childAspectRatio: 0.78,
+        ),
+        itemCount: count,
+        itemBuilder:
+            (_, __) => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Expanded(
+                  child: SkeletonBox(
+                    height: double.infinity,
+                    width: double.infinity,
+                    borderRadius: AppRadius.lgAll,
+                  ),
+                ),
+                const SizedBox(height: 9),
+                SkeletonBox(
+                  width: MediaQuery.of(context).size.width * 0.24,
+                  height: 11,
+                ),
+                const SizedBox(height: 6),
+                const SkeletonBox(width: 62, height: 9),
+              ],
+            ),
+      ),
+    );
+  }
+}
+
+/// Skeleton for the Care list: a ring-sized circle, two text lines, and the
+/// trailing action disc.
+class CareListSkeleton extends StatelessWidget {
+  final int rows;
+
+  const CareListSkeleton({super.key, this.rows = 6});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(Gap.screen, 4, Gap.screen, 16),
+        itemCount: rows,
+        itemBuilder:
+            (_, __) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(
+                children: [
+                  const SkeletonBox(
+                    width: 48,
+                    height: 48,
+                    borderRadius: BorderRadius.all(Radius.circular(24)),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonBox(
+                          width: MediaQuery.of(context).size.width * 0.33,
+                          height: 12,
+                        ),
+                        const SizedBox(height: 7),
+                        const SkeletonBox(width: 104, height: 10),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const SkeletonBox(
+                    width: 38,
+                    height: 38,
+                    borderRadius: BorderRadius.all(Radius.circular(19)),
+                  ),
+                ],
+              ),
+            ),
+      ),
+    );
+  }
+}
+
+/// Skeleton for the Spaces hub: the tall hero banner followed by collapsed
+/// section cards.
+class SpacesSkeleton extends StatelessWidget {
+  const SpacesSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ShimmerLoading(
+      child: ListView(
+        physics: const NeverScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(Gap.screen, 8, Gap.screen, 16),
+        children: const [
+          SkeletonBox(height: 148, borderRadius: AppRadius.xlAll),
+          SizedBox(height: 22),
+          SkeletonBox(height: 74, borderRadius: AppRadius.lgAll),
+          SizedBox(height: 12),
+          SkeletonBox(height: 74, borderRadius: AppRadius.lgAll),
+          SizedBox(height: 12),
+          SkeletonBox(height: 74, borderRadius: AppRadius.lgAll),
+        ],
       ),
     );
   }

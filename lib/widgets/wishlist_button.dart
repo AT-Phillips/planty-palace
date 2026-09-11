@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/wishlist_repository.dart';
+import 'app_dialogs.dart';
 
 /// Heart toggle that saves/removes a species from the user's wishlist. Owns
 /// its own saved state so it can drop into stateless screens (e.g. the app
@@ -53,20 +54,15 @@ class _WishlistButtonState extends State<WishlistButton> {
       );
       if (!mounted) return;
       setState(() => _saved = nowSaved);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            nowSaved ? 'Added to your wishlist' : 'Removed from your wishlist',
-          ),
-          duration: const Duration(seconds: 2),
-        ),
+      showAppSnack(
+        context,
+        nowSaved ? 'Added to your wishlist' : 'Removed from your wishlist',
+        duration: const Duration(seconds: 2),
       );
     } catch (e) {
       debugPrint('Failed to update wishlist: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Couldn't update your wishlist.")),
-        );
+        showAppSnack(context, "Couldn't update your wishlist.", error: true);
       }
     } finally {
       if (mounted) setState(() => _busy = false);

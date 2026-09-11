@@ -5,6 +5,9 @@ import '../services/location_preferences.dart';
 import '../services/unit_preferences.dart';
 import '../services/weather_preferences.dart';
 import '../services/weather_service.dart';
+import '../styles/app_theme.dart';
+import 'inset_group.dart';
+import 'primitives.dart';
 
 /// Maps an OpenWeatherMap icon code (e.g. "10d") to a Material icon. Shared by
 /// the compact WeatherCard and the detail sheet so they stay in sync.
@@ -282,53 +285,57 @@ class _WeatherDetailSheetState extends State<_WeatherDetailSheet> {
                   child: Text('No matching cities found.'),
                 ),
               for (final result in _results)
-                Card(
-                  margin: const EdgeInsets.only(top: 8),
-                  child: ListTile(
-                    leading: const Icon(Icons.location_on_outlined),
-                    title: Text(result.displayLabel),
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: AppCard(
+                    padding: EdgeInsets.zero,
+                    bordered: true,
                     onTap: () => _selectResult(result),
+                    child: AppRow(
+                      padding: const EdgeInsets.fromLTRB(12, 11, 12, 11),
+                      leading: Icon(
+                        Icons.location_on_outlined,
+                        size: 19,
+                        color: context.palette.fern,
+                      ),
+                      title: result.displayLabel,
+                      chevron: true,
+                    ),
                   ),
                 ),
-              const SizedBox(height: 12),
-              const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: UnitPreferences.instance.useMetric,
-                builder: (context, useMetric, _) {
-                  return ListTile(
-                    contentPadding: const EdgeInsets.only(right: 4),
-                    leading: const Icon(Icons.straighten_outlined),
-                    title: const Text('Unit System'),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          useMetric ? 'Metric' : 'Imperial',
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                        const Icon(Icons.chevron_right),
-                      ],
-                    ),
-                    onTap:
-                        () => UnitPreferences.instance.setUseMetric(!useMetric),
-                  );
-                },
-              ),
-              const Divider(height: 1),
-              ValueListenableBuilder<bool>(
-                valueListenable: WeatherPreferences.instance.enabled,
-                builder: (context, enabled, _) {
-                  return SwitchListTile(
-                    contentPadding: const EdgeInsets.only(right: 4),
-                    secondary: const Icon(Icons.wb_sunny_outlined),
-                    title: const Text('Show local weather'),
-                    subtitle: const Text('Displayed at the top of Spaces'),
-                    value: enabled,
-                    onChanged:
-                        (value) =>
-                            WeatherPreferences.instance.setEnabled(value),
-                  );
-                },
+              Gap.md,
+              InsetGroup(
+                margin: EdgeInsets.zero,
+                dividerIndent: 56,
+                children: [
+                  ValueListenableBuilder<bool>(
+                    valueListenable: UnitPreferences.instance.useMetric,
+                    builder: (context, useMetric, _) {
+                      return InsetRow(
+                        icon: Icons.straighten_outlined,
+                        title: 'Unit system',
+                        value: useMetric ? 'Metric' : 'Imperial',
+                        onTap:
+                            () => UnitPreferences.instance
+                                .setUseMetric(!useMetric),
+                      );
+                    },
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: WeatherPreferences.instance.enabled,
+                    builder: (context, enabled, _) {
+                      return InsetSwitchRow(
+                        icon: Icons.wb_sunny_outlined,
+                        title: 'Show local weather',
+                        subtitle: 'A chip at the top of every main screen',
+                        value: enabled,
+                        onChanged:
+                            (value) =>
+                                WeatherPreferences.instance.setEnabled(value),
+                      );
+                    },
+                  ),
+                ],
               ),
             ],
           ),

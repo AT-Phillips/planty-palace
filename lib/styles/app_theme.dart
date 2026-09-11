@@ -129,21 +129,13 @@ class AppTheme {
       ),
   ];
 
-  static ThemeData lightTheme({
-    Color seedColor = defaultSeedColor,
-    int paletteIndex = 0,
-  }) => _themeFor(Brightness.light, seedColor, paletteIndex);
+  static ThemeData lightTheme({int paletteIndex = 0}) =>
+      _themeFor(Brightness.light, paletteIndex);
 
-  static ThemeData darkTheme({
-    Color seedColor = defaultSeedColor,
-    int paletteIndex = 0,
-  }) => _themeFor(Brightness.dark, seedColor, paletteIndex);
+  static ThemeData darkTheme({int paletteIndex = 0}) =>
+      _themeFor(Brightness.dark, paletteIndex);
 
-  static ThemeData _themeFor(
-    Brightness brightness,
-    Color seedColor,
-    int paletteIndex,
-  ) {
+  static ThemeData _themeFor(Brightness brightness, int paletteIndex) {
     final p = Palette.resolve(paletteIndex, brightness);
 
     // Start from a generated scheme (so every niche Material slot has a sane
@@ -153,13 +145,26 @@ class AppTheme {
     // et al could never render the designed palette. Now they do - which fixes
     // the whole app at once instead of per-call-site.
     final generated = ColorScheme.fromSeed(
-      seedColor: seedColor,
+      seedColor: defaultSeedColor,
       brightness: brightness,
     );
     final colorScheme = generated.copyWith(
-      // The accent picker still means something: it drives `primary`, so
-      // buttons and active states follow the user's chosen accent.
-      primary: seedColor == defaultSeedColor ? p.fern : generated.primary,
+      // One accent, always: the fern green.
+      //
+      // This used to follow a user-selectable accent color, which is what
+      // made the built app diverge from its design so persistently. Picking
+      // (say) a blue accent repainted `primary` - the nav bar, segmented
+      // controls, section headings - while every hand-authored token (the
+      // care ring, the water button, the overdue coral) stayed green. The
+      // result read as two half-finished themes fighting, not as a choice.
+      // The brand accent is part of the app's identity, so it is no longer
+      // configurable; theme mode and the ground palette still are.
+      primary: p.fern,
+      onPrimary: Colors.white,
+      primaryContainer: p.fernSoft,
+      onPrimaryContainer: p.fern,
+      secondary: p.sage,
+      onSecondary: Colors.white,
       // Neutrals carry the design's character, so they are always literal.
       surface: p.ground,
       onSurface: p.ink,

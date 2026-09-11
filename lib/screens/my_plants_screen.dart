@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 import '../models/garden.dart';
@@ -6,14 +8,18 @@ import '../services/notification_service.dart';
 import '../services/plant_repository.dart';
 import '../styles/app_theme.dart';
 import '../utils/app_page_route.dart';
+import '../utils/care_kind.dart';
 import '../utils/care_overdue.dart';
 import '../utils/watering_status.dart' show isOverdue;
 import '../widgets/animated_entrance.dart';
+import '../widgets/app_dialogs.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/frosted_app_bar.dart';
 import '../widgets/plant_thumbnail.dart';
+import '../widgets/primitives.dart';
 import '../widgets/pulse_glow.dart';
 import '../widgets/search_field.dart';
+import '../widgets/shimmer.dart';
 import 'add_edit_plant_screen.dart';
 import 'plant_detail_screen.dart';
 
@@ -39,6 +45,9 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   PlantSortOption _sortOption = PlantSortOption.name;
   bool _overdueOnly = false;
   String? _spaceFilterId; // null = all spaces (all-plants mode only)
+
+  bool _loaded = false;
+  String? _error;
 
   bool get _isAllMode => widget.garden == null;
 
@@ -83,9 +92,18 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
               ? await _repository.getPlants()
               : await _repository.getPlantsByGarden(widget.garden!.id!);
       if (!mounted) return;
-      setState(() => _plants = plants);
+      setState(() {
+        _plants = plants;
+        _loaded = true;
+        _error = null;
+      });
     } catch (e) {
       debugPrint('Failed to load plants: $e');
+      if (!mounted) return;
+      setState(() {
+        _loaded = true;
+        if (_plants.isEmpty) _error = '$e';
+      });
     }
   }
 
@@ -107,9 +125,7 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       context,
       appRoute(AddEditPlantScreen(gardenId: gardenId)),
     );
-    if (result != null && mounted) {
-      _loadPlants();
-    }
+    if (result != null && mounted) _loadPlants();
   }
 
   Future<void> _navigateToDetail(Plant plant) async {
@@ -117,19 +133,26 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       context,
       appRoute(PlantDetailScreen(plant: plant)),
     );
-    if (result == true && mounted) {
-      _loadPlants();
-    }
+    if (result == true && mounted) _loadPlants();
   }
 
+  /// Waters in place - the tile updates from memory rather than triggering a
+  /// full collection refetch on every tap of the drop badge.
   Future<void> _markWatered(Plant plant) async {
-    await _repository.markWatered(plant.id!);
-    final updated = plant.copyWith(
-      lastWatered: DateTime.now().toIso8601String(),
-    );
-    await NotificationService().scheduleWateringReminder(updated);
-    if (!mounted) return;
-    _loadPlants();
+    final updated = CareKind.water.withPerformed(plant, DateTime.now());
+    setState(() {
+      final index = _plants.indexWhere((p) => p.id == plant.id);
+      if (index != -1) _plants[index] = updated;
+    });
+    try {
+      await _repository.markCare(plant.id!, CareKind.water);
+      await NotificationService().scheduleWateringReminder(updated);
+    } catch (e) {
+      if (!mounted) return;
+      showAppSnack(context, 'Could not save that. Please try again.',
+          error: true);
+      _loadPlants();
+    }
   }
 
   Future<void> _deletePlant(Plant plant) async {
@@ -138,20 +161,14 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     // the delete never committing). Undo restores immediately.
     setState(() => _plants.removeWhere((p) => p.id == plant.id));
 
-    final messenger = ScaffoldMessenger.of(context)..clearSnackBars();
     var undone = false;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text('${plant.name} deleted'),
-        duration: const Duration(seconds: 4),
-        action: SnackBarAction(
-          label: 'Undo',
-          onPressed: () {
-            undone = true;
-            if (mounted) _loadPlants();
-          },
-        ),
-      ),
+    showAppSnack(
+      context,
+      '${plant.name} deleted',
+      onUndo: () {
+        undone = true;
+        if (mounted) _loadPlants();
+      },
     );
 
     await Future.delayed(const Duration(seconds: 4, milliseconds: 250));
@@ -162,108 +179,105 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
     if (mounted) _loadPlants();
   }
 
-  String _sortLabel(PlantSortOption option) {
-    switch (option) {
-      case PlantSortOption.name:
-        return 'Name';
-      case PlantSortOption.dateAdded:
-        return 'Date added';
-      case PlantSortOption.urgency:
-        return 'Most urgent';
-    }
+  String _sortLabel(PlantSortOption option) => switch (option) {
+    PlantSortOption.name => 'Name',
+    PlantSortOption.dateAdded => 'Date added',
+    PlantSortOption.urgency => 'Most urgent',
+  };
+
+  IconData _sortIcon(PlantSortOption option) => switch (option) {
+    PlantSortOption.name => Icons.sort_by_alpha_rounded,
+    PlantSortOption.dateAdded => Icons.schedule_rounded,
+    PlantSortOption.urgency => Icons.priority_high_rounded,
+  };
+
+  Future<void> _openSortMenu() async {
+    final option = await showAppMenu<PlantSortOption>(
+      context,
+      title: 'Sort by',
+      options: [
+        for (final option in PlantSortOption.values)
+          AppMenuOption(
+            label: _sortLabel(option),
+            icon: _sortIcon(option),
+            value: option,
+            selected: option == _sortOption,
+          ),
+      ],
+    );
+    if (option != null) setState(() => _sortOption = option);
   }
 
-  Widget _buildSpaceFilter() {
-    final scheme = Theme.of(context).colorScheme;
-    final label =
-        _spaceFilterId == null
-            ? 'All spaces'
-            : _gardens
-                .firstWhere(
-                  (g) => g.id == _spaceFilterId,
-                  orElse: () => Garden(name: 'Space'),
-                )
-                .name;
-    return PopupMenuButton<String?>(
-      initialValue: _spaceFilterId,
-      onSelected: (id) => setState(() => _spaceFilterId = id),
-      itemBuilder:
-          (context) => [
-            const PopupMenuItem<String?>(
-              value: null,
-              child: Text('All spaces'),
-            ),
-            for (final g in _gardens)
-              PopupMenuItem<String?>(value: g.id, child: Text(g.name)),
-          ],
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.home_outlined, size: 18, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 4),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 110),
-            child: Text(label, overflow: TextOverflow.ellipsis),
+  Future<void> _openSpaceMenu() async {
+    final selection = await showAppMenu<String>(
+      context,
+      title: 'Filter by Space',
+      options: [
+        AppMenuOption(
+          label: 'All spaces',
+          icon: Icons.apps_rounded,
+          value: '',
+          selected: _spaceFilterId == null,
+        ),
+        for (final g in _gardens)
+          AppMenuOption(
+            label: g.name,
+            icon: Icons.grid_view_rounded,
+            value: g.id!,
+            selected: g.id == _spaceFilterId,
           ),
-          const Icon(Icons.arrow_drop_down, size: 18),
-        ],
-      ),
+      ],
     );
+    if (selection == null) return;
+    setState(() => _spaceFilterId = selection.isEmpty ? null : selection);
+  }
+
+  String get _spaceFilterLabel {
+    if (_spaceFilterId == null) return 'All spaces';
+    return _gardens
+        .firstWhere(
+          (g) => g.id == _spaceFilterId,
+          orElse: () => Garden(name: 'Space'),
+        )
+        .name;
   }
 
   Widget _buildFilterBar() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-      child: Row(
-        children: [
-          FilterChip(
-            label: const Text('Overdue only'),
-            selected: _overdueOnly,
-            onSelected: (value) => setState(() => _overdueOnly = value),
+    return FilterBar(
+      children: [
+        FilterPill(
+          label: 'Overdue',
+          icon: Icons.priority_high_rounded,
+          selected: _overdueOnly,
+          urgent: true,
+          onTap: () => setState(() => _overdueOnly = !_overdueOnly),
+        ),
+        if (_isAllMode)
+          InlineButton(
+            label: _spaceFilterLabel,
+            icon: Icons.grid_view_rounded,
+            onTap: _openSpaceMenu,
           ),
-          const Spacer(),
-          if (_isAllMode) ...[_buildSpaceFilter(), const SizedBox(width: 12)],
-          PopupMenuButton<PlantSortOption>(
-            initialValue: _sortOption,
-            onSelected: (option) => setState(() => _sortOption = option),
-            itemBuilder:
-                (context) =>
-                    PlantSortOption.values
-                        .map(
-                          (option) => PopupMenuItem(
-                            value: option,
-                            child: Text(_sortLabel(option)),
-                          ),
-                        )
-                        .toList(),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.sort, size: 18),
-                const SizedBox(width: 4),
-                Text(_sortLabel(_sortOption)),
-              ],
-            ),
-          ),
-        ],
-      ),
+        InlineButton(
+          label: _sortLabel(_sortOption),
+          icon: Icons.swap_vert_rounded,
+          onTap: _openSortMenu,
+        ),
+      ],
     );
   }
 
-  /// Photo-first gallery tile: a square-ish photo with a small tap-to-water
-  /// drop badge overlaid in its corner (filled fern when on schedule, coral
-  /// when overdue), name + species below. Detailed watering/fertilizing/
-  /// repotting/pruning status lives on Care, the dedicated action screen, so
-  /// this stays a clean browsing tile.
+  /// Photo-first gallery tile: a square photo with a tap-to-water drop badge
+  /// overlaid in its corner, name + species below.
+  ///
+  /// The badge is a frosted disc when on schedule and a solid pulsing coral
+  /// when overdue - so urgency is legible from across the grid without a
+  /// second glance, while a healthy plant stays quiet. Detailed
+  /// watering/fertilizing/repotting/pruning status lives on Care, so this
+  /// stays a clean browsing tile.
   Widget _buildPlantCard(Plant plant) {
-    final scheme = Theme.of(context).colorScheme;
+    final p = context.palette;
     final overdue = isOverdue(plant);
-    // On-schedule: a subtle frosted-white drop over the photo. Overdue: a
-    // solid coral badge that pulses for attention (matches the mockup).
-    final badgeColor =
-        overdue
-            ? AppTheme.careOverdue(context)
-            : Colors.white.withValues(alpha: 0.28);
 
     return Dismissible(
       key: ValueKey(plant.id),
@@ -271,86 +285,71 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
       onDismissed: (_) => _deletePlant(plant),
       background: Container(
         decoration: BoxDecoration(
-          color: scheme.errorContainer,
-          borderRadius: BorderRadius.circular(18),
+          color: p.coral,
+          borderRadius: AppRadius.lgAll,
         ),
         alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Icon(Icons.delete, color: scheme.onErrorContainer),
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        child: const Icon(Icons.delete_outline_rounded, color: Colors.white),
       ),
-      child: Material(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(18),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => _navigateToDetail(plant),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              AspectRatio(
-                aspectRatio: 1,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    PlantThumbnail(
-                      plant: plant,
-                      width: double.infinity,
-                      height: double.infinity,
-                      borderRadius: BorderRadius.zero,
-                      heroTag: 'plant_${plant.id}',
+      child: AppCard(
+        padding: EdgeInsets.zero,
+        onTap: () => _navigateToDetail(plant),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  PlantThumbnail(
+                    plant: plant,
+                    width: double.infinity,
+                    height: double.infinity,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(AppRadius.lg),
                     ),
-                    Positioned(
-                      top: 8,
-                      right: 8,
-                      child: PulseGlow(
-                        active: overdue,
-                        color: badgeColor,
-                        child: Material(
-                          color: badgeColor,
-                          shape: const CircleBorder(),
-                          elevation: 2,
-                          child: InkWell(
-                            customBorder: const CircleBorder(),
-                            onTap: () => _markWatered(plant),
-                            child: const Padding(
-                              padding: EdgeInsets.all(6),
-                              child: Icon(
-                                Icons.water_drop,
-                                size: 16,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                    heroTag: 'plant_${plant.id}',
+                  ),
+                  Positioned(
+                    top: 9,
+                    right: 9,
+                    child: PulseGlow(
+                      active: overdue,
+                      color: p.coral,
+                      child: _WaterBadge(
+                        overdue: overdue,
+                        onTap: () => _markWatered(plant),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      plant.name,
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTheme.plantNameStyle(context, size: 14.5),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    plant.name,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTheme.plantNameStyle(context, size: 15),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    plant.species,
+                    style: TextStyle(
+                      fontStyle: FontStyle.italic,
+                      fontSize: 11,
+                      color: p.inkFaint,
                     ),
-                    Text(
-                      plant.species,
-                      style: TextStyle(
-                        fontStyle: FontStyle.italic,
-                        fontSize: 10.5,
-                        color: scheme.onSurfaceVariant,
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -358,67 +357,134 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _filteredPlants;
     final title = widget.garden?.name ?? 'All Plants';
 
     return Scaffold(
       appBar: FrostedAppBar(title: title),
-      body:
-          _plants.isEmpty
-              ? EmptyState(
-                icon: Icons.local_florist_outlined,
-                title: _isAllMode ? 'No plants yet' : 'No plants in $title yet',
-                message:
-                    'Tap the + button to identify and add your first plant.',
-                actionLabel: 'Add a Plant',
-                onAction: _navigateToAddPlant,
-              )
-              : Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-                    child: SearchField(
-                      controller: _searchController,
-                      hintText:
-                          _isAllMode
-                              ? 'Search all plants'
-                              : 'Search this Space',
-                    ),
-                  ),
-                  _buildFilterBar(),
-                  Expanded(
-                    child:
-                        filtered.isEmpty
-                            ? EmptyState(
-                              icon: Icons.filter_alt_off_outlined,
-                              title: 'No matching plants',
-                              message:
-                                  _overdueOnly
-                                      ? 'Nothing is overdue right now.'
-                                      : 'Try a different search or filter.',
-                            )
-                            : GridView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                              gridDelegate:
-                                  const SliverGridDelegateWithFixedCrossAxisCount(
-                                    crossAxisCount: 2,
-                                    mainAxisSpacing: 12,
-                                    crossAxisSpacing: 12,
-                                    childAspectRatio: 0.78,
-                                  ),
-                              itemCount: filtered.length,
-                              itemBuilder:
-                                  (context, index) => AnimatedEntrance(
-                                    index: index,
-                                    child: _buildPlantCard(filtered[index]),
-                                  ),
-                            ),
-                  ),
-                ],
-              ),
-      floatingActionButton: FloatingActionButton(
+      body: _buildBody(title),
+      floatingActionButton: FloatingActionPill(
+        label: 'Add plant',
         onPressed: _navigateToAddPlant,
-        child: const Icon(Icons.add),
+      ),
+    );
+  }
+
+  Widget _buildBody(String title) {
+    if (!_loaded) return const PlantGridSkeleton();
+    if (_error != null) {
+      return AppErrorView(
+        message:
+            'Your plants could not be loaded. Check your connection and try '
+            'again.',
+        onRetry: _loadPlants,
+      );
+    }
+    if (_plants.isEmpty) {
+      return EmptyState(
+        icon: Icons.local_florist_outlined,
+        title: _isAllMode ? 'No plants yet' : 'No plants in $title yet',
+        message: 'Add your first plant to start tracking its care.',
+        actionLabel: 'Add a Plant',
+        onAction: _navigateToAddPlant,
+      );
+    }
+
+    final filtered = _filteredPlants;
+
+    return RefreshIndicator.adaptive(
+      onRefresh: () async {
+        await _loadPlants();
+        if (_isAllMode) await _loadGardens();
+      },
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(Gap.screen, 10, Gap.screen, 10),
+            child: SearchField(
+              controller: _searchController,
+              hintText: _isAllMode ? 'Search all plants' : 'Search this Space',
+            ),
+          ),
+          _buildFilterBar(),
+          Expanded(
+            child:
+                filtered.isEmpty
+                    ? EmptyState(
+                      icon: Icons.filter_alt_off_outlined,
+                      title: 'No matching plants',
+                      message:
+                          _overdueOnly
+                              ? 'Nothing is overdue right now.'
+                              : 'Try a different search or filter.',
+                    )
+                    : GridView.builder(
+                      padding: const EdgeInsets.fromLTRB(
+                        Gap.screen,
+                        0,
+                        Gap.screen,
+                        96,
+                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 14,
+                            crossAxisSpacing: 14,
+                            childAspectRatio: 0.76,
+                          ),
+                      itemCount: filtered.length,
+                      itemBuilder:
+                          (context, index) => AnimatedEntrance(
+                            index: index,
+                            child: _buildPlantCard(filtered[index]),
+                          ),
+                    ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The tap-to-water badge on a grid tile.
+///
+/// On schedule it is a genuinely frosted disc - a blur of whatever photo sits
+/// behind it - rather than a flat translucent white circle, so it stays
+/// legible over both a bright leaf and a dark pot. Overdue, it goes solid
+/// coral and the surrounding [PulseGlow] animates.
+class _WaterBadge extends StatelessWidget {
+  final bool overdue;
+  final VoidCallback onTap;
+
+  const _WaterBadge({required this.overdue, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipOval(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color:
+                  overdue ? p.coral : Colors.black.withValues(alpha: 0.22),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: Colors.white.withValues(alpha: overdue ? 0.0 : 0.45),
+                width: 1,
+              ),
+            ),
+            child: const Icon(
+              Icons.water_drop_rounded,
+              size: 16,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
     );
   }
