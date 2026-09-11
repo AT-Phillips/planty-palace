@@ -101,7 +101,7 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
                 // A lush botanical gradient always sits underneath - so a plant
                 // with no photo (or one still resolving) reads as an
                 // intentional, designed tile rather than an empty square.
-                final placeholder = _PlantPlaceholder(seed: _seed);
+                final placeholder = BotanicalPlaceholder(seed: _seed);
 
                 if (snapshot.connectionState != ConnectionState.done) {
                   return placeholder;
@@ -153,12 +153,18 @@ class _PlantThumbnailState extends State<PlantThumbnail> {
 
 /// The no-photo backdrop: one of a few hand-tuned botanical green gradients
 /// (mirroring the visual-direction mockup's leaf tiles) with a faint leaf mark,
-/// chosen deterministically from [seed] so every plant gets a consistent but
-/// varied lush fill instead of a flat empty square.
-class _PlantPlaceholder extends StatelessWidget {
+/// chosen deterministically from [seed] so the same subject keeps the same
+/// fill across rebuilds instead of a flat empty square.
+///
+/// Public because several screens need it - a plant tile with no photo, a
+/// species with no catalog artwork, a propagation before its first picture.
+/// Any of those rendering as a blank grey rectangle is the single fastest way
+/// to make a photo-led app look unfinished.
+class BotanicalPlaceholder extends StatelessWidget {
+  /// Any stable value for the subject; its hash picks the gradient.
   final int seed;
 
-  const _PlantPlaceholder({required this.seed});
+  const BotanicalPlaceholder({super.key, required this.seed});
 
   static const List<List<Color>> _palettes = [
     [Color(0xFF4F9E6F), Color(0xFF21503A)],

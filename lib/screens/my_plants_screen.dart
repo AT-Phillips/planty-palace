@@ -359,13 +359,20 @@ class _MyPlantsScreenState extends State<MyPlantsScreen> {
   Widget build(BuildContext context) {
     final title = widget.garden?.name ?? 'All Plants';
 
+    // The empty state carries its own "Add a Plant" call to action, so the
+    // floating pill would put two identical buttons on the same screen.
+    final showFloatingAction = !_loaded || _error != null || _plants.isNotEmpty;
+
     return Scaffold(
       appBar: FrostedAppBar(title: title),
       body: _buildBody(title),
-      floatingActionButton: FloatingActionPill(
-        label: 'Add plant',
-        onPressed: _navigateToAddPlant,
-      ),
+      floatingActionButton:
+          showFloatingAction
+              ? FloatingActionPill(
+                label: 'Add plant',
+                onPressed: _navigateToAddPlant,
+              )
+              : null,
     );
   }
 

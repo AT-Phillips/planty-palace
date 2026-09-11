@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:planty_palace/screens/account_screen.dart';
+import 'package:planty_palace/screens/add_edit_plant_screen.dart';
+import 'package:planty_palace/screens/main_shell.dart';
+import 'package:planty_palace/screens/propagations_screen.dart';
+import 'package:planty_palace/screens/species_detail_screen.dart';
+import 'package:planty_palace/services/perenual_service.dart';
 import 'package:planty_palace/screens/care_screen.dart';
 import 'package:planty_palace/screens/guides_screen.dart';
 import 'package:planty_palace/screens/plant_detail_screen.dart';
@@ -123,6 +128,73 @@ void main() {
       plantRepository: FakePlantRepository(plants: [], gardens: []),
     );
     await renderScreen(tester, const MyPlantsScreen(), 'my_plants_empty');
+  });
+
+  testWidgets('Main shell - nav bar over the hub', (tester) async {
+    await renderScreen(tester, const MainShell(), 'shell_light');
+  });
+
+  testWidgets('Add plant form', (tester) async {
+    await renderScreen(
+      tester,
+      const AddEditPlantScreen(gardenId: 'g1'),
+      'add_plant_light',
+    );
+  });
+
+  testWidgets('Species detail', (tester) async {
+    await renderScreen(
+      tester,
+      SpeciesDetailScreen(
+        species: PerenualSpeciesDetail(
+          scientificName: 'Monstera deliciosa',
+          commonName: 'Swiss Cheese Plant',
+          imageUrl: null,
+          wateringIntervalDays: 7,
+          careInstructions:
+              'Bright indirect light. Let the top few centimetres of soil dry '
+              'out between waterings, then water thoroughly.',
+        ),
+      ),
+      'species_detail_light',
+    );
+  });
+
+  testWidgets('Propagations list', (tester) async {
+    await renderScreen(
+      tester,
+      const PropagationsScreen(),
+      'propagations_light',
+    );
+  });
+
+  testWidgets('Care at large accessibility text', (tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme(),
+        home: MediaQuery(
+          data: const MediaQueryData(
+            size: Size(390, 844),
+            devicePixelRatio: 3.0,
+            textScaler: TextScaler.linear(1.8),
+          ),
+          child: const CareScreen(),
+        ),
+      ),
+    );
+    await tester.pump();
+    for (var i = 0; i < 6; i++) {
+      await tester.pump(const Duration(milliseconds: 250));
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('images/care_large_text.png'),
+    );
   });
 
   testWidgets('Spaces hub - all caught up', (tester) async {

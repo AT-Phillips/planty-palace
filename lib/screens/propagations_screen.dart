@@ -118,13 +118,21 @@ class _PropagationsScreenState extends State<PropagationsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // As on My Plants: the empty state has its own call to action, so the
+    // floating pill stands down rather than duplicating it.
+    final showFloatingAction =
+        _loading || _error != null || _propagations.isNotEmpty;
+
     return Scaffold(
       appBar: const FrostedAppBar(title: 'Propagations'),
       body: _buildBody(),
-      floatingActionButton: FloatingActionPill(
-        label: 'New cutting',
-        onPressed: _navigateToAdd,
-      ),
+      floatingActionButton:
+          showFloatingAction
+              ? FloatingActionPill(
+                label: 'New cutting',
+                onPressed: _navigateToAdd,
+              )
+              : null,
     );
   }
 

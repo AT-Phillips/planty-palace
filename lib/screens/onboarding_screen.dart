@@ -164,15 +164,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 width: double.infinity,
                 child: FilledButton(
                   onPressed: _next,
+                  // Shape only - a bare TextStyle here would drop the app's
+                  // font family; the label typography comes from the theme.
                   style: FilledButton.styleFrom(
-                    backgroundColor: fern,
-                    foregroundColor: Colors.white,
                     shape: const StadiumBorder(),
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    textStyle: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
                   child: Text(isLastPage ? 'Get Started' : 'Next'),
                 ),

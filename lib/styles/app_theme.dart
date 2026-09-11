@@ -201,6 +201,16 @@ class AppTheme {
 
     final cardColor = p.card;
 
+    // Button labels must be derived from the text theme, not written fresh.
+    //
+    // A bare `TextStyle(fontSize: .., fontWeight: ..)` in a ButtonStyle
+    // carries no font family, and the resolved button label does not always
+    // sit under an ancestor that re-supplies one - so labels silently
+    // rendered in the platform default face instead of Inter. Deriving from
+    // labelLarge keeps every button in the app's typography.
+    final buttonTextStyle = (baseTextTheme.labelLarge ?? const TextStyle())
+        .copyWith(fontSize: 15.5, fontWeight: FontWeight.w700);
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -250,24 +260,35 @@ class AppTheme {
             borderRadius: BorderRadius.circular(radius),
           ),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
-          textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          textStyle: buttonTextStyle,
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          side: BorderSide(color: colorScheme.outline),
+          foregroundColor: p.ink,
+          side: BorderSide(color: p.line),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+          textStyle: buttonTextStyle.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          backgroundColor: p.fern,
+          foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(radius),
           ),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          textStyle: buttonTextStyle,
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: p.fern,
+          textStyle: buttonTextStyle.copyWith(fontWeight: FontWeight.w600),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -287,16 +308,43 @@ class AppTheme {
           side: BorderSide(color: colorScheme.outlineVariant),
         ),
       ),
+      // Outlined, not filled.
+      //
+      // The fill was the recessed ground tone, which read correctly when a
+      // field sat directly on the page. Now that forms group their fields
+      // inside cards, that same fill rendered as a grey block inside a white
+      // panel - a box in a box. An outline instead takes the color of
+      // whatever surface it is on, so one treatment works on the page, in a
+      // card, and in a dialog. The focused state picks up the fern accent so
+      // the active field is unmistakable.
       inputDecorationTheme: InputDecorationTheme(
+        filled: false,
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(radius),
-          borderSide: BorderSide(color: colorScheme.outlineVariant),
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: p.line),
         ),
-        filled: true,
-        fillColor: colorScheme.surfaceContainerHighest,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: p.line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: p.fern, width: 1.6),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: colorScheme.error, width: 1.6),
+        ),
+        labelStyle: TextStyle(color: p.inkSoft),
+        floatingLabelStyle: TextStyle(color: p.fern),
+        hintStyle: TextStyle(color: p.inkFaint),
         contentPadding: const EdgeInsets.symmetric(
-          vertical: 12,
-          horizontal: 16,
+          vertical: 14,
+          horizontal: 14,
         ),
       ),
       dialogTheme: DialogThemeData(
